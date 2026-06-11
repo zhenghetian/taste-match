@@ -20,6 +20,7 @@
 
 body {
   margin: 0;
+  overflow-x: hidden;
   min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
@@ -164,7 +165,7 @@ button {
 .topbar h1 {
   max-width: 760px;
   margin: 4px 0 0;
-  font-size: clamp(30px, 4vw, 54px);
+  font-size: 48px;
   line-height: 1.02;
   letter-spacing: 0;
 }
@@ -308,7 +309,7 @@ button {
 
 .content-title h3 {
   margin: 0;
-  font-size: clamp(28px, 4vw, 56px);
+  font-size: 52px;
   line-height: 1;
 }
 
@@ -812,9 +813,36 @@ input[type="text"] {
 }
 
 @media (max-width: 720px) {
+  body {
+    background: #fbfaf6;
+  }
+
   .stage,
   .rail {
-    padding: 18px;
+    padding: 14px;
+  }
+
+  .rail {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    gap: 12px;
+    background: rgba(236, 231, 220, 0.96);
+    backdrop-filter: blur(10px);
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .brand span {
+    font-size: 12px;
+  }
+
+  .stage {
+    padding-top: 16px;
   }
 
   .topbar,
@@ -822,6 +850,17 @@ input[type="text"] {
   .feedback-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .topbar {
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .topbar h1 {
+    max-width: none;
+    font-size: 28px;
+    line-height: 1.12;
   }
 
   .topbar-actions,
@@ -835,33 +874,230 @@ input[type="text"] {
   }
 
   .steps {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .step {
-    min-height: 56px;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 6px;
+  }
+
+  .step b {
+    display: none;
+  }
+
+  .step span {
+    width: 26px;
+    height: 26px;
   }
 
   .input-layout {
     gap: 12px;
   }
 
-  .reaction-grid,
   .intent-field,
   .match-grid,
   .composer {
     grid-template-columns: 1fr;
   }
 
+  .section-heading {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .section-heading h2 {
+    font-size: 21px;
+    line-height: 1.25;
+  }
+
+  .progress-wrap {
+    width: 100%;
+  }
+
+  .content-card,
+  .preference-panel,
+  .profile-card,
+  .insight-card,
+  .privacy-editor,
+  .match-card,
+  .chat-context,
+  .chat-panel {
+    box-shadow: 0 10px 24px rgba(49, 43, 34, 0.08);
+  }
+
   .content-card {
-    grid-template-rows: minmax(260px, 45vh) auto;
+    grid-template-rows: minmax(230px, auto) auto;
+  }
+
+  .content-visual {
+    min-height: 230px;
+    padding: 18px;
+  }
+
+  .content-visual::before {
+    inset: 12px;
+  }
+
+  .content-visual::after {
+    width: 56px;
+    height: 82px;
+    right: 18px;
+    bottom: 18px;
   }
 
   .content-title h3 {
-    font-size: 34px;
+    max-width: 270px;
+    font-size: 30px;
+    line-height: 1.06;
+  }
+
+  .content-meta {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .tag,
+  .pill {
+    font-size: 12px;
+  }
+
+  .preference-panel {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .reaction-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .reaction-btn {
+    min-height: 58px;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .reaction-btn span {
+    width: 30px;
+    height: 30px;
+  }
+
+  textarea {
+    min-height: 88px;
+  }
+
+  .primary-btn,
+  .ghost-btn {
+    min-height: 44px;
+  }
+
+  .profile-grid,
+  .chat-layout {
+    gap: 12px;
+  }
+
+  .profile-poster {
+    min-height: 150px;
+  }
+
+  .profile-copy {
+    padding: 16px;
+  }
+
+  .profile-copy h3 {
+    font-size: 25px;
+  }
+
+  .insight-card,
+  .privacy-editor,
+  .feedback-panel,
+  .chat-context,
+  .chat-panel {
+    padding: 14px;
   }
 
   .poster-caption {
-    font-size: 30px;
+    font-size: 24px;
+  }
+
+  .privacy-editor {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .segmented {
+    width: 100%;
+  }
+
+  .segmented button {
+    flex: 1;
+  }
+
+  .match-grid {
+    gap: 12px;
+  }
+
+  .match-visual {
+    min-height: 118px;
+    padding: 14px;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .score {
+    font-size: 13px;
+  }
+
+  .match-body {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .match-body h3 {
+    font-size: 20px;
+  }
+
+  .match-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .message-list {
+    min-height: 300px;
+    max-height: 55vh;
+  }
+
+  .message {
+    max-width: 92%;
+  }
+
+  .icebreaker {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .stage,
+  .rail {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .topbar h1 {
+    font-size: 25px;
+  }
+
+  .content-title h3 {
+    font-size: 27px;
+  }
+
+  .reaction-grid,
+  .match-actions {
+    grid-template-columns: 1fr;
   }
 }
