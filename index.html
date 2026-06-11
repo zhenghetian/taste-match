@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Internal Taste Match Test</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="appShell" class="app-shell">
+      <aside class="rail" aria-label="Prototype status">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">VM</div>
+          <div>
+            <strong>Taste Match</strong>
+            <span>内部测试版</span>
+          </div>
+        </div>
+
+        <nav class="steps" aria-label="MVP flow">
+          <button class="step is-active" data-step-jump="0">
+            <span>1</span>
+            <b>偏好输入</b>
+          </button>
+          <button class="step" data-step-jump="1">
+            <span>2</span>
+            <b>AI 画像</b>
+          </button>
+          <button class="step" data-step-jump="2">
+            <span>3</span>
+            <b>匹配解释</b>
+          </button>
+          <button class="step" data-step-jump="3">
+            <span>4</span>
+            <b>破冰聊天</b>
+          </button>
+        </nav>
+
+        <section class="signal-panel" aria-label="Current AI signals">
+          <p class="eyebrow">Live Signals</p>
+          <h2>LLM 输入信号</h2>
+          <div id="signalList" class="signal-list"></div>
+        </section>
+      </aside>
+
+      <section class="stage">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Private Test</p>
+            <h1>AI 内容品味匹配实验</h1>
+          </div>
+          <div class="topbar-actions">
+            <button id="exportBtn" class="ghost-btn" type="button" title="导出测试结果">
+              导出测试结果
+            </button>
+            <button id="resetBtn" class="ghost-btn" type="button" title="重置原型">
+              <span aria-hidden="true">↻</span>
+              重置
+            </button>
+          </div>
+        </header>
+
+        <section id="viewInput" class="view is-visible" aria-labelledby="inputTitle">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Step 1</p>
+              <h2 id="inputTitle">刷几张内容卡，让 AI 捕捉你的 Vibe</h2>
+            </div>
+            <div class="progress-wrap" aria-label="Preference progress">
+              <div class="progress-meta">
+                <span id="cardCount">1 / 10</span>
+                <span id="completionText">完成 0%</span>
+              </div>
+              <div class="progress-track"><div id="progressBar"></div></div>
+            </div>
+          </div>
+
+          <div class="input-layout">
+            <article id="contentCard" class="content-card"></article>
+
+            <section class="preference-panel" aria-label="Preference controls">
+              <div>
+                <p class="eyebrow">Reaction</p>
+                <h3>这条内容你会怎么处理？</h3>
+              </div>
+              <div class="reaction-grid">
+                <button class="reaction-btn" data-reaction="want_to_talk" type="button">
+                  <span>聊</span>
+                  想聊这个
+                </button>
+                <button class="reaction-btn" data-reaction="like" type="button">
+                  <span>赞</span>
+                  喜欢
+                </button>
+                <button class="reaction-btn" data-reaction="neutral" type="button">
+                  <span>略</span>
+                  无感
+                </button>
+                <button class="reaction-btn" data-reaction="dislike" type="button">
+                  <span>避</span>
+                  不想看
+                </button>
+              </div>
+
+              <label class="text-field">
+                <span>补充你喜欢的博主 / 视频类型</span>
+                <textarea id="freeText" rows="4" placeholder="例如：城市散步、冷幽默、深夜歌单、真实探店、别太鸡血的生活方式"></textarea>
+              </label>
+
+              <fieldset class="intent-field">
+                <legend>这次想认识哪类人？</legend>
+                <label><input type="checkbox" value="饭搭子" checked /> 饭搭子</label>
+                <label><input type="checkbox" value="城市散步" checked /> 城市散步</label>
+                <label><input type="checkbox" value="聊天搭子" checked /> 聊天搭子</label>
+                <label><input type="checkbox" value="展览演出" /> 展览演出</label>
+              </fieldset>
+
+              <button id="generateProfileBtn" class="primary-btn" type="button" disabled>
+                生成 AI Vibe Profile
+              </button>
+            </section>
+          </div>
+        </section>
+
+        <section id="viewProfile" class="view" aria-labelledby="profileTitle">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Step 2</p>
+              <h2 id="profileTitle">AI Vibe Profile</h2>
+            </div>
+            <button id="regenerateBtn" class="ghost-btn" type="button">重新生成</button>
+          </div>
+
+          <div class="profile-grid">
+            <article class="profile-card">
+              <div class="profile-poster" aria-hidden="true">
+                <div class="poster-skyline"></div>
+                <div class="poster-caption">AI Taste Map</div>
+              </div>
+              <div class="profile-copy">
+                <p class="eyebrow">Public Profile</p>
+                <h3 id="vibeName">城市夜游型</h3>
+                <p id="vibeSummary"></p>
+                <div id="themePills" class="pill-row"></div>
+              </div>
+            </article>
+
+            <section class="insight-stack">
+              <article class="insight-card">
+                <p class="eyebrow">Humor</p>
+                <h3 id="humorStyle"></h3>
+              </article>
+              <article class="insight-card">
+                <p class="eyebrow">Aesthetic</p>
+                <h3 id="aestheticStyle"></h3>
+              </article>
+              <article class="insight-card">
+                <p class="eyebrow">Conversation Hooks</p>
+                <div id="hooksList" class="hook-list"></div>
+              </article>
+            </section>
+          </div>
+
+          <section class="privacy-editor">
+            <div>
+              <p class="eyebrow">Privacy</p>
+              <h3>公开前先确认 AI 可以展示什么</h3>
+            </div>
+            <label><input type="checkbox" checked /> 展示抽象偏好标签</label>
+            <label><input type="checkbox" checked /> 展示破冰话题</label>
+            <label><input type="checkbox" /> 展示具体喜欢的视频或博主</label>
+            <button id="goMatchesBtn" class="primary-btn" type="button">查看 AI 推荐</button>
+          </section>
+
+          <section class="feedback-panel" aria-label="Profile feedback">
+            <div>
+              <p class="eyebrow">User Test</p>
+              <h3>这个画像像你吗？</h3>
+            </div>
+            <div class="feedback-actions" data-feedback-group="profile">
+              <button type="button" data-feedback="像我">像我</button>
+              <button type="button" data-feedback="有点像">有点像</button>
+              <button type="button" data-feedback="不像我">不像我</button>
+              <button type="button" data-feedback="太像算命">太像算命</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="viewMatches" class="view" aria-labelledby="matchesTitle">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Step 3</p>
+              <h2 id="matchesTitle">AI Match Notes</h2>
+            </div>
+            <div class="segmented" role="group" aria-label="Match mode">
+              <button class="is-selected" type="button">同频</button>
+              <button type="button">互补</button>
+              <button type="button">同城</button>
+            </div>
+          </div>
+
+          <div id="matchGrid" class="match-grid"></div>
+
+          <section class="feedback-panel" aria-label="Match feedback">
+            <div>
+              <p class="eyebrow">User Test</p>
+              <h3>这些推荐理由有让你更想认识对方吗？</h3>
+            </div>
+            <div class="feedback-actions" data-feedback-group="matches">
+              <button type="button" data-feedback="想认识">想认识</button>
+              <button type="button" data-feedback="理由有帮助">理由有帮助</button>
+              <button type="button" data-feedback="太泛">太泛</button>
+              <button type="button" data-feedback="没兴趣">没兴趣</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="viewChat" class="view" aria-labelledby="chatTitle">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Step 4</p>
+              <h2 id="chatTitle">AI Icebreaker Chat</h2>
+            </div>
+            <button id="backToMatchesBtn" class="ghost-btn" type="button">返回匹配</button>
+          </div>
+
+          <div class="chat-layout">
+            <aside id="chatContext" class="chat-context"></aside>
+            <section class="chat-panel" aria-label="Chat prototype">
+              <div id="messageList" class="message-list"></div>
+              <div class="composer">
+                <input id="chatInput" type="text" placeholder="选择一个 AI 开场，或自己输入一句" />
+                <button id="sendBtn" class="primary-btn" type="button">发送</button>
+              </div>
+              <div id="icebreakers" class="icebreaker-row"></div>
+            </section>
+          </div>
+
+          <section class="feedback-panel" aria-label="Icebreaker feedback">
+            <div>
+              <p class="eyebrow">User Test</p>
+              <h3>这个 AI 开场自然吗？</h3>
+            </div>
+            <div class="feedback-actions" data-feedback-group="icebreaker">
+              <button type="button" data-feedback="自然">自然</button>
+              <button type="button" data-feedback="能启发我">能启发我</button>
+              <button type="button" data-feedback="太 AI">太 AI</button>
+              <button type="button" data-feedback="有点尬">有点尬</button>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
