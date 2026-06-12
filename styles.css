@@ -296,37 +296,173 @@ button {
   min-height: 320px;
   padding: 24px;
   background:
-    radial-gradient(circle at 80% 16%, rgba(255, 255, 255, 0.28), transparent 24%),
-    linear-gradient(135deg, rgba(12, 14, 20, 0.9), rgba(12, 14, 20, 0.16)),
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.28), transparent 22%),
+    radial-gradient(circle at 76% 40%, rgba(0, 0, 0, 0.28), transparent 28%),
+    linear-gradient(180deg, rgba(8, 10, 16, 0.12), rgba(8, 10, 16, 0.92)),
     var(--visual);
+  isolation: isolate;
 }
 
-.content-visual::before,
+.content-visual::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: 0.32;
+}
+
 .content-visual::after {
   content: "";
   position: absolute;
-  inset: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.26);
-  border-radius: 8px;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 24%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.78), transparent 46%);
+  pointer-events: none;
 }
 
-.content-visual::after {
-  inset: auto 28px 28px auto;
-  width: 92px;
-  height: 128px;
-  border-color: rgba(255, 255, 255, 0.42);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
-}
-
-.content-title {
-  position: relative;
+.scene-layer {
+  position: absolute;
+  inset: 60px 86px 82px 24px;
   z-index: 1;
-  max-width: 520px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 24px 60px rgba(0, 0, 0, 0.26);
+}
+
+.scene-layer::before,
+.scene-layer::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.scene-layer::before {
+  left: 0;
+  right: 0;
+  bottom: 28%;
+  height: 1px;
+}
+
+.scene-layer::after {
+  right: 18%;
+  bottom: 0;
+  width: 1px;
+  height: 100%;
+}
+
+.scene-card {
+  position: absolute;
+  display: block;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(3px);
+}
+
+.scene-card-a {
+  left: 9%;
+  top: 18%;
+  width: 38%;
+  height: 48%;
+}
+
+.scene-card-b {
+  right: 10%;
+  top: 14%;
+  width: 22%;
+  height: 64%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.scene-card-c {
+  left: 16%;
+  bottom: 10%;
+  width: 58%;
+  height: 12%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.video-status,
+.video-caption,
+.video-actions {
+  position: relative;
+  z-index: 2;
+}
+
+.video-status {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.38);
+}
+
+.video-actions {
+  position: absolute;
+  right: 18px;
+  bottom: 78px;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.video-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.78);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--mint), var(--rose));
+  color: #06110f;
+  font-weight: 900;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+}
+
+.action-icon {
+  display: grid;
+  min-width: 42px;
+  min-height: 42px;
+  place-items: center;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+}
+
+.action-icon b {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.video-caption {
+  max-width: min(560px, calc(100% - 80px));
   color: #ffffff;
 }
 
-.content-title span {
+.video-format {
   display: inline-block;
   margin-bottom: 10px;
   padding: 5px 8px;
@@ -338,11 +474,41 @@ button {
   font-weight: 800;
 }
 
-.content-title h3 {
+.video-caption strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+}
+
+.video-caption h3 {
   margin: 0;
   font-size: 52px;
   line-height: 0.98;
   text-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+}
+
+.video-caption p {
+  max-width: 48ch;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 15px;
+  line-height: 1.45;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
+}
+
+.music-bar {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 12px;
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
 }
 
 .content-meta {
@@ -1016,21 +1182,58 @@ input[type="text"] {
     padding: 18px;
   }
 
-  .content-visual::before {
-    inset: 12px;
+  .video-status {
+    top: 12px;
+    left: 14px;
+    right: 14px;
   }
 
-  .content-visual::after {
-    width: 56px;
-    height: 82px;
-    right: 18px;
-    bottom: 18px;
+  .scene-layer {
+    inset: 52px 64px 92px 14px;
   }
 
-  .content-title h3 {
-    max-width: 270px;
-    font-size: 30px;
+  .video-actions {
+    right: 12px;
+    bottom: 72px;
+    gap: 10px;
+  }
+
+  .video-avatar,
+  .action-icon {
+    min-width: 34px;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+  }
+
+  .action-icon {
+    font-size: 18px;
+  }
+
+  .action-icon b {
+    font-size: 9px;
+  }
+
+  .video-caption {
+    max-width: calc(100% - 54px);
+  }
+
+  .video-caption h3 {
+    max-width: 260px;
+    font-size: 28px;
     line-height: 1.06;
+  }
+
+  .video-caption p {
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  .music-bar {
+    max-width: 100%;
+    margin-top: 9px;
+    padding: 7px 9px;
+    font-size: 11px;
   }
 
   .content-meta {
@@ -1171,7 +1374,7 @@ input[type="text"] {
     font-size: 25px;
   }
 
-  .content-title h3 {
+  .video-caption h3 {
     font-size: 27px;
   }
 

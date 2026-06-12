@@ -71,6 +71,89 @@ const contentCards = [
   },
 ];
 
+const videoMeta = [
+  {
+    creator: "@晚风散步",
+    caption: "这条路没有目的地，但很适合把一天走完。",
+    music: "城市噪音采样 - midnight walk",
+    likes: "3.2w",
+    comments: "1280",
+    saves: "609",
+  },
+  {
+    creator: "@小店雷达",
+    caption: "人均 38，不用排队，老板会记得你上次点了什么。",
+    music: "后厨白噪音 - local bite",
+    likes: "5.8w",
+    comments: "2144",
+    saves: "1.1w",
+  },
+  {
+    creator: "@不想开会",
+    caption: "当甲方说“这个需求很简单”的时候。",
+    music: "键盘声和叹气 - office loop",
+    likes: "8.4w",
+    comments: "5360",
+    saves: "942",
+  },
+  {
+    creator: "@周末不宅",
+    caption: "临时买票，临时出门，反而看到了今天最喜欢的一张。",
+    music: "展厅脚步声 - weekend cut",
+    likes: "2.6w",
+    comments: "740",
+    saves: "3021",
+  },
+  {
+    creator: "@离谱观察员",
+    caption: "这梗第一秒没懂，第三秒开始笑到停不下来。",
+    music: "互联网碎片 - meme radio",
+    likes: "12.7w",
+    comments: "9801",
+    saves: "2.4w",
+  },
+  {
+    creator: "@慢一点也行",
+    caption: "今天没有变好也没关系，先把房间灯打开。",
+    music: "窗边白噪音 - soft reset",
+    likes: "4.1w",
+    comments: "1802",
+    saves: "1.5w",
+  },
+  {
+    creator: "@夜路歌单",
+    caption: "适合戴耳机走过三个路口，不发朋友圈的那种歌。",
+    music: "无人街景 - night playlist",
+    likes: "6.9w",
+    comments: "2600",
+    saves: "3.7w",
+  },
+  {
+    creator: "@不赶路旅行",
+    caption: "没有景点任务，只有一辆慢车和一碗热汤。",
+    music: "绿皮车窗 - slow trip",
+    likes: "3.7w",
+    comments: "1190",
+    saves: "8600",
+  },
+  {
+    creator: "@讲明白了",
+    caption: "三分钟把这个概念讲清楚，不用装懂。",
+    music: "白板笔声 - clear take",
+    likes: "7.3w",
+    comments: "3420",
+    saves: "2.1w",
+  },
+  {
+    creator: "@今晚有票吗",
+    caption: "前奏一响，突然就觉得应该出门见见人。",
+    music: "live house 片段 - crowd warmup",
+    likes: "9.6w",
+    comments: "4721",
+    saves: "1.9w",
+  },
+];
+
 const mockPeople = [
   {
     id: "person_ac",
@@ -258,11 +341,30 @@ function showView(index) {
 
 function renderCard() {
   const card = contentCards[state.index] || contentCards[contentCards.length - 1];
+  const meta = videoMeta[state.index] || videoMeta[0];
   contentCardEl.innerHTML = `
     <div class="content-visual" style="--visual: ${card.visual}">
-      <div class="content-title">
-        <span>${card.format}</span>
+      <div class="video-status">
+        <span>12:48</span>
+        <span>For You</span>
+      </div>
+      <div class="scene-layer" aria-hidden="true">
+        <span class="scene-card scene-card-a"></span>
+        <span class="scene-card scene-card-b"></span>
+        <span class="scene-card scene-card-c"></span>
+      </div>
+      <div class="video-actions" aria-label="Short video actions">
+        <span class="video-avatar">${meta.creator.slice(1, 2)}</span>
+        <span class="action-icon">♥<b>${meta.likes}</b></span>
+        <span class="action-icon">··<b>${meta.comments}</b></span>
+        <span class="action-icon">↗<b>${meta.saves}</b></span>
+      </div>
+      <div class="video-caption">
+        <span class="video-format">${card.format}</span>
+        <strong>${meta.creator}</strong>
         <h3>${card.title}</h3>
+        <p>${meta.caption}</p>
+        <div class="music-bar">${meta.music}</div>
       </div>
     </div>
     <div class="content-meta">
