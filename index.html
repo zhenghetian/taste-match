@@ -45,6 +45,14 @@
       </aside>
 
       <section class="stage">
+        <div class="mobile-flowbar" aria-label="Mobile flow status">
+          <div class="mobile-brand">
+            <span>Taste Match</span>
+            <strong id="mobileStepLabel">刷出你的 Vibe</strong>
+          </div>
+          <button id="mobileResetBtn" class="icon-btn" type="button" title="重置">↻</button>
+        </div>
+
         <header class="topbar">
           <div>
             <p class="eyebrow">Private Test</p>
@@ -201,6 +209,12 @@
           </div>
 
           <div id="matchGrid" class="match-grid"></div>
+
+          <div class="mobile-match-controls" aria-label="Mobile match controls">
+            <button id="prevMatchBtn" class="ghost-btn" type="button">上一位</button>
+            <span id="matchCounter">1 / 12</span>
+            <button id="nextMatchBtn" class="ghost-btn" type="button">下一位</button>
+          </div>
 
           <section class="feedback-panel" aria-label="Match feedback">
             <div>

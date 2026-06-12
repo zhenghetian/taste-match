@@ -306,6 +306,7 @@ const state = {
   reactions: [],
   profile: null,
   selectedMatch: null,
+  matchIndex: 0,
   feedback: {
     profile: null,
     matches: null,
@@ -329,6 +330,9 @@ const completionTextEl = document.querySelector("#completionText");
 const progressBarEl = document.querySelector("#progressBar");
 const generateProfileBtn = document.querySelector("#generateProfileBtn");
 const freeTextEl = document.querySelector("#freeText");
+const mobileStepLabelEl = document.querySelector("#mobileStepLabel");
+const matchCounterEl = document.querySelector("#matchCounter");
+const mobileStepLabels = ["刷出你的 Vibe", "你的 Vibe 结果", "看看同频的人", "开始破冰聊天"];
 
 function showView(index) {
   views.forEach((view, viewIndex) => {
@@ -337,6 +341,7 @@ function showView(index) {
   steps.forEach((step, stepIndex) => {
     step.classList.toggle("is-active", stepIndex === index);
   });
+  mobileStepLabelEl.textContent = mobileStepLabels[index] || mobileStepLabels[0];
 }
 
 function renderCard() {
@@ -491,6 +496,7 @@ function generateProfile() {
     ],
   };
 
+  state.matchIndex = 0;
   logEvent("profile_generated", {
     vibeName: state.profile.vibeName,
     themes: state.profile.themes,
@@ -529,14 +535,17 @@ function makeMatchReason(person) {
 
 function renderMatches() {
   const grid = document.querySelector("#matchGrid");
-  grid.innerHTML = mockPeople
+  const rankedPeople = mockPeople
     .map((person, index) => ({ person, originalIndex: index, score: scorePerson(person) }))
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score);
+
+  matchCounterEl.textContent = `${Math.min(state.matchIndex + 1, rankedPeople.length)} / ${rankedPeople.length}`;
+  grid.innerHTML = rankedPeople
     .map((person, index) => {
       const score = person.score;
       const reason = makeMatchReason(person.person);
       return `
-        <article class="match-card">
+        <article class="match-card ${index === state.matchIndex ? "is-current" : ""}">
           <div class="match-visual" style="--match-bg: ${person.person.bg}">
             <div class="avatar">${person.person.initials}</div>
             <div class="score">${score}% 同频</div>
@@ -551,7 +560,7 @@ function renderMatches() {
             </div>
             <p>${reason}</p>
             <div class="match-actions">
-              <button class="ghost-btn" data-save="${person.originalIndex}" type="button">先收藏</button>
+              <button class="ghost-btn" data-save="${person.originalIndex}" type="button">跳过</button>
               <button class="primary-btn" data-chat="${person.originalIndex}" type="button">想认识</button>
             </div>
           </div>
@@ -559,6 +568,14 @@ function renderMatches() {
       `;
     })
     .join("");
+}
+
+function moveMatch(delta) {
+  if (!state.profile) return;
+  const total = mockPeople.length;
+  state.matchIndex = (state.matchIndex + delta + total) % total;
+  renderMatches();
+  logEvent("match_stack_moved", { index: state.matchIndex });
 }
 
 function openChat(index) {
@@ -679,11 +696,17 @@ document.querySelector("#regenerateBtn").addEventListener("click", generateProfi
 document.querySelector("#goMatchesBtn").addEventListener("click", () => showView(2));
 document.querySelector("#backToMatchesBtn").addEventListener("click", () => showView(2));
 document.querySelector("#exportBtn").addEventListener("click", exportTestResults);
+document.querySelector("#mobileResetBtn").addEventListener("click", () => {
+  document.querySelector("#resetBtn").click();
+});
+document.querySelector("#prevMatchBtn").addEventListener("click", () => moveMatch(-1));
+document.querySelector("#nextMatchBtn").addEventListener("click", () => moveMatch(1));
 document.querySelector("#resetBtn").addEventListener("click", () => {
   state.index = 0;
   state.reactions = [];
   state.profile = null;
   state.selectedMatch = null;
+  state.matchIndex = 0;
   state.feedback = {
     profile: null,
     matches: null,
@@ -703,8 +726,8 @@ document.querySelector("#matchGrid").addEventListener("click", (event) => {
   const saveButton = event.target.closest("[data-save]");
   if (saveButton) {
     const person = mockPeople[Number(saveButton.dataset.save)];
-    logEvent("match_saved", { personId: person.id, name: person.name });
-    saveButton.textContent = "已收藏";
+    logEvent("match_skipped", { personId: person.id, name: person.name });
+    moveMatch(1);
   }
   if (chatButton) openChat(Number(chatButton.dataset.chat));
 });
