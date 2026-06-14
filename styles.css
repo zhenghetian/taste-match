@@ -194,6 +194,7 @@ button {
 }
 
 .mobile-flowbar,
+.mobile-tabbar,
 .mobile-match-controls {
   display: none;
 }
@@ -1090,7 +1091,7 @@ input[type="text"] {
 
   .stage {
     min-height: 100dvh;
-    padding: 0;
+    padding: 0 0 calc(78px + env(safe-area-inset-bottom));
     background: #f6f7fb;
   }
 
@@ -1106,6 +1107,47 @@ input[type="text"] {
     background: rgba(15, 17, 23, 0.9);
     color: #ffffff;
     backdrop-filter: blur(16px);
+  }
+
+  .mobile-tabbar {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    background: rgba(15, 17, 23, 0.9);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-tab {
+    display: grid;
+    min-height: 52px;
+    place-items: center;
+    gap: 2px;
+    border: 0;
+    border-radius: 18px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .mobile-tab span {
+    display: block;
+    font-size: 17px;
+    line-height: 1;
+  }
+
+  .mobile-tab.is-active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
   }
 
   .mobile-brand span,
@@ -1290,13 +1332,13 @@ input[type="text"] {
 
   .preference-panel {
     position: sticky;
-    bottom: 0;
+    bottom: calc(78px + env(safe-area-inset-bottom));
     z-index: 15;
     gap: 12px;
     margin-top: 12px;
     padding: 12px;
     border: 0;
-    border-radius: 18px 18px 0 0;
+    border-radius: 18px;
     background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 -14px 34px rgba(15, 17, 23, 0.12);
     backdrop-filter: blur(16px);

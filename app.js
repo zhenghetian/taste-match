@@ -332,7 +332,8 @@ const generateProfileBtn = document.querySelector("#generateProfileBtn");
 const freeTextEl = document.querySelector("#freeText");
 const mobileStepLabelEl = document.querySelector("#mobileStepLabel");
 const matchCounterEl = document.querySelector("#matchCounter");
-const mobileStepLabels = ["刷出你的 Vibe", "你的 Vibe 结果", "看看同频的人", "开始破冰聊天"];
+const mobileTabs = [...document.querySelectorAll("[data-mobile-tab]")];
+const mobileStepLabels = ["刷出你的 Vibe", "我的 Vibe", "同频的人", "破冰聊天"];
 
 function showView(index) {
   views.forEach((view, viewIndex) => {
@@ -341,7 +342,46 @@ function showView(index) {
   steps.forEach((step, stepIndex) => {
     step.classList.toggle("is-active", stepIndex === index);
   });
+  mobileTabs.forEach((tab) => {
+    tab.classList.toggle("is-active", Number(tab.dataset.mobileTab) === index);
+  });
   mobileStepLabelEl.textContent = mobileStepLabels[index] || mobileStepLabels[0];
+}
+
+function goMobileTab(index) {
+  if (index === 0) {
+    showView(0);
+    return;
+  }
+
+  if (!state.profile) {
+    if (state.reactions.length >= 6) {
+      generateProfile();
+    } else {
+      showView(0);
+      return;
+    }
+  }
+
+  if (index === 2) {
+    renderMatches();
+    showView(2);
+    return;
+  }
+
+  if (index === 3) {
+    if (!state.selectedMatch) {
+      const rankedPeople = mockPeople
+        .map((person, originalIndex) => ({ person, originalIndex, score: scorePerson(person) }))
+        .sort((a, b) => b.score - a.score);
+      openChat(rankedPeople[state.matchIndex]?.originalIndex || 0);
+      return;
+    }
+    showView(3);
+    return;
+  }
+
+  showView(index);
 }
 
 function renderCard() {
@@ -689,6 +729,10 @@ steps.forEach((step, index) => {
     if (index === 3 && !state.selectedMatch) openChat(0);
     showView(index);
   });
+});
+
+mobileTabs.forEach((tab) => {
+  tab.addEventListener("click", () => goMobileTab(Number(tab.dataset.mobileTab)));
 });
 
 generateProfileBtn.addEventListener("click", generateProfile);
