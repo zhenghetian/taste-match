@@ -307,6 +307,7 @@ const state = {
   profile: null,
   selectedMatch: null,
   matchIndex: 0,
+  inviteCount: 0,
   feedback: {
     profile: null,
     matches: null,
@@ -332,8 +333,11 @@ const generateProfileBtn = document.querySelector("#generateProfileBtn");
 const freeTextEl = document.querySelector("#freeText");
 const mobileStepLabelEl = document.querySelector("#mobileStepLabel");
 const matchCounterEl = document.querySelector("#matchCounter");
+const inviteCountEl = document.querySelector("#inviteCount");
+const inviteProgressTextEl = document.querySelector("#inviteProgressText");
+const poolTitleEl = document.querySelector("#poolTitle");
 const mobileTabs = [...document.querySelectorAll("[data-mobile-tab]")];
-const mobileStepLabels = ["刷出你的 Vibe", "我的 Vibe", "同频的人", "破冰聊天"];
+const mobileStepLabels = ["刷出你的 Vibe", "我的 Vibe 卡", "同频池", "邀请解锁"];
 
 function showView(index) {
   views.forEach((view, viewIndex) => {
@@ -370,13 +374,7 @@ function goMobileTab(index) {
   }
 
   if (index === 3) {
-    if (!state.selectedMatch) {
-      const rankedPeople = mockPeople
-        .map((person, originalIndex) => ({ person, originalIndex, score: scorePerson(person) }))
-        .sort((a, b) => b.score - a.score);
-      openChat(rankedPeople[state.matchIndex]?.originalIndex || 0);
-      return;
-    }
+    renderInviteGate();
     showView(3);
     return;
   }
@@ -561,10 +559,37 @@ function renderProfile() {
     .join("");
 }
 
+function makeShareText() {
+  const profile = state.profile;
+  if (!profile) return "我正在内测 Taste Match，用刷内容的方式生成 AI Vibe Card，再进入同频池匹配朋友。";
+  return `我刚测出自己的 AI Vibe：${profile.vibeName}。${profile.summary.slice(0, 58)}... 你也测一下，我们看看是不是同频。`;
+}
+
+async function copyText(text, eventName) {
+  try {
+    await navigator.clipboard.writeText(text);
+    logEvent(eventName, { ok: true, text });
+  } catch (error) {
+    logEvent(eventName, { ok: false, text, reason: error.message });
+  }
+}
+
+function updateInviteUI() {
+  const countText = `${Math.min(state.inviteCount, 2)} / 2`;
+  if (inviteCountEl) inviteCountEl.textContent = countText;
+  if (inviteProgressTextEl) inviteProgressTextEl.textContent = countText;
+  if (poolTitleEl) {
+    poolTitleEl.textContent =
+      state.inviteCount >= 2
+        ? "完整同频池已解锁，继续观察用户是否真的想申请认识"
+        : "先看到 3 位候选人，邀请朋友后解锁完整同频池";
+  }
+}
+
 function scorePerson(person) {
   const userThemes = new Set(state.profile?.themes || []);
   const shared = person.profile.themes.filter((theme) => userThemes.has(theme));
-  return Math.min(94, 72 + shared.length * 6);
+  return Math.min(96, 72 + shared.length * 6 + Math.min(state.inviteCount, 2) * 3);
 }
 
 function makeMatchReason(person) {
@@ -578,30 +603,37 @@ function renderMatches() {
   const rankedPeople = mockPeople
     .map((person, index) => ({ person, originalIndex: index, score: scorePerson(person) }))
     .sort((a, b) => b.score - a.score);
+  const visibleLimit = state.inviteCount >= 2 ? rankedPeople.length : 3;
 
   matchCounterEl.textContent = `${Math.min(state.matchIndex + 1, rankedPeople.length)} / ${rankedPeople.length}`;
+  updateInviteUI();
   grid.innerHTML = rankedPeople
     .map((person, index) => {
       const score = person.score;
       const reason = makeMatchReason(person.person);
+      const isLocked = index >= visibleLimit;
       return `
-        <article class="match-card ${index === state.matchIndex ? "is-current" : ""}">
+        <article class="match-card ${index === state.matchIndex ? "is-current" : ""} ${isLocked ? "is-locked" : ""}">
           <div class="match-visual" style="--match-bg: ${person.person.bg}">
             <div class="avatar">${person.person.initials}</div>
-            <div class="score">${score}% 同频</div>
+            <div class="score">${isLocked ? "待解锁" : `${score}% 同频`}</div>
           </div>
           <div class="match-body">
             <div>
-              <h3>${person.person.name}</h3>
-              <p>${person.person.meta}</p>
+              <h3>${isLocked ? "高置信候选人" : person.person.name}</h3>
+              <p>${isLocked ? "邀请朋友完成测试后可查看" : person.person.meta}</p>
             </div>
             <div class="pill-row">
               ${person.person.profile.themes.slice(0, 3).map((theme) => `<span class="pill">${theme}</span>`).join("")}
             </div>
-            <p>${reason}</p>
+            <p>${isLocked ? "这个候选人的共同话题更接近你的内容品味，但需要更多朋友样本来校准匹配置信度。" : reason}</p>
             <div class="match-actions">
-              <button class="ghost-btn" data-save="${person.originalIndex}" type="button">跳过</button>
-              <button class="primary-btn" data-chat="${person.originalIndex}" type="button">想认识</button>
+              ${
+                isLocked
+                  ? `<button class="primary-btn" data-unlock type="button">邀请解锁</button>`
+                  : `<button class="ghost-btn" data-save="${person.originalIndex}" type="button">暂时跳过</button>
+                     <button class="primary-btn" data-chat="${person.originalIndex}" type="button">申请认识</button>`
+              }
             </div>
           </div>
         </article>
@@ -620,38 +652,45 @@ function moveMatch(delta) {
 
 function openChat(index) {
   state.selectedMatch = mockPeople[index];
+  renderInviteGate();
+  showView(3);
+}
+
+function renderInviteGate() {
   const person = state.selectedMatch;
-  const reason = makeMatchReason(person);
+  const reason =
+    person && state.profile
+      ? makeMatchReason(person)
+      : "系统会先根据你的 Vibe Card 和同频池反馈做候选排序，再在朋友样本变多后提升匹配置信度。";
   const icebreakers = [
-    `你也会看「${person.profile.hook}」这种内容吗？我有点好奇你会怎么选。`,
-    `你的 Vibe 看起来也挺适合低压力出门的，最近有没有想去但还没去的地方？`,
-    `AI 说我们可能会从「${person.profile.themes[0]}」聊起来，我想验证一下它准不准。`,
+    "我想找周末可以低压力出门的人",
+    "我更想认识内容品味像我的朋友",
+    "如果匹配理由足够具体，我愿意加微信聊一下",
   ];
 
   document.querySelector("#chatContext").innerHTML = `
-    <p class="eyebrow">Match Context</p>
-    <h3>${person.name}</h3>
+    <p class="eyebrow">Unlock Plan</p>
+    <h3>${person ? `申请认识 ${person.name}` : "邀请朋友进入同频池"}</h3>
     <div class="context-list">
+      <div class="context-item"><b>当前状态</b><br>${state.inviteCount >= 2 ? "已解锁完整同频池，可以继续选择想认识的人。" : "还差朋友完成测试，先验证邀请转化。"}</div>
       <div class="context-item"><b>AI 理由</b><br>${reason}</div>
-      <div class="context-item"><b>共同话题</b><br>${person.profile.themes.join("、")}</div>
-      <div class="context-item"><b>提醒</b><br>AI 只提供开场建议，不替你下判断，也不展示原始观看记录。</div>
+      <div class="context-item"><b>隐私提醒</b><br>邀请只分享你的抽象 Vibe，不展示原始观看记录。</div>
     </div>
   `;
 
   document.querySelector("#messageList").innerHTML = `
-    <div class="message ai">我根据你们的 Vibe Profile 生成了几个不太尴尬的开场。可以直接点，也可以改成更像你的语气。</div>
+    <div class="message ai">${state.inviteCount >= 2 ? "完整同频池已解锁。下一步可以测试用户是否真的愿意申请认识某个人。" : "这是一个内测增长机制：邀请 2 个朋友完成测试后，解锁更完整的同频候选人。你可以复制邀请文案，也可以先模拟朋友完成测试。"}</div>
   `;
   document.querySelector("#icebreakers").innerHTML = icebreakers
     .map((text) => `<button class="icebreaker" type="button">${text}</button>`)
     .join("");
   document.querySelector("#chatInput").value = "";
-  logEvent("match_opened", {
-    personId: person.id,
-    name: person.name,
-    reason,
-    icebreakers,
+  updateInviteUI();
+  logEvent("invite_gate_opened", {
+    personId: person?.id,
+    name: person?.name,
+    inviteCount: state.inviteCount,
   });
-  showView(3);
 }
 
 function sendMessage(text) {
@@ -659,7 +698,7 @@ function sendMessage(text) {
   if (!cleaned) return;
   const list = document.querySelector("#messageList");
   list.insertAdjacentHTML("beforeend", `<div class="message me">${cleaned}</div>`);
-  logEvent("message_sent", {
+  logEvent("beta_note_recorded", {
     personId: state.selectedMatch?.id,
     text: cleaned,
     usedSuggestedIcebreaker: [...document.querySelectorAll(".icebreaker")].some(
@@ -669,7 +708,7 @@ function sendMessage(text) {
   setTimeout(() => {
     list.insertAdjacentHTML(
       "beforeend",
-      `<div class="message them">这个问题还挺自然的。我最近确实收藏了几个类似的地方，感觉比直接问“在干嘛”舒服多了。</div>`,
+      `<div class="message them">已记录。内测里最重要的是看用户到底想找谁、为什么想认识、是否愿意邀请朋友进池子。</div>`,
     );
     list.scrollTop = list.scrollHeight;
   }, 350);
@@ -690,6 +729,7 @@ function exportTestResults() {
     intents: selectedIntents(),
     weightedTags: getWeightedTags(),
     profile: state.profile,
+    inviteCount: state.inviteCount,
     feedback: state.feedback,
     selectedMatch: state.selectedMatch
       ? {
@@ -726,7 +766,9 @@ steps.forEach((step, index) => {
   step.addEventListener("click", () => {
     if (index === 1 && !state.profile) generateProfile();
     if (index === 2 && !state.profile) generateProfile();
-    if (index === 3 && !state.selectedMatch) openChat(0);
+    if (index === 3 && !state.profile) generateProfile();
+    if (index === 2) renderMatches();
+    if (index === 3) renderInviteGate();
     showView(index);
   });
 });
@@ -737,9 +779,25 @@ mobileTabs.forEach((tab) => {
 
 generateProfileBtn.addEventListener("click", generateProfile);
 document.querySelector("#regenerateBtn").addEventListener("click", generateProfile);
-document.querySelector("#goMatchesBtn").addEventListener("click", () => showView(2));
+document.querySelector("#goMatchesBtn").addEventListener("click", () => {
+  renderMatches();
+  showView(2);
+});
 document.querySelector("#backToMatchesBtn").addEventListener("click", () => showView(2));
 document.querySelector("#exportBtn").addEventListener("click", exportTestResults);
+document.querySelector("#copyCardBtn").addEventListener("click", () => {
+  copyText(makeShareText(), "vibe_card_copied");
+});
+document.querySelector("#copyInviteBtn").addEventListener("click", () => {
+  copyText(`${makeShareText()} 这是我的内测邀请，你测完我们可以看看是不是同频。`, "invite_copied");
+});
+document.querySelector("#simulateInviteBtn").addEventListener("click", () => {
+  state.inviteCount = Math.min(2, state.inviteCount + 1);
+  updateInviteUI();
+  renderMatches();
+  renderInviteGate();
+  logEvent("invite_completed_simulated", { inviteCount: state.inviteCount });
+});
 document.querySelector("#mobileResetBtn").addEventListener("click", () => {
   document.querySelector("#resetBtn").click();
 });
@@ -751,6 +809,7 @@ document.querySelector("#resetBtn").addEventListener("click", () => {
   state.profile = null;
   state.selectedMatch = null;
   state.matchIndex = 0;
+  state.inviteCount = 0;
   state.feedback = {
     profile: null,
     matches: null,
@@ -761,6 +820,7 @@ document.querySelector("#resetBtn").addEventListener("click", () => {
   document.querySelectorAll(".feedback-actions button").forEach((button) => {
     button.classList.remove("is-selected");
   });
+  updateInviteUI();
   renderCard();
   showView(0);
 });
@@ -768,6 +828,12 @@ document.querySelector("#resetBtn").addEventListener("click", () => {
 document.querySelector("#matchGrid").addEventListener("click", (event) => {
   const chatButton = event.target.closest("[data-chat]");
   const saveButton = event.target.closest("[data-save]");
+  const unlockButton = event.target.closest("[data-unlock]");
+  if (unlockButton) {
+    renderInviteGate();
+    showView(3);
+    return;
+  }
   if (saveButton) {
     const person = mockPeople[Number(saveButton.dataset.save)];
     logEvent("match_skipped", { personId: person.id, name: person.name });

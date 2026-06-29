@@ -18,22 +18,22 @@
           </div>
         </div>
 
-        <nav class="steps" aria-label="MVP flow">
+        <nav class="steps" aria-label="Beta flow">
           <button class="step is-active" data-step-jump="0">
             <span>1</span>
-            <b>偏好输入</b>
+            <b>刷出品味</b>
           </button>
           <button class="step" data-step-jump="1">
             <span>2</span>
-            <b>AI 画像</b>
+            <b>Vibe 卡</b>
           </button>
           <button class="step" data-step-jump="2">
             <span>3</span>
-            <b>匹配解释</b>
+            <b>同频池</b>
           </button>
           <button class="step" data-step-jump="3">
             <span>4</span>
-            <b>破冰聊天</b>
+            <b>邀请解锁</b>
           </button>
         </nav>
 
@@ -56,7 +56,7 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Private Test</p>
-            <h1>AI 内容品味匹配实验</h1>
+            <h1>AI Vibe 内测匹配池</h1>
           </div>
           <div class="topbar-actions">
             <button id="exportBtn" class="ghost-btn" type="button" title="导出测试结果">
@@ -73,7 +73,7 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow">Step 1</p>
-              <h2 id="inputTitle">刷几张内容卡，让 AI 捕捉你的 Vibe</h2>
+              <h2 id="inputTitle">刷几张内容卡，生成你的 AI Vibe 入场券</h2>
             </div>
             <div class="progress-wrap" aria-label="Preference progress">
               <div class="progress-meta">
@@ -125,7 +125,7 @@
               </fieldset>
 
               <button id="generateProfileBtn" class="primary-btn" type="button" disabled>
-                生成 AI Vibe Profile
+                生成我的 Vibe Card
               </button>
             </section>
           </div>
@@ -135,7 +135,7 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow">Step 2</p>
-              <h2 id="profileTitle">AI Vibe Profile</h2>
+              <h2 id="profileTitle">你的 AI Vibe Card</h2>
             </div>
             <button id="regenerateBtn" class="ghost-btn" type="button">重新生成</button>
           </div>
@@ -147,7 +147,7 @@
                 <div class="poster-caption">AI Taste Map</div>
               </div>
               <div class="profile-copy">
-                <p class="eyebrow">Public Profile</p>
+                <p class="eyebrow">Shareable Card</p>
                 <h3 id="vibeName">城市夜游型</h3>
                 <p id="vibeSummary"></p>
                 <div id="themePills" class="pill-row"></div>
@@ -172,13 +172,12 @@
 
           <section class="privacy-editor">
             <div>
-              <p class="eyebrow">Privacy</p>
-              <h3>公开前先确认 AI 可以展示什么</h3>
+              <p class="eyebrow">Next</p>
+              <h3>带着这张卡进入同频池</h3>
             </div>
-            <label><input type="checkbox" checked /> 展示抽象偏好标签</label>
-            <label><input type="checkbox" checked /> 展示破冰话题</label>
-            <label><input type="checkbox" /> 展示具体喜欢的视频或博主</label>
-            <button id="goMatchesBtn" class="primary-btn" type="button">查看 AI 推荐</button>
+            <p class="share-copy">先不做公开社交资料，只展示抽象标签和破冰话题。邀请 2 个朋友完成测试后，解锁更高置信度匹配。</p>
+            <button id="goMatchesBtn" class="primary-btn" type="button">进入同频池</button>
+            <button id="copyCardBtn" class="ghost-btn" type="button">复制分享文案</button>
           </section>
 
           <section class="feedback-panel" aria-label="Profile feedback">
@@ -199,14 +198,25 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow">Step 3</p>
-              <h2 id="matchesTitle">AI Match Notes</h2>
+              <h2 id="matchesTitle">你的同频池候选人</h2>
             </div>
             <div class="segmented" role="group" aria-label="Match mode">
               <button class="is-selected" type="button">同频</button>
-              <button type="button">互补</button>
-              <button type="button">同城</button>
+              <button type="button">高置信</button>
+              <button type="button">待解锁</button>
             </div>
           </div>
+
+          <section class="pool-status" aria-label="Pool status">
+            <div>
+              <p class="eyebrow">Beta Pool</p>
+              <h3 id="poolTitle">先看到 3 位候选人，邀请朋友后解锁完整同频池</h3>
+            </div>
+            <div class="pool-meter">
+              <span id="inviteCount">0 / 2</span>
+              <b>朋友完成测试</b>
+            </div>
+          </section>
 
           <div id="matchGrid" class="match-grid"></div>
 
@@ -219,12 +229,12 @@
           <section class="feedback-panel" aria-label="Match feedback">
             <div>
               <p class="eyebrow">User Test</p>
-              <h3>这些推荐理由有让你更想认识对方吗？</h3>
+              <h3>你愿意为了看更多高质量匹配邀请朋友吗？</h3>
             </div>
             <div class="feedback-actions" data-feedback-group="matches">
               <button type="button" data-feedback="想认识">想认识</button>
               <button type="button" data-feedback="理由有帮助">理由有帮助</button>
-              <button type="button" data-feedback="太泛">太泛</button>
+              <button type="button" data-feedback="愿意邀请">愿意邀请</button>
               <button type="button" data-feedback="没兴趣">没兴趣</button>
             </div>
           </section>
@@ -234,18 +244,29 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow">Step 4</p>
-              <h2 id="chatTitle">AI Icebreaker Chat</h2>
+              <h2 id="chatTitle">邀请朋友解锁更高质量匹配</h2>
             </div>
-            <button id="backToMatchesBtn" class="ghost-btn" type="button">返回匹配</button>
+            <button id="backToMatchesBtn" class="ghost-btn" type="button">返回同频池</button>
           </div>
 
-          <div class="chat-layout">
-            <aside id="chatContext" class="chat-context"></aside>
+          <div class="chat-layout invite-layout">
+            <aside id="chatContext" class="chat-context invite-card"></aside>
             <section class="chat-panel" aria-label="Chat prototype">
+              <div class="invite-progress">
+                <div>
+                  <p class="eyebrow">Invite Gate</p>
+                  <h3>邀请 2 个朋友完成测试</h3>
+                </div>
+                <strong id="inviteProgressText">0 / 2</strong>
+              </div>
+              <div class="invite-actions">
+                <button id="copyInviteBtn" class="primary-btn" type="button">复制邀请文案</button>
+                <button id="simulateInviteBtn" class="ghost-btn" type="button">模拟朋友完成测试</button>
+              </div>
               <div id="messageList" class="message-list"></div>
               <div class="composer">
-                <input id="chatInput" type="text" placeholder="选择一个 AI 开场，或自己输入一句" />
-                <button id="sendBtn" class="primary-btn" type="button">发送</button>
+                <input id="chatInput" type="text" placeholder="留下一个内测备注，例如：我想找周末搭子" />
+                <button id="sendBtn" class="primary-btn" type="button">记录</button>
               </div>
               <div id="icebreakers" class="icebreaker-row"></div>
             </section>
@@ -254,13 +275,13 @@
           <section class="feedback-panel" aria-label="Icebreaker feedback">
             <div>
               <p class="eyebrow">User Test</p>
-              <h3>这个 AI 开场自然吗？</h3>
+              <h3>这个邀请解锁机制能接受吗？</h3>
             </div>
             <div class="feedback-actions" data-feedback-group="icebreaker">
-              <button type="button" data-feedback="自然">自然</button>
-              <button type="button" data-feedback="能启发我">能启发我</button>
-              <button type="button" data-feedback="太 AI">太 AI</button>
-              <button type="button" data-feedback="有点尬">有点尬</button>
+              <button type="button" data-feedback="能接受">能接受</button>
+              <button type="button" data-feedback="想分享">想分享</button>
+              <button type="button" data-feedback="门槛高">门槛高</button>
+              <button type="button" data-feedback="不清楚">不清楚</button>
             </div>
           </section>
         </section>
@@ -273,11 +294,11 @@
         </button>
         <button class="mobile-tab" data-mobile-tab="2" type="button">
           <span>◇</span>
-          Matches
+          Pool
         </button>
         <button class="mobile-tab" data-mobile-tab="3" type="button">
           <span>✦</span>
-          Chat
+          Invite
         </button>
         <button class="mobile-tab" data-mobile-tab="1" type="button">
           <span>●</span>
