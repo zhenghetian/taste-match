@@ -529,6 +529,26 @@ button {
   backdrop-filter: blur(8px);
 }
 
+.douyin-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin-top: 10px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+}
+
+.douyin-link:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .content-meta {
   display: flex;
   flex-wrap: wrap;
@@ -545,6 +565,12 @@ button {
   background: #f7f9fc;
   color: #5c6472;
   font-size: 13px;
+}
+
+.source-tag {
+  border-color: rgba(232, 93, 117, 0.22);
+  background: #fff1f4;
+  color: #a83e55;
 }
 
 .preference-panel {

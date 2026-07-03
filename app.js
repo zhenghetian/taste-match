@@ -1,156 +1,176 @@
 const contentCards = [
   {
-    title: "凌晨两点的城市散步",
-    format: "短视频 / 生活切片",
-    tags: ["城市散步", "夜晚情绪", "低饱和审美"],
+    title: "女儿成绩太差了，把它丢出去",
+    format: "抖音视频 / 猫咪日常",
+    tags: ["猫咪", "生活幽默", "真实生活"],
+    douyinUrl: "https://v.douyin.com/PMg0WCVCmMs/",
+    canonicalUrl: "https://www.douyin.com/video/7656275297339198138",
     visual:
-      "linear-gradient(135deg, #19232d 0%, #2b5f73 46%, #d0a85a 47%, #d0a85a 52%, #4c3841 53%, #1d2329 100%)",
+      "linear-gradient(135deg, #3c3228 0%, #c88f54 42%, #f3d8aa 43%, #9c6a3c 62%, #1f2420 100%)",
   },
   {
-    title: "真实小店探访，不打卡也好吃",
-    format: "探店 / 烟火气",
-    tags: ["美食小店", "真实生活", "同城"],
+    title: "秃师傅假掩护反向上篮",
+    format: "抖音视频 / 篮球高光",
+    tags: ["篮球", "运动高光", "竞技反应"],
+    douyinUrl: "https://v.douyin.com/TD1_dzAY-zA/",
+    canonicalUrl: "https://www.douyin.com/video/7653472854248719461",
     visual:
-      "linear-gradient(135deg, #603b2e 0%, #b45f3f 38%, #e3c06f 39%, #e3c06f 52%, #55705a 53%, #26322f 100%)",
+      "linear-gradient(135deg, #141820 0%, #9a2f2f 34%, #f4b83e 35%, #2a3547 58%, #101217 100%)",
   },
   {
-    title: "一句话把职场荒谬讲透",
-    format: "吐槽 / 冷幽默",
-    tags: ["职场观察", "冷幽默", "观点"],
+    title: "读人物自传最大的感受",
+    format: "抖音图文 / 阅读感悟",
+    tags: ["人物自传", "长期主义", "自我成长"],
+    douyinUrl: "https://v.douyin.com/xSK2cfb4lvI/",
+    canonicalUrl: "https://www.douyin.com/note/7649001209977664869",
     visual:
-      "linear-gradient(135deg, #2d3035 0%, #52616b 35%, #d1d6d9 36%, #d1d6d9 49%, #a6533d 50%, #3a2421 100%)",
+      "linear-gradient(135deg, #f3ead8 0%, #c9a56a 36%, #28344c 37%, #50647a 57%, #1f2026 100%)",
   },
   {
-    title: "周末临时起意去看展",
-    format: "Vlog / 城市活动",
-    tags: ["展览", "周末计划", "审美"],
+    title: "这条视频终于迎来了最适合的 BGM",
+    format: "抖音视频 / BGM 梗",
+    tags: ["BGM", "轻松聊天", "互联网梗"],
+    douyinUrl: "https://v.douyin.com/O0R0TlxRdSI/",
+    canonicalUrl: "https://www.douyin.com/video/7656988310985138803",
     visual:
-      "linear-gradient(135deg, #f0e8d2 0%, #c28b2c 31%, #253f52 32%, #253f52 54%, #b65b75 55%, #583241 100%)",
+      "linear-gradient(135deg, #22232b 0%, #7c6cff 32%, #ff5c7a 33%, #f4b83e 50%, #1b1f27 100%)",
   },
   {
-    title: "抽象段子，离谱但很懂",
-    format: "搞笑 / 梗文化",
-    tags: ["抽象搞笑", "互联网梗", "轻松聊天"],
+    title: "帝都的繁华与压迫感",
+    format: "抖音视频 / 北京 CBD",
+    tags: ["城市观察", "北京朝阳CBD", "压迫感"],
+    douyinUrl: "https://v.douyin.com/DdtcO0wrNzU/",
+    canonicalUrl: "https://www.douyin.com/video/7649030962278077923",
     visual:
-      "linear-gradient(135deg, #1d2329 0%, #8b3a55 30%, #f0c55d 31%, #f0c55d 45%, #2b7a78 46%, #132f35 100%)",
+      "linear-gradient(135deg, #111820 0%, #354a62 35%, #b8c4d6 36%, #607d94 48%, #1d2329 100%)",
   },
   {
-    title: "不鸡血的自我照顾",
-    format: "生活方式 / 轻疗愈",
-    tags: ["松弛感", "自我照顾", "慢生活"],
+    title: "仔细听听她说的啥，承包一年笑点",
+    format: "抖音视频 / 松弛感笑点",
+    tags: ["松弛感", "生活幽默", "笑点"],
+    douyinUrl: "https://v.douyin.com/Hf-HJQXzwR0/",
+    canonicalUrl: "https://www.douyin.com/video/7657870760896202918",
     visual:
-      "linear-gradient(135deg, #e6decf 0%, #8fa27e 40%, #5f744a 41%, #5f744a 60%, #35453a 61%, #1d2329 100%)",
+      "linear-gradient(135deg, #e5d4bf 0%, #86a873 40%, #f4b83e 41%, #b65b75 58%, #2c3130 100%)",
   },
   {
-    title: "深夜歌单和无人街景",
-    format: "音乐 / 情绪氛围",
-    tags: ["音乐", "夜晚情绪", "城市散步"],
+    title: "如果我能为这样的未来而死",
+    format: "抖音视频 / 了不起的混剪团",
+    tags: ["燃向混剪", "未来想象", "理想主义"],
+    douyinUrl: "https://v.douyin.com/XcVrwDBIc98/",
+    canonicalUrl: "https://www.douyin.com/video/7652178073122835195",
     visual:
-      "linear-gradient(135deg, #111820 0%, #273c67 35%, #b65b75 36%, #b65b75 48%, #d8a84d 49%, #1d2329 100%)",
+      "linear-gradient(135deg, #0c1020 0%, #263c72 36%, #e85d75 37%, #f4b83e 52%, #101217 100%)",
   },
   {
-    title: "低成本旅行，不赶路",
-    format: "旅行 / 生活方式",
-    tags: ["旅行", "慢节奏", "真实生活"],
+    title: "胡子长长的皇帝狨猴",
+    format: "抖音视频 / 动物科普",
+    tags: ["动物科普", "知识科普", "好奇心"],
+    douyinUrl: "https://v.douyin.com/BCUjL5RQFeM/",
+    canonicalUrl: "https://www.douyin.com/video/7658193299651448090",
     visual:
-      "linear-gradient(135deg, #274b4c 0%, #68a0a2 36%, #e5d0a5 37%, #e5d0a5 50%, #a6533d 51%, #39251f 100%)",
+      "linear-gradient(135deg, #29362b 0%, #6d8b4e 36%, #dfc18e 37%, #a36f48 55%, #1d2329 100%)",
   },
   {
-    title: "知识讲清楚，但不端着",
-    format: "科普 / 解释型内容",
-    tags: ["知识科普", "表达清晰", "观点"],
+    title: "爱人先爱己",
+    format: "抖音视频 / 凉子访谈录",
+    tags: ["亲密关系", "养育", "自我照顾"],
+    douyinUrl: "https://v.douyin.com/d7xwFccudQA/",
+    canonicalUrl: "https://www.douyin.com/video/7658182895558790435",
     visual:
-      "linear-gradient(135deg, #22313d 0%, #3d6e82 30%, #f0efe6 31%, #f0efe6 42%, #c28b2c 43%, #59431f 100%)",
+      "linear-gradient(135deg, #f0e6dc 0%, #e85d75 34%, #7c6cff 35%, #38415b 58%, #1f2026 100%)",
   },
   {
-    title: "热闹现场，音乐一响就想出门",
-    format: "演出 / 现场感",
-    tags: ["音乐现场", "展览演出", "社交活动"],
+    title: "美国球员为什么终结强投篮准",
+    format: "抖音视频 / 篮球训练观察",
+    tags: ["篮球", "训练方法", "运动分析"],
+    douyinUrl: "https://v.douyin.com/L_tJ9dSJo94/",
+    canonicalUrl: "https://www.douyin.com/video/7657150975639816635",
     visual:
-      "linear-gradient(135deg, #2b1f30 0%, #7b3c68 34%, #ef8b55 35%, #ef8b55 48%, #2b7a78 49%, #173b3a 100%)",
+      "linear-gradient(135deg, #1d2329 0%, #b45f3f 32%, #f4b83e 33%, #354a62 55%, #101217 100%)",
   },
 ];
 
 const videoMeta = [
   {
-    creator: "@晚风散步",
-    caption: "这条路没有目的地，但很适合把一天走完。",
-    music: "城市噪音采样 - midnight walk",
-    likes: "3.2w",
-    comments: "1280",
-    saves: "609",
+    creator: "@蕉糖馒头🥖",
+    caption: "女儿成绩太差了，把它丢出去。#猫咪真实的样子",
+    music: "抖音原声 / 猫咪日常",
+    likes: "5.61",
+    comments: "08/17",
+    saves: "打开",
   },
   {
-    creator: "@小店雷达",
-    caption: "人均 38，不用排队，老板会记得你上次点了什么。",
-    music: "后厨白噪音 - local bite",
-    likes: "5.8w",
-    comments: "2144",
-    saves: "1.1w",
+    creator: "@布卡（代拍剪）",
+    caption: "秃师傅假掩护反向上篮！吴勇豪送钉板血帽。",
+    music: "球场现场 / 篮球高光",
+    likes: "3.35",
+    comments: "10/04",
+    saves: "打开",
   },
   {
-    creator: "@不想开会",
-    caption: "当甲方说“这个需求很简单”的时候。",
-    music: "键盘声和叹气 - office loop",
-    likes: "8.4w",
-    comments: "5360",
-    saves: "942",
+    creator: "@程冲冲",
+    caption: "读人物自传最大的感受：原来那些后来光芒万丈的人，也有很长的暗处。",
+    music: "图文笔记 / 阅读感悟",
+    likes: "0.56",
+    comments: "08/29",
+    saves: "打开",
   },
   {
-    creator: "@周末不宅",
-    caption: "临时买票，临时出门，反而看到了今天最喜欢的一张。",
-    music: "展厅脚步声 - weekend cut",
-    likes: "2.6w",
-    comments: "740",
-    saves: "3021",
+    creator: "@先别吉🥕",
+    caption: "这条视频终于迎来了最适合的 BGM。",
+    music: "BGM 梗 / 情绪反差",
+    likes: "2.05",
+    comments: "01/11",
+    saves: "打开",
   },
   {
-    creator: "@离谱观察员",
-    caption: "这梗第一秒没懂，第三秒开始笑到停不下来。",
-    music: "互联网碎片 - meme radio",
-    likes: "12.7w",
-    comments: "9801",
-    saves: "2.4w",
+    creator: "@最靓的仔～",
+    caption: "帝都的繁华与压迫感。#途经北京朝阳cbd",
+    music: "城市影像 / 北京朝阳 CBD",
+    likes: "1.07",
+    comments: "05/15",
+    saves: "打开",
   },
   {
-    creator: "@慢一点也行",
-    caption: "今天没有变好也没关系，先把房间灯打开。",
-    music: "窗边白噪音 - soft reset",
-    likes: "4.1w",
-    comments: "1802",
-    saves: "1.5w",
+    creator: "@喜遇金安",
+    caption: "仔细听听她说的啥，承包我一年的笑点。#松弛感",
+    music: "生活现场 / 松弛感笑点",
+    likes: "1.20",
+    comments: "09/16",
+    saves: "打开",
   },
   {
-    creator: "@夜路歌单",
-    caption: "适合戴耳机走过三个路口，不发朋友圈的那种歌。",
-    music: "无人街景 - night playlist",
-    likes: "6.9w",
-    comments: "2600",
-    saves: "3.7w",
+    creator: "@火星的井",
+    caption: "如果我能为这样的未来而死。#了不起的混剪团",
+    music: "燃向混剪 / 未来想象",
+    likes: "1.76",
+    comments: "12/06",
+    saves: "打开",
   },
   {
-    creator: "@不赶路旅行",
-    caption: "没有景点任务，只有一辆慢车和一碗热汤。",
-    music: "绿皮车窗 - slow trip",
-    likes: "3.7w",
-    comments: "1190",
-    saves: "8600",
+    creator: "@科普的勾勾哒",
+    caption: "胡子长长的皇帝狨猴。#动物科普 #狨猴",
+    music: "动物科普 / 皇帝狨猴",
+    likes: "2.00",
+    comments: "05/10",
+    saves: "打开",
   },
   {
-    creator: "@讲明白了",
-    caption: "三分钟把这个概念讲清楚，不用装懂。",
-    music: "白板笔声 - clear take",
-    likes: "7.3w",
-    comments: "3420",
-    saves: "2.1w",
+    creator: "@凉子访谈录",
+    caption: "爱人先爱己：我们无法给孩子，内心没有的东西。",
+    music: "访谈片段 / 养育与自我",
+    likes: "9.48",
+    comments: "06/25",
+    saves: "打开",
   },
   {
-    creator: "@今晚有票吗",
-    caption: "前奏一响，突然就觉得应该出门见见人。",
-    music: "live house 片段 - crowd warmup",
-    likes: "9.6w",
-    comments: "4721",
-    saves: "1.9w",
+    creator: "@X-刘畅",
+    caption: "我算是知道美国球员为什么终结能力强，投篮还准了！",
+    music: "篮球训练 / 技术观察",
+    likes: "5.66",
+    comments: "02/18",
+    saves: "打开",
   },
 ];
 
@@ -158,145 +178,145 @@ const mockPeople = [
   {
     id: "person_ac",
     name: "阿澈",
-    meta: "25 / 上海 / 城市散步",
+    meta: "25 / 上海 / 篮球野球场",
     initials: "AC",
-    bg: "linear-gradient(135deg, #18303a, #2b7a78 44%, #d0a85a 45%, #6d3e43)",
+    bg: "linear-gradient(135deg, #141820, #9a2f2f 40%, #f4b83e 41%, #2a3547)",
     profile: {
-      themes: ["城市散步", "音乐", "美食小店", "夜晚情绪"],
-      hook: "一个人走路时听什么歌",
-      difference: "TA 更偏音乐现场，你更偏安静街景。",
+      themes: ["篮球", "运动高光", "训练方法", "竞技反应"],
+      hook: "你看球时最容易被哪个动作点燃",
+      difference: "TA 更爱拆技术动作，你更容易被高光瞬间先抓住。",
     },
   },
   {
     id: "person_mina",
     name: "Mina",
-    meta: "24 / 上海 / 展览探店",
+    meta: "24 / 上海 / 关系访谈",
     initials: "MI",
     bg: "linear-gradient(135deg, #f0e8d2, #b65b75 38%, #253f52 39%, #1d2329)",
     profile: {
-      themes: ["展览", "真实生活", "低饱和审美", "周末计划"],
-      hook: "最近想去但还没去的展",
-      difference: "TA 更爱展览和影像，你更容易从街头生活切入。",
+      themes: ["亲密关系", "养育", "自我照顾", "长期主义"],
+      hook: "一个人什么时候最需要先照顾自己",
+      difference: "TA 更偏关系和养育，你更可能从自我经验切入。",
     },
   },
   {
     id: "person_sz",
     name: "山竹",
-    meta: "26 / 上海 / 饭搭子",
+    meta: "26 / 上海 / 动物科普",
     initials: "SZ",
-    bg: "linear-gradient(135deg, #663f2f, #c28b2c 38%, #5f744a 39%, #1d2329)",
+    bg: "linear-gradient(135deg, #29362b, #6d8b4e 38%, #dfc18e 39%, #1d2329)",
     profile: {
-      themes: ["美食小店", "冷幽默", "真实生活", "同城"],
-      hook: "一家不想发到社交平台的小店",
-      difference: "TA 的内容更烟火气，你的内容更有夜晚氛围。",
+      themes: ["动物科普", "猫咪", "知识科普", "好奇心"],
+      hook: "哪种动物瞬间最能治好你的一天",
+      difference: "TA 更爱动物知识，你更容易被真实反应逗笑。",
     },
   },
   {
     id: "person_yu",
     name: "予白",
-    meta: "23 / 上海 / 抽象快乐",
+    meta: "23 / 上海 / BGM 梗",
     initials: "YB",
     bg: "linear-gradient(135deg, #1d2329, #8b3a55 35%, #f0c55d 36%, #2b7a78)",
     profile: {
-      themes: ["抽象搞笑", "互联网梗", "轻松聊天", "冷幽默"],
+      themes: ["BGM", "互联网梗", "轻松聊天", "笑点"],
       hook: "最近刷到最离谱但又想分享的视频",
-      difference: "TA 更偏抽象快乐，你的偏好里有更多生活氛围。",
+      difference: "TA 更偏音效和反差，你更可能被生活现场击中。",
     },
   },
   {
     id: "person_nuo",
     name: "糯糯",
-    meta: "24 / 上海 / 松弛生活",
+    meta: "24 / 上海 / 松弛笑点",
     initials: "NN",
     bg: "linear-gradient(135deg, #e6decf, #8fa27e 42%, #5f744a 43%, #26322f)",
     profile: {
-      themes: ["松弛感", "自我照顾", "慢生活", "真实生活"],
+      themes: ["松弛感", "生活幽默", "笑点", "真实生活"],
       hook: "一个不需要很努力也能让人舒服的周末",
-      difference: "TA 更像慢生活路线，你的内容更有城市移动感。",
+      difference: "TA 更喜欢现场感笑点，你更容易从内容背后的情绪聊起。",
     },
   },
   {
     id: "person_xi",
     name: "西柚",
-    meta: "26 / 上海 / 知识收集",
+    meta: "26 / 上海 / 传记阅读",
     initials: "XY",
     bg: "linear-gradient(135deg, #22313d, #3d6e82 36%, #f0efe6 37%, #c28b2c)",
     profile: {
-      themes: ["知识科普", "表达清晰", "观点", "职场观察"],
-      hook: "一个最近被讲清楚的复杂问题",
-      difference: "TA 更爱解释型内容，你更容易从具体生活画面切入。",
+      themes: ["人物自传", "长期主义", "自我成长", "知识科普"],
+      hook: "最近哪本书或哪段访谈让你停下来",
+      difference: "TA 更爱人物命运，你更容易从当下感受切入。",
     },
   },
   {
     id: "person_lin",
     name: "林间",
-    meta: "25 / 上海 / 低成本旅行",
+    meta: "25 / 北京 / 城市观察",
     initials: "LJ",
-    bg: "linear-gradient(135deg, #274b4c, #68a0a2 40%, #e5d0a5 41%, #a6533d)",
+    bg: "linear-gradient(135deg, #111820, #354a62 38%, #b8c4d6 39%, #607d94)",
     profile: {
-      themes: ["旅行", "慢节奏", "真实生活", "周末计划"],
-      hook: "一个不赶路也很值得去的地方",
-      difference: "TA 更偏离开城市，你更偏在城市里重新发现路线。",
+      themes: ["城市观察", "北京朝阳CBD", "压迫感", "真实生活"],
+      hook: "一座城市什么时候最让你有压迫感",
+      difference: "TA 更敏感于空间和建筑，你更容易从人和情绪进入。",
     },
   },
   {
     id: "person_dora",
     name: "Dora",
-    meta: "24 / 上海 / 音乐现场",
+    meta: "24 / 上海 / 燃向混剪",
     initials: "DO",
     bg: "linear-gradient(135deg, #2b1f30, #7b3c68 38%, #ef8b55 39%, #173b3a)",
     profile: {
-      themes: ["音乐现场", "展览演出", "社交活动", "音乐"],
-      hook: "下一场想去的演出",
-      difference: "TA 更有现场能量，你更偏安静观察。",
+      themes: ["燃向混剪", "未来想象", "理想主义", "BGM"],
+      hook: "哪种未来想象会让你起鸡皮疙瘩",
+      difference: "TA 更吃宏大叙事，你更容易从具体片段被点燃。",
     },
   },
   {
     id: "person_ke",
     name: "可乐",
-    meta: "22 / 上海 / 职场吐槽",
+    meta: "22 / 上海 / 猫咪日常",
     initials: "KL",
-    bg: "linear-gradient(135deg, #2d3035, #52616b 34%, #d1d6d9 35%, #a6533d)",
+    bg: "linear-gradient(135deg, #3c3228, #c88f54 34%, #f3d8aa 35%, #1d2329)",
     profile: {
-      themes: ["职场观察", "冷幽默", "观点", "轻松聊天"],
-      hook: "一个只有打工人才懂的荒谬瞬间",
-      difference: "TA 更擅长吐槽现实，你的偏好更柔和一点。",
+      themes: ["猫咪", "生活幽默", "真实生活", "松弛感"],
+      hook: "哪只猫最像你今天的精神状态",
+      difference: "TA 更偏毛茸茸日常，你更容易被反差表达吸引。",
     },
   },
   {
     id: "person_momo",
     name: "Momo",
-    meta: "23 / 上海 / 周末影像",
+    meta: "23 / 上海 / 运动分析",
     initials: "MO",
     bg: "linear-gradient(135deg, #f0e8d2, #253f52 34%, #b65b75 35%, #583241)",
     profile: {
-      themes: ["展览", "审美", "低饱和审美", "周末计划"],
-      hook: "一张你会停下来看的照片",
-      difference: "TA 更重视影像和展陈，你更重视生活场景本身。",
+      themes: ["篮球", "运动分析", "训练方法", "知识科普"],
+      hook: "一个你觉得被低估的训练细节",
+      difference: "TA 更爱训练拆解，你更容易被比赛结果吸引。",
     },
   },
   {
     id: "person_qing",
     name: "晴也",
-    meta: "27 / 上海 / 情绪共鸣",
+    meta: "27 / 上海 / 访谈共鸣",
     initials: "QY",
     bg: "linear-gradient(135deg, #111820, #273c67 34%, #b65b75 35%, #d8a84d)",
     profile: {
-      themes: ["夜晚情绪", "音乐", "自我照顾", "真实生活"],
-      hook: "一首适合夜路循环的歌",
-      difference: "TA 更偏情绪和音乐，你更容易把情绪落到城市细节里。",
+      themes: ["亲密关系", "自我照顾", "人物自传", "长期主义"],
+      hook: "哪句话让你意识到要先爱自己",
+      difference: "TA 更偏内省，你更容易从具体内容聊起。",
     },
   },
   {
     id: "person_he",
     name: "河岸",
-    meta: "26 / 上海 / 同城活动",
+    meta: "26 / 上海 / 好奇心杂食",
     initials: "HA",
     bg: "linear-gradient(135deg, #345b63, #2b7a78 38%, #c28b2c 39%, #5f744a)",
     profile: {
-      themes: ["同城", "社交活动", "美食小店", "展览演出"],
-      hook: "一个适合第一次见面的低压力路线",
-      difference: "TA 更会把兴趣变成出门计划，你的偏好更像内容品味入口。",
+      themes: ["好奇心", "知识科普", "城市观察", "轻松聊天"],
+      hook: "一个你没想到自己会看完的冷知识",
+      difference: "TA 更杂食，你的偏好更集中在少数强信号上。",
     },
   },
 ];
@@ -408,10 +428,12 @@ function renderCard() {
         <h3>${card.title}</h3>
         <p>${meta.caption}</p>
         <div class="music-bar">${meta.music}</div>
+        <a class="douyin-link" href="${card.douyinUrl}" target="_blank" rel="noreferrer">打开抖音原视频</a>
       </div>
     </div>
     <div class="content-meta">
       ${card.tags.map((tag) => `<span class="tag">${tag}</span>`).join("")}
+      <span class="tag source-tag">真实抖音内容</span>
     </div>
   `;
 
@@ -502,8 +524,25 @@ function generateProfile() {
   const hasFood = rankedTags.some((tag) => tag.includes("美食") || tag.includes("同城"));
   const hasHumor = rankedTags.some((tag) => tag.includes("幽默") || tag.includes("搞笑"));
   const hasArt = rankedTags.some((tag) => tag.includes("展览") || tag.includes("审美"));
+  const hasSports = rankedTags.some((tag) => tag.includes("篮球") || tag.includes("运动") || tag.includes("训练"));
+  const hasKnowledge = rankedTags.some((tag) => tag.includes("科普") || tag.includes("自传") || tag.includes("成长"));
+  const hasTenderness = rankedTags.some((tag) => tag.includes("养育") || tag.includes("亲密关系") || tag.includes("自我照顾"));
+  const hasMeme = rankedTags.some((tag) => tag.includes("BGM") || tag.includes("互联网梗") || tag.includes("笑点"));
+  const hasIdealism = rankedTags.some((tag) => tag.includes("理想主义") || tag.includes("未来想象") || tag.includes("燃向"));
+  const hasAnimal = rankedTags.some((tag) => tag.includes("猫咪") || tag.includes("动物"));
+  const hasCity = rankedTags.some((tag) => tag.includes("城市") || tag.includes("北京"));
 
-  const vibeName = hasNight
+  const vibeName = hasSports
+    ? "球场反应型"
+    : hasKnowledge
+      ? "知识咀嚼型"
+      : hasTenderness
+        ? "温柔内省型"
+        : hasIdealism
+          ? "燃向理想型"
+          : hasAnimal
+            ? "毛茸茸雷达型"
+            : hasCity || hasNight
     ? "城市夜游型"
     : hasArt
       ? "周末审美探索型"
@@ -512,24 +551,60 @@ function generateProfile() {
         : "轻松同频观察型";
 
   const summaryParts = [
-    hasNight ? "你似乎更容易被城市里的具体细节、夜晚氛围和不太用力的表达吸引" : "你更在意内容里的真实感和可以聊起来的生活细节",
-    hasFood ? "也会对小店、同城路线和低压力见面场景有兴趣" : "比起宏大的自我介绍，你可能更愿意从一个具体话题开始认识人",
-    hasHumor ? "你的笑点偏冷、偏观察，适合和能接住细微荒谬感的人聊天" : "你的内容偏好适合温和、慢一点的破冰方式",
+    hasSports
+      ? "你会被身体反应、技术细节和临场判断吸引，喜欢看见一个动作背后的训练逻辑"
+      : hasKnowledge
+        ? "你会被人物经历、知识解释和长期主义内容吸引，喜欢把短视频当成观察世界的入口"
+        : hasTenderness
+          ? "你对关系、养育和自我照顾这类话题更敏感，容易被有真实经验的人打动"
+          : hasAnimal
+            ? "你会被毛茸茸的真实瞬间和轻松日常击中，内容偏好里有很强的陪伴感"
+            : hasCity || hasNight
+              ? "你似乎更容易被城市里的具体细节、空间压迫感和不太用力的表达吸引"
+              : "你更在意内容里的真实感和可以聊起来的生活细节",
+    hasMeme
+      ? "你也吃 BGM、反差和生活笑点这一套，适合从一个很小的梗开始破冰"
+      : hasIdealism
+        ? "你会对宏大叙事、未来想象和燃向剪辑有反应，不只是在找消遣"
+        : hasFood
+          ? "也会对小店、同城路线和低压力见面场景有兴趣"
+          : "比起宏大的自我介绍，你可能更愿意从一个具体话题开始认识人",
+    hasHumor || hasMeme
+      ? "你的笑点偏观察和反差，适合和能接住细微荒谬感的人聊天"
+      : "你的内容偏好适合温和、慢一点的破冰方式",
   ];
 
   state.profile = {
     vibeName,
     summary: `${summaryParts.join("。")}。${text ? `你补充的偏好里还出现了“${text}”，这会被作为私密匹配信号。` : ""}`,
     themes: rankedTags.slice(0, 6),
-    humor: hasHumor ? "冷幽默 / 观察型笑点 / 不喜欢太用力的梗" : "轻松自然 / 具体生活感 / 低压力表达",
-    aesthetic: hasNight
+    humor: hasHumor || hasMeme ? "反差笑点 / BGM 敏感 / 能接生活里的小荒谬" : "轻松自然 / 具体生活感 / 低压力表达",
+    aesthetic: hasSports
+      ? "球场动作、身体对抗、训练痕迹和高光瞬间"
+      : hasKnowledge
+        ? "人物传记、知识解释、图文笔记和能反复咀嚼的观点"
+        : hasTenderness
+          ? "访谈、关系讨论、养育经验和不鸡血的自我照顾"
+          : hasAnimal
+            ? "猫咪日常、动物科普、真实反应和轻松陪伴感"
+            : hasNight || hasCity
       ? "低饱和城市感、街灯、步行路线、真实生活切片"
       : hasArt
         ? "展览、影像、周末路线和有质感的小发现"
         : "烟火气、真实小店、具体而不精致的人间细节",
     hooks: [
       rankedTags[0] ? `为什么会喜欢「${rankedTags[0]}」这类内容` : "最近刷到最想分享的一条视频",
-      hasFood ? "一家不想发到平台上的小店" : "一个人散步时会听什么",
+      hasSports
+        ? "你看球时最容易被哪个动作点燃"
+        : hasKnowledge
+          ? "最近哪本书或哪段访谈让你停下来"
+          : hasTenderness
+            ? "一个人什么时候最需要先照顾自己"
+            : hasAnimal
+              ? "哪种动物瞬间最能治好你的一天"
+              : hasFood
+                ? "一家不想发到平台上的小店"
+                : "一个人散步时会听什么",
       selectedIntents().join("、") || "低压力聊天",
     ],
   };
