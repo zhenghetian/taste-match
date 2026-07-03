@@ -337,7 +337,7 @@ const inviteCountEl = document.querySelector("#inviteCount");
 const inviteProgressTextEl = document.querySelector("#inviteProgressText");
 const poolTitleEl = document.querySelector("#poolTitle");
 const mobileTabs = [...document.querySelectorAll("[data-mobile-tab]")];
-const mobileStepLabels = ["刷出你的 Vibe", "我的 Vibe 卡", "同频池", "邀请解锁"];
+const mobileStepLabels = ["刷出你的暗号", "我的暗号卡", "同频池", "邀请解锁"];
 
 function showView(index) {
   views.forEach((view, viewIndex) => {
@@ -561,8 +561,8 @@ function renderProfile() {
 
 function makeShareText() {
   const profile = state.profile;
-  if (!profile) return "我正在内测 Taste Match，用刷内容的方式生成 AI Vibe Card，再进入同频池匹配朋友。";
-  return `我刚测出自己的 AI Vibe：${profile.vibeName}。${profile.summary.slice(0, 58)}... 你也测一下，我们看看是不是同频。`;
+  if (!profile) return "我正在内测「暗号」，用刷内容的方式生成暗号卡，再进入同频池匹配朋友。";
+  return `我刚在「暗号」测出了自己的同频暗号：${profile.vibeName}。${profile.summary.slice(0, 58)}... 你也测一下，我们看看是不是同频。`;
 }
 
 async function copyText(text, eventName) {
@@ -661,7 +661,7 @@ function renderInviteGate() {
   const reason =
     person && state.profile
       ? makeMatchReason(person)
-      : "系统会先根据你的 Vibe Card 和同频池反馈做候选排序，再在朋友样本变多后提升匹配置信度。";
+      : "系统会先根据你的暗号卡和同频池反馈做候选排序，再在朋友样本变多后提升匹配置信度。";
   const icebreakers = [
     "我想找周末可以低压力出门的人",
     "我更想认识内容品味像我的朋友",
@@ -674,7 +674,7 @@ function renderInviteGate() {
     <div class="context-list">
       <div class="context-item"><b>当前状态</b><br>${state.inviteCount >= 2 ? "已解锁完整同频池，可以继续选择想认识的人。" : "还差朋友完成测试，先验证邀请转化。"}</div>
       <div class="context-item"><b>AI 理由</b><br>${reason}</div>
-      <div class="context-item"><b>隐私提醒</b><br>邀请只分享你的抽象 Vibe，不展示原始观看记录。</div>
+      <div class="context-item"><b>隐私提醒</b><br>邀请只分享你的抽象暗号，不展示原始观看记录。</div>
     </div>
   `;
 
@@ -719,7 +719,7 @@ function sendMessage(text) {
 function exportTestResults() {
   const payload = {
     exportedAt: new Date().toISOString(),
-    prototype: "AI Vibe Match MVP",
+    prototype: "暗号 invite-based beta pool",
     reactions: state.reactions.map((item) => ({
       title: item.card.title,
       tags: item.card.tags,
@@ -747,7 +747,7 @@ function exportTestResults() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `vibe-match-test-${Date.now()}.json`;
+  link.download = `anhao-beta-test-${Date.now()}.json`;
   document.body.appendChild(link);
   link.click();
   link.remove();
