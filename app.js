@@ -408,18 +408,18 @@ function renderCard() {
   contentCardEl.innerHTML = `
     <div class="content-visual" style="--visual: ${card.visual}">
       <div class="video-status">
-        <span>12:48</span>
-        <span>For You</span>
+        <span>暗号推荐</span>
+        <span>真实抖音</span>
       </div>
-      <div class="scene-layer" aria-hidden="true">
-        <span class="scene-card scene-card-a"></span>
-        <span class="scene-card scene-card-b"></span>
-        <span class="scene-card scene-card-c"></span>
+      <div class="douyin-cover-frame" aria-hidden="true">
+        <span class="cover-rhythm cover-rhythm-a"></span>
+        <span class="cover-rhythm cover-rhythm-b"></span>
+        <span class="cover-rhythm cover-rhythm-c"></span>
       </div>
       <div class="video-actions" aria-label="Short video actions">
         <span class="video-avatar">${meta.creator.slice(1, 2)}</span>
         <span class="action-icon">♥<b>${meta.likes}</b></span>
-        <span class="action-icon">··<b>${meta.comments}</b></span>
+        <span class="action-icon">评<b>${meta.comments}</b></span>
         <span class="action-icon">↗<b>${meta.saves}</b></span>
       </div>
       <div class="video-caption">
