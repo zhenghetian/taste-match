@@ -2,311 +2,303 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#09090b" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>暗号 - 内容品味匹配内测</title>
+    <title>暗号 - 刷到同频的人</title>
+    <link rel="preconnect" href="https://unpkg.com" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main id="appShell" class="app-shell">
-      <aside class="rail" aria-label="Prototype status">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">暗</div>
+    <main class="prototype-shell">
+      <aside class="desktop-companion" aria-label="产品状态">
+        <div class="desktop-brand">
+          <span class="brand-glyph">暗</span>
           <div>
             <strong>暗号</strong>
-            <span>内部测试版</span>
+            <span>刷到同频的人</span>
           </div>
         </div>
 
-        <nav class="steps" aria-label="Beta flow">
-          <button class="step is-active" data-step-jump="0">
-            <span>1</span>
-            <b>刷出品味</b>
-          </button>
-          <button class="step" data-step-jump="1">
-            <span>2</span>
-            <b>暗号卡</b>
-          </button>
-          <button class="step" data-step-jump="2">
-            <span>3</span>
-            <b>同频池</b>
-          </button>
-          <button class="step" data-step-jump="3">
-            <span>4</span>
-            <b>邀请解锁</b>
-          </button>
-        </nav>
+        <div class="desktop-statement">
+          <p class="kicker">Taste is a signal</p>
+          <h1>不填问卷。<br />从你停下来的地方认识你。</h1>
+          <p>你的喜欢、略过和想聊，会逐渐组成一张暗号卡，再把你带到真正有话可聊的人面前。</p>
+        </div>
 
-        <section class="signal-panel" aria-label="Current AI signals">
-          <p class="eyebrow">Live Signals</p>
-          <h2>LLM 输入信号</h2>
-          <div id="signalList" class="signal-list"></div>
+        <section class="desktop-signal" aria-label="实时品味信号">
+          <div class="desktop-signal-head">
+            <span>当前暗号</span>
+            <strong id="desktopSignalCount">0 个信号</strong>
+          </div>
+          <div id="signalList" class="signal-list">
+            <span>开始刷内容后生成</span>
+          </div>
         </section>
+
+        <p class="desktop-note">手机端为主要体验。桌面端保留一台预览设备，方便内测观察。</p>
       </aside>
 
-      <section class="stage">
-        <div class="mobile-flowbar" aria-label="Mobile flow status">
-          <div class="mobile-brand">
-            <span>暗号</span>
-            <strong id="mobileStepLabel">刷出你的暗号</strong>
-          </div>
-          <button id="mobileResetBtn" class="icon-btn" type="button" title="重置">↻</button>
-        </div>
-
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">Beta</p>
-            <h1>暗号</h1>
-          </div>
-          <div class="topbar-actions">
-            <button id="exportBtn" class="ghost-btn" type="button" title="导出测试结果">
-              导出测试结果
+      <section id="app" class="mobile-app" data-active-tab="discover">
+        <section id="viewDiscover" class="app-view discover-view is-active" data-view="discover" aria-label="发现">
+          <div class="discover-topbar">
+            <button id="discoverBrandBtn" class="brand-button" type="button" aria-label="查看我的暗号">
+              <span class="brand-glyph brand-glyph-small">暗</span>
             </button>
-            <button id="resetBtn" class="ghost-btn" type="button" title="重置原型">
-              <span aria-hidden="true">↻</span>
-              重置
-            </button>
+            <div class="feed-switch" role="group" aria-label="内容频道">
+              <button type="button">关注</button>
+              <button class="is-active" type="button">推荐</button>
+            </div>
+            <button id="discoverProfileBtn" class="mini-avatar" type="button" aria-label="打开个人主页">我</button>
           </div>
-        </header>
 
-        <section id="viewInput" class="view is-visible" aria-labelledby="inputTitle">
-          <div class="section-heading">
+          <article id="contentCard" class="content-stage" data-testid="content-card" aria-live="polite"></article>
+          <div id="heartBurst" class="heart-burst" aria-hidden="true">
+            <i data-lucide="heart"></i><span class="icon-fallback">♥</span>
+          </div>
+
+          <div class="swipe-cue" aria-hidden="true">
+            <i data-lucide="chevron-up"></i><span class="icon-fallback">⌃</span>
+            <span>上滑换一条</span>
+          </div>
+        </section>
+
+        <section id="viewMatches" class="app-view light-view matches-view" data-view="matches" aria-labelledby="matchesTitle">
+          <header class="screen-header">
             <div>
-              <p class="eyebrow">刷内容</p>
-              <h2 id="inputTitle">刷几张内容卡，生成你的同频暗号</h2>
+              <p class="kicker">FOR YOU</p>
+              <h2 id="matchesTitle">同频的人</h2>
             </div>
-            <div class="progress-wrap" aria-label="Preference progress">
-              <div class="progress-meta">
-                <span id="cardCount">1 / 10</span>
-                <span id="completionText">完成 0%</span>
-              </div>
-              <div class="progress-track"><div id="progressBar"></div></div>
+            <button id="matchFilterBtn" class="icon-button" type="button" aria-label="筛选同频对象">
+              <i data-lucide="sliders-horizontal"></i><span class="icon-fallback">☷</span>
+            </button>
+          </header>
+
+          <section class="match-intro" aria-label="新的同频对象">
+            <div class="section-label-row">
+              <strong>今天的新同频</strong>
+              <span id="matchAccuracyText">先刷 6 条，匹配会更准</span>
             </div>
+            <div id="matchPeopleRail" class="people-rail"></div>
+          </section>
+
+          <button id="unlockBanner" class="unlock-banner" type="button">
+            <span class="unlock-icon"><i data-lucide="users"></i><span class="icon-fallback">友</span></span>
+            <span>
+              <strong id="unlockTitle">邀请朋友加入你的同频圈</strong>
+              <small id="unlockCopy">还差 2 人，解锁完整候选池</small>
+            </span>
+            <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
+          </button>
+
+          <div id="matchGrid" class="match-deck" aria-live="polite"></div>
+
+          <div class="match-pager" aria-label="候选人切换">
+            <button id="prevMatchBtn" class="round-action round-action-muted" type="button" aria-label="上一位">
+              <i data-lucide="rotate-ccw"></i><span class="icon-fallback">↶</span>
+            </button>
+            <button id="passMatchBtn" class="round-action round-action-pass" type="button" aria-label="暂时跳过">
+              <i data-lucide="x"></i><span class="icon-fallback">×</span>
+            </button>
+            <span id="matchCounter" class="match-counter">1 / 12</span>
+            <button id="likeMatchBtn" class="round-action round-action-like" type="button" aria-label="收藏这位同频对象">
+              <i data-lucide="heart"></i><span class="icon-fallback">♥</span>
+            </button>
+            <button id="nextMatchBtn" class="round-action round-action-primary" type="button" aria-label="下一位">
+              <i data-lucide="arrow-right"></i><span class="icon-fallback">→</span>
+            </button>
           </div>
+        </section>
 
-          <div class="input-layout">
-            <article id="contentCard" class="content-card"></article>
-
-            <section class="preference-panel" aria-label="Preference controls">
+        <section id="viewInbox" class="app-view light-view inbox-view" data-view="inbox" aria-labelledby="inboxTitle">
+          <div id="inboxHome" class="inbox-home">
+            <header class="screen-header">
               <div>
-                <p class="eyebrow">反应</p>
-                <h3>这条内容你会怎么处理？</h3>
+                <p class="kicker">CONVERSATIONS</p>
+                <h2 id="inboxTitle">消息</h2>
               </div>
-              <div class="reaction-grid">
-                <button class="reaction-btn" data-reaction="want_to_talk" type="button">
-                  <span>聊</span>
-                  想聊这个
-                </button>
-                <button class="reaction-btn" data-reaction="like" type="button">
-                  <span>赞</span>
-                  喜欢
-                </button>
-                <button class="reaction-btn" data-reaction="neutral" type="button">
-                  <span>略</span>
-                  无感
-                </button>
-                <button class="reaction-btn" data-reaction="dislike" type="button">
-                  <span>避</span>
-                  不想看
-                </button>
-              </div>
-
-              <label class="text-field">
-                <span>补充你喜欢的博主 / 视频类型</span>
-                <textarea id="freeText" rows="4" placeholder="例如：猫咪日常、篮球高光、人物自传、BGM 梗、城市压迫感、关系访谈"></textarea>
-              </label>
-
-              <fieldset class="intent-field">
-                <legend>这次想认识哪类人？</legend>
-                <label><input type="checkbox" value="饭搭子" checked /> 饭搭子</label>
-                <label><input type="checkbox" value="城市散步" checked /> 城市散步</label>
-                <label><input type="checkbox" value="聊天搭子" checked /> 聊天搭子</label>
-                <label><input type="checkbox" value="展览演出" /> 展览演出</label>
-              </fieldset>
-
-              <button id="generateProfileBtn" class="primary-btn" type="button" disabled>
-                生成我的暗号卡
+              <button id="newMessageBtn" class="icon-button" type="button" aria-label="发起新消息">
+                <i data-lucide="square-pen"></i><span class="icon-fallback">＋</span>
               </button>
+            </header>
+
+            <section class="new-signals" aria-label="新的暗号">
+              <div class="section-label-row">
+                <strong>新的暗号</strong>
+                <span>有人对你的品味有话想说</span>
+              </div>
+              <div id="newSignalsRail" class="new-signals-rail"></div>
             </section>
-          </div>
-        </section>
 
-        <section id="viewProfile" class="view" aria-labelledby="profileTitle">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">我的暗号</p>
-              <h2 id="profileTitle">你的暗号卡</h2>
-            </div>
-            <button id="regenerateBtn" class="ghost-btn" type="button">重新生成</button>
-          </div>
-
-          <div class="profile-grid">
-            <article class="profile-card">
-              <div class="profile-poster" aria-hidden="true">
-                <div class="poster-skyline"></div>
-                <div class="poster-caption">AI Taste Map</div>
+            <section class="conversation-section" aria-label="会话列表">
+              <div class="conversation-filter">
+                <button class="is-active" type="button">全部</button>
+                <button type="button">未读</button>
+                <button type="button">新同频</button>
               </div>
-              <div class="profile-copy">
-                <p class="eyebrow">暗号卡</p>
-                <h3 id="vibeName">城市夜游型</h3>
-                <p id="vibeSummary"></p>
-                <div id="themePills" class="pill-row"></div>
-              </div>
-            </article>
-
-            <section class="insight-stack">
-              <article class="insight-card">
-                <p class="eyebrow">笑点</p>
-                <h3 id="humorStyle"></h3>
-              </article>
-              <article class="insight-card">
-                <p class="eyebrow">审美</p>
-                <h3 id="aestheticStyle"></h3>
-              </article>
-              <article class="insight-card">
-                <p class="eyebrow">破冰话题</p>
-                <div id="hooksList" class="hook-list"></div>
-              </article>
+              <div id="conversationList" class="conversation-list"></div>
             </section>
           </div>
 
-          <section class="privacy-editor">
-            <div>
-              <p class="eyebrow">下一步</p>
-              <h3>带着这张卡进入同频池</h3>
-            </div>
-            <p class="share-copy">先不做公开社交资料，只展示抽象标签和破冰话题。邀请 2 个朋友完成测试后，解锁更高置信度匹配。</p>
-            <button id="goMatchesBtn" class="primary-btn" type="button">进入同频池</button>
-            <button id="copyCardBtn" class="ghost-btn" type="button">复制分享文案</button>
-          </section>
+          <section id="chatThread" class="chat-thread" aria-label="聊天会话" hidden>
+            <header class="chat-header">
+              <button id="backToInboxBtn" class="icon-button" type="button" aria-label="返回消息列表">
+                <i data-lucide="chevron-left"></i><span class="icon-fallback">‹</span>
+              </button>
+              <div id="chatIdentity" class="chat-identity"></div>
+              <button class="icon-button" type="button" aria-label="更多会话选项">
+                <i data-lucide="more-horizontal"></i><span class="icon-fallback">···</span>
+              </button>
+            </header>
 
-          <section class="feedback-panel" aria-label="Profile feedback">
-            <div>
-              <p class="eyebrow">反馈</p>
-              <h3>这个画像像你吗？</h3>
-            </div>
-            <div class="feedback-actions" data-feedback-group="profile">
-              <button type="button" data-feedback="像我">像我</button>
-              <button type="button" data-feedback="有点像">有点像</button>
-              <button type="button" data-feedback="不像我">不像我</button>
-              <button type="button" data-feedback="太像算命">太像算命</button>
-            </div>
-          </section>
-        </section>
-
-        <section id="viewMatches" class="view" aria-labelledby="matchesTitle">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">同频池</p>
-              <h2 id="matchesTitle">你的同频池候选人</h2>
-            </div>
-            <div class="segmented" role="group" aria-label="Match mode">
-              <button class="is-selected" type="button">同频</button>
-              <button type="button">高置信</button>
-              <button type="button">待解锁</button>
-            </div>
-          </div>
-
-          <section class="pool-status" aria-label="Pool status">
-            <div>
-              <p class="eyebrow">匹配进度</p>
-              <h3 id="poolTitle">先看到 3 位候选人，邀请朋友后解锁完整同频池</h3>
-            </div>
-            <div class="pool-meter">
-              <span id="inviteCount">0 / 2</span>
-              <b>朋友完成测试</b>
-            </div>
-          </section>
-
-          <div id="matchGrid" class="match-grid"></div>
-
-          <div class="mobile-match-controls" aria-label="Mobile match controls">
-            <button id="prevMatchBtn" class="ghost-btn" type="button">上一位</button>
-            <span id="matchCounter">1 / 12</span>
-            <button id="nextMatchBtn" class="ghost-btn" type="button">下一位</button>
-          </div>
-
-          <section class="feedback-panel" aria-label="Match feedback">
-            <div>
-              <p class="eyebrow">反馈</p>
-              <h3>你愿意为了看更多高质量匹配邀请朋友吗？</h3>
-            </div>
-            <div class="feedback-actions" data-feedback-group="matches">
-              <button type="button" data-feedback="想认识">想认识</button>
-              <button type="button" data-feedback="理由有帮助">理由有帮助</button>
-              <button type="button" data-feedback="愿意邀请">愿意邀请</button>
-              <button type="button" data-feedback="没兴趣">没兴趣</button>
-            </div>
+            <div id="chatContext" class="chat-context"></div>
+            <div id="messageList" class="message-list" aria-live="polite"></div>
+            <div id="icebreakers" class="icebreaker-row"></div>
+            <form id="composerForm" class="composer">
+              <button class="composer-add" type="button" aria-label="添加内容">
+                <i data-lucide="plus"></i><span class="icon-fallback">＋</span>
+              </button>
+              <input id="chatInput" type="text" autocomplete="off" placeholder="聊聊你们共同停下来的那条内容" />
+              <button id="sendBtn" class="composer-send" type="submit" aria-label="发送消息">
+                <i data-lucide="arrow-up"></i><span class="icon-fallback">↑</span>
+              </button>
+            </form>
           </section>
         </section>
 
-        <section id="viewChat" class="view" aria-labelledby="chatTitle">
-          <div class="section-heading">
+        <section id="viewProfile" class="app-view light-view profile-view" data-view="profile" aria-labelledby="profileTitle">
+          <header class="screen-header profile-header">
             <div>
-              <p class="eyebrow">邀请</p>
-              <h2 id="chatTitle">邀请朋友解锁更高质量匹配</h2>
+              <p class="kicker">MY SIGNAL</p>
+              <h2 id="profileTitle">我的暗号</h2>
             </div>
-            <button id="backToMatchesBtn" class="ghost-btn" type="button">返回同频池</button>
-          </div>
+            <button id="profileMenuBtn" class="icon-button" type="button" aria-label="个人页设置">
+              <i data-lucide="menu"></i><span class="icon-fallback">☰</span>
+            </button>
+          </header>
 
-          <div class="chat-layout invite-layout">
-            <aside id="chatContext" class="chat-context invite-card"></aside>
-            <section class="chat-panel" aria-label="Chat prototype">
-              <div class="invite-progress">
-                <div>
-                  <p class="eyebrow">解锁进度</p>
-                  <h3>邀请 2 个朋友完成测试</h3>
-                </div>
-                <strong id="inviteProgressText">0 / 2</strong>
-              </div>
-              <div class="invite-actions">
-                <button id="copyInviteBtn" class="primary-btn" type="button">复制邀请文案</button>
-                <button id="simulateInviteBtn" class="ghost-btn" type="button">模拟朋友完成测试</button>
-              </div>
-              <div id="messageList" class="message-list"></div>
-              <div class="composer">
-                <input id="chatInput" type="text" placeholder="留下一个内测备注，例如：我想找周末搭子" />
-                <button id="sendBtn" class="primary-btn" type="button">记录</button>
-              </div>
-              <div id="icebreakers" class="icebreaker-row"></div>
-            </section>
-          </div>
+          <section class="profile-identity">
+            <div class="profile-avatar-wrap">
+              <div class="profile-avatar">我</div>
+              <span class="profile-status-dot"></span>
+            </div>
+            <div class="profile-name-row">
+              <h3 id="profileVibeName">暗号正在形成</h3>
+              <span class="verified-dot"><i data-lucide="sparkles"></i><span class="icon-fallback">✦</span></span>
+            </div>
+            <p id="profileHandle">@anhao_001 · 上海</p>
+            <div class="profile-stats">
+              <button type="button"><strong id="profileSignalStat">0</strong><span>品味信号</span></button>
+              <button type="button"><strong id="profileMatchStat">3</strong><span>同频的人</span></button>
+              <button type="button"><strong id="profileInviteStat">0</strong><span>同频好友</span></button>
+            </div>
+            <div class="profile-actions">
+              <button id="editProfileBtn" class="secondary-button" type="button">编辑暗号</button>
+              <button id="copyCardBtn" class="secondary-button" type="button">分享主页</button>
+              <button id="profileShareIcon" class="icon-button icon-button-filled" type="button" aria-label="更多分享方式">
+                <i data-lucide="user-plus"></i><span class="icon-fallback">＋</span>
+              </button>
+            </div>
+          </section>
 
-          <section class="feedback-panel" aria-label="Icebreaker feedback">
-            <div>
-              <p class="eyebrow">反馈</p>
-              <h3>这个邀请解锁机制能接受吗？</h3>
+          <section class="taste-card" aria-label="AI 暗号画像">
+            <div class="taste-card-head">
+              <span>AI 读到的你</span>
+              <strong id="profileConfidence">0%</strong>
             </div>
-            <div class="feedback-actions" data-feedback-group="icebreaker">
-              <button type="button" data-feedback="能接受">能接受</button>
-              <button type="button" data-feedback="想分享">想分享</button>
-              <button type="button" data-feedback="门槛高">门槛高</button>
-              <button type="button" data-feedback="不清楚">不清楚</button>
+            <h3 id="vibeName">再刷几条，让我先认识你</h3>
+            <p id="vibeSummary">你不需要填写冗长资料。每一次停留、喜欢和想聊，都会让这张卡更像你。</p>
+            <div id="themePills" class="taste-tags"></div>
+            <div class="taste-progress"><span id="tasteProgressBar"></span></div>
+          </section>
+
+          <section class="profile-section profile-prompts">
+            <div class="section-label-row">
+              <strong>可以从这里认识我</strong>
+              <button id="regenerateBtn" type="button">换一组</button>
             </div>
+            <div id="hooksList" class="profile-prompt-list"></div>
+          </section>
+
+          <section class="profile-section">
+            <div class="section-label-row">
+              <strong>我停下来过的内容</strong>
+              <button id="goDiscoverBtn" type="button">继续刷</button>
+            </div>
+            <div id="tasteGrid" class="taste-grid"></div>
+          </section>
+
+          <section class="profile-tools" aria-label="内测工具">
+            <button id="copyInviteBtn" type="button">
+              <span><i data-lucide="users"></i><span class="icon-fallback">友</span></span>
+              <b>邀请朋友测同频</b>
+              <small>只分享抽象暗号，不分享观看记录</small>
+              <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
+            </button>
+            <button id="exportBtn" type="button">
+              <span><i data-lucide="download"></i><span class="icon-fallback">↓</span></span>
+              <b>导出内测数据</b>
+              <small>保存本机上的反馈记录</small>
+              <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
+            </button>
+            <button id="resetBtn" type="button">
+              <span><i data-lucide="refresh-cw"></i><span class="icon-fallback">↻</span></span>
+              <b>重新体验</b>
+              <small>清空当前原型状态</small>
+              <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
+            </button>
           </section>
         </section>
 
-        <nav class="mobile-tabbar" aria-label="Primary mobile navigation">
-        <button class="mobile-tab is-active" data-mobile-tab="0" type="button">
-          <span>◐</span>
-          刷内容
-        </button>
-        <button class="mobile-tab" data-mobile-tab="2" type="button">
-          <span>◇</span>
-          同频池
-        </button>
-        <button class="mobile-tab" data-mobile-tab="3" type="button">
-          <span>✦</span>
-          邀请
-        </button>
-        <button class="mobile-tab" data-mobile-tab="1" type="button">
-          <span>●</span>
-          我的
-        </button>
+        <nav class="tab-bar" aria-label="主导航">
+          <button class="tab-button is-active" data-tab="discover" type="button">
+            <span class="tab-icon"><i data-lucide="play"></i><span class="icon-fallback">▶</span></span>
+            <span>发现</span>
+          </button>
+          <button class="tab-button" data-tab="matches" type="button">
+            <span class="tab-icon"><i data-lucide="heart-handshake"></i><span class="icon-fallback">◇</span></span>
+            <span>同频</span>
+          </button>
+          <button class="tab-button" data-tab="inbox" type="button">
+            <span class="tab-icon"><i data-lucide="message-circle"></i><span class="icon-fallback">○</span><b class="tab-badge">2</b></span>
+            <span>消息</span>
+          </button>
+          <button class="tab-button" data-tab="profile" type="button">
+            <span class="tab-icon tab-profile-icon">我<span id="profileTabDot" class="profile-tab-dot"></span></span>
+            <span>我的</span>
+          </button>
         </nav>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+        <div id="replySheet" class="sheet-layer" aria-hidden="true">
+          <button class="sheet-backdrop" data-close-sheet type="button" aria-label="关闭回复面板"></button>
+          <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="replySheetTitle">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="sheet-heading">
+              <div>
+                <p class="kicker">LEAVE A SIGNAL</p>
+                <h2 id="replySheetTitle">给这条内容留个暗号</h2>
+              </div>
+              <button class="icon-button" data-close-sheet type="button" aria-label="关闭">
+                <i data-lucide="x"></i><span class="icon-fallback">×</span>
+              </button>
+            </div>
+            <div id="replyContentPreview" class="reply-content-preview"></div>
+            <div id="replySuggestions" class="reply-suggestions"></div>
+            <form id="replyForm" class="reply-form">
+              <textarea id="replyInput" rows="3" maxlength="120" placeholder="你为什么会为它停下来？"></textarea>
+              <div class="reply-form-foot">
+                <span><i data-lucide="lock-keyhole"></i><span class="icon-fallback">锁</span> 仅用于匹配和破冰</span>
+                <button class="primary-button" type="submit">留下暗号</button>
+              </div>
+            </form>
+          </section>
+        </div>
       </section>
     </main>
 
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
