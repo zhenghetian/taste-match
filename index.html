@@ -413,7 +413,7 @@
     <main class="stage">
       <section id="phone" class="phone" data-tab="discover">
         <section class="view discover is-active" data-view="discover" aria-label="发现">
-          <video id="feedVideo" class="feed-video" playsinline webkit-playsinline preload="none" disablepictureinpicture aria-label="当前抖音视频"></video>
+          <video id="feedVideo" class="feed-video" playsinline webkit-playsinline preload="none" muted loop disablepictureinpicture aria-label="当前抖音视频"></video>
           <img id="feedCover" class="feed-cover" src="./assets/taste-covers/quiet-evening.jpg" alt="独居下班夜晚视频封面" />
           <div class="feed-shade"></div>
           <header class="feed-top">
@@ -422,6 +422,9 @@
           </header>
           <button id="playVideo" class="play-video" type="button" aria-label="播放这条视频" title="播放视频"><i data-lucide="play"></i></button>
           <div class="feed-actions">
+            <button id="soundButton" class="feed-action" type="button" aria-label="打开声音">
+              <span class="action-disc"><span id="soundOffIcon"><i data-lucide="volume-x"></i></span><span id="soundOnIcon" hidden><i data-lucide="volume-2"></i></span></span><b id="soundLabel">声音</b>
+            </button>
             <button id="likeButton" class="feed-action" type="button" aria-label="喜欢">
               <span class="action-disc"><i data-lucide="heart"></i></span><b id="likeCount">喜欢</b>
             </button>
@@ -547,6 +550,7 @@
       };
 
       let feedIndex = 0;
+      let soundEnabled = false;
       let toastTimer;
       const phone = document.querySelector("#phone");
       const views = [...document.querySelectorAll("[data-view]")];
@@ -554,6 +558,7 @@
       const cover = document.querySelector("#feedCover");
       const feedVideo = document.querySelector("#feedVideo");
       const playVideo = document.querySelector("#playVideo");
+      const soundButton = document.querySelector("#soundButton");
       const likeButton = document.querySelector("#likeButton");
 
       function icons() { if (window.lucide) window.lucide.createIcons(); }
@@ -579,16 +584,20 @@
         cover.classList.remove("is-hidden");
         playVideo.classList.remove("is-hidden", "is-loading");
       }
-      async function startVideo() {
+      function updateSoundButton() {
+        document.querySelector("#soundOffIcon").hidden = soundEnabled;
+        document.querySelector("#soundOnIcon").hidden = !soundEnabled;
+        document.querySelector("#soundLabel").textContent = soundEnabled ? "有声" : "声音";
+        soundButton.setAttribute("aria-label", soundEnabled ? "关闭声音" : "打开声音");
+      }
+      async function playCurrentVideo(automatic = false) {
         const item = feed[feedIndex];
-        if (feedVideo.getAttribute("src") && !feedVideo.paused) {
-          feedVideo.pause();
-          return;
-        }
+        if (feedVideo.getAttribute("src") && !feedVideo.paused) return;
         playVideo.classList.add("is-loading");
         if (!feedVideo.getAttribute("src")) {
           feedVideo.src = videoStreams[item.id];
           feedVideo.poster = `./assets/taste-covers/${item.cover}`;
+          feedVideo.muted = !soundEnabled;
           feedVideo.classList.add("is-active");
           cover.classList.add("is-hidden");
           feedVideo.load();
@@ -597,8 +606,18 @@
           await feedVideo.play();
         } catch (error) {
           playVideo.classList.remove("is-loading");
-          showToast("视频加载失败，请稍后再试");
+          if (!automatic) showToast("视频加载失败，请稍后再试");
         }
+      }
+      function toggleVideo() {
+        if (feedVideo.getAttribute("src") && !feedVideo.paused) feedVideo.pause();
+        else playCurrentVideo(false);
+      }
+      function toggleSound() {
+        soundEnabled = !soundEnabled;
+        feedVideo.muted = !soundEnabled;
+        updateSoundButton();
+        if (feedVideo.paused) playCurrentVideo(false);
       }
       function renderFeed() {
         const item = feed[feedIndex];
@@ -616,6 +635,7 @@
           document.querySelector("#likeCount").textContent = "喜欢";
           likeButton.classList.remove("is-liked");
           cover.classList.remove("is-changing");
+          playCurrentVideo(true);
         }, 120);
       }
       function openSheet(sheet) { sheet.classList.add("is-open"); sheet.setAttribute("aria-hidden", "false"); }
@@ -641,15 +661,18 @@
         document.querySelector("#chatScreen").classList.add("is-open");
       }
 
-      tabs.forEach((tab) => tab.addEventListener("click", () => showTab(tab.dataset.tab)));
-      playVideo.addEventListener("click", startVideo);
-      feedVideo.addEventListener("click", startVideo);
+      tabs.forEach((tab) => tab.addEventListener("click", () => {
+        showTab(tab.dataset.tab);
+        if (tab.dataset.tab === "discover") playCurrentVideo(true);
+      }));
+      playVideo.addEventListener("click", () => playCurrentVideo(false));
+      feedVideo.addEventListener("click", toggleVideo);
+      soundButton.addEventListener("click", toggleSound);
       feedVideo.addEventListener("playing", () => {
         playVideo.classList.remove("is-loading");
         playVideo.classList.add("is-hidden");
       });
       feedVideo.addEventListener("pause", () => playVideo.classList.remove("is-hidden", "is-loading"));
-      feedVideo.addEventListener("ended", () => playVideo.classList.remove("is-hidden", "is-loading"));
       document.querySelector("#nextFeed").addEventListener("click", () => { feedIndex = (feedIndex + 1) % feed.length; renderFeed(); });
       likeButton.addEventListener("click", () => {
         likeButton.classList.toggle("is-liked");
@@ -691,6 +714,8 @@
       }, { passive: true });
 
       icons();
+      updateSoundButton();
+      playCurrentVideo(true);
     </script>
   </body>
 </html>
