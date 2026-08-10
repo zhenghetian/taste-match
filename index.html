@@ -68,23 +68,62 @@
         color: white;
       }
 
+      .feed-video,
       .feed-cover {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
+      }
+      .feed-video {
+        z-index: 0;
+        background: #08090b;
+        opacity: 0;
+        object-fit: contain;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+      }
+      .feed-video.is-active { opacity: 1; pointer-events: auto; }
+      .feed-cover {
+        z-index: 1;
         object-fit: cover;
         transition: opacity 180ms ease, transform 220ms ease;
       }
       .feed-cover.is-changing { opacity: 0; transform: scale(1.018); }
+      .feed-cover.is-hidden { opacity: 0; pointer-events: none; }
       .feed-shade {
         position: absolute;
+        z-index: 2;
         inset: 0;
         background:
           linear-gradient(180deg, rgba(0,0,0,.42) 0%, transparent 22%, transparent 48%, rgba(0,0,0,.93) 88%, #08090b 100%),
           linear-gradient(90deg, rgba(0,0,0,.18), transparent 52%);
         pointer-events: none;
       }
+
+      .play-video {
+        position: absolute;
+        z-index: 4;
+        top: 48%;
+        left: 50%;
+        display: grid;
+        width: 64px;
+        height: 64px;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(255,255,255,.34);
+        border-radius: 50%;
+        background: rgba(8,9,11,.66);
+        color: white;
+        box-shadow: 0 12px 34px rgba(0,0,0,.3);
+        backdrop-filter: blur(12px);
+        transform: translate(-50%,-50%);
+        transition: opacity 150ms ease, transform 150ms ease;
+      }
+      .play-video svg { width: 27px; height: 27px; margin-left: 3px; fill: white; }
+      .play-video.is-loading svg { animation: play-pulse 800ms ease-in-out infinite alternate; }
+      .play-video.is-hidden { opacity: 0; pointer-events: none; transform: translate(-50%,-50%) scale(.92); }
+      @keyframes play-pulse { to { opacity: .42; transform: scale(.88); } }
 
       .feed-top {
         position: absolute;
@@ -374,12 +413,14 @@
     <main class="stage">
       <section id="phone" class="phone" data-tab="discover">
         <section class="view discover is-active" data-view="discover" aria-label="发现">
+          <video id="feedVideo" class="feed-video" playsinline webkit-playsinline preload="none" disablepictureinpicture aria-label="当前抖音视频"></video>
           <img id="feedCover" class="feed-cover" src="./assets/taste-covers/quiet-evening.jpg" alt="独居下班夜晚视频封面" />
           <div class="feed-shade"></div>
           <header class="feed-top">
             <span class="brand-mark" aria-label="暗号">暗</span>
             <span class="signal-meter"><span id="signalText">暗号 4/6</span><i aria-hidden="true"></i></span>
           </header>
+          <button id="playVideo" class="play-video" type="button" aria-label="播放这条视频" title="播放视频"><i data-lucide="play"></i></button>
           <div class="feed-actions">
             <button id="likeButton" class="feed-action" type="button" aria-label="喜欢">
               <span class="action-disc"><i data-lucide="heart"></i></span><b id="likeCount">喜欢</b>
@@ -474,17 +515,30 @@
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script>
       const feed = [
-        { cover: "quiet-evening.jpg", creator: "@Judy德国冷浪漫", kind: "生活节奏", title: "认真把东西用完，也认真吃饭", caption: "独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？", tags: ["独居", "消费观"], url: "https://www.douyin.com/video/7643411504674409743" },
-        { cover: "night-walk.jpg", creator: "@自信阳光", kind: "独处方式", title: "晚饭后，一个人慢慢走回生活里", caption: "散步、看人跳舞、逛超市。你会如何消化一天的情绪？", tags: ["独处", "城市散步"], url: "https://www.douyin.com/video/7653500525270670770" },
-        { cover: "not-fitting-in.jpg", creator: "@中国新闻周刊", kind: "关系态度", title: "合群，真的有那么重要吗？", caption: "把有限的热情留给真正重要的人和事。你认同吗？", tags: ["社交能量", "取舍"], url: "https://www.douyin.com/video/7482985809893707027" },
-        { cover: "fluid-friendship.jpg", creator: "@煎妮", kind: "友情观点", title: "朋友是流动的，你能接受被动降级吗？", caption: "有些关系不是争吵结束，而是慢慢离开。你会追问、挽留，还是接受？", tags: ["友情", "依恋方式"], url: "https://www.douyin.com/video/7535852633412603136" },
-        { cover: "right-to-fail.jpg", creator: "@流年冉冉", kind: "人生选择", title: "“搞砸”人生，是自由的一部分吗？", caption: "按自己的选择承担后果，还是尽量走稳妥的路？", tags: ["自由", "风险偏好"], url: "https://www.douyin.com/video/7590413990154264442" },
-        { cover: "sunrise-with-friends.jpg", creator: "@我是蓝蓝哇", kind: "社交节奏", title: "临时起意，和搭子出发去看日出", caption: "你更喜欢提前计划，还是一句“走吧”就出发？", tags: ["说走就走", "行动派"], url: "https://www.douyin.com/video/7650683559334702312" },
-        { cover: "park-happiness.jpg", creator: "@乔伊Joey", kind: "快乐方式", title: "公园不要钱，快乐也不贵", caption: "一片草地、一阵风、坐一会儿。这样的周末对你够不够？", tags: ["公园疗法", "低成本快乐"], url: "https://www.douyin.com/video/7643311406674334874" },
-        { cover: "market-reader.jpg", creator: "@陕视新闻", kind: "兴趣与好奇", title: "卖鸡，也要和李白苏轼打交道", caption: "菜市场摊主在鸡摊旁放了一角书。你会被这种人吸引吗？", tags: ["阅读", "生命力"], url: "https://www.douyin.com/video/7631915914090384678" },
-        { cover: "love-lasts.jpg", creator: "@毕英杰Johnathan", kind: "亲密关系", title: "让爱情更长久的，不只是心动", caption: "亲密关系需要沟通、尊重和不断向内看。你更看重哪一种？", tags: ["爱情", "深度沟通"], url: "https://www.douyin.com/video/7578038229136444681" },
-        { cover: "ordinary-weekend.jpg", creator: "@零玖", kind: "普通周末", title: "和喜欢的人，过一个没安排的普通周末", caption: "做饭、聊天、待在一起。你向往热闹，还是这种日常？", tags: ["陪伴", "日常感"], url: "https://www.douyin.com/video/7654778543125673818" }
+        { id: "7643411504674409743", cover: "quiet-evening.jpg", creator: "@Judy德国冷浪漫", kind: "生活节奏", title: "认真把东西用完，也认真吃饭", caption: "独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？", tags: ["独居", "消费观"], url: "https://www.douyin.com/video/7643411504674409743" },
+        { id: "7653500525270670770", cover: "night-walk.jpg", creator: "@自信阳光", kind: "独处方式", title: "晚饭后，一个人慢慢走回生活里", caption: "散步、看人跳舞、逛超市。你会如何消化一天的情绪？", tags: ["独处", "城市散步"], url: "https://www.douyin.com/video/7653500525270670770" },
+        { id: "7482985809893707027", cover: "not-fitting-in.jpg", creator: "@中国新闻周刊", kind: "关系态度", title: "合群，真的有那么重要吗？", caption: "把有限的热情留给真正重要的人和事。你认同吗？", tags: ["社交能量", "取舍"], url: "https://www.douyin.com/video/7482985809893707027" },
+        { id: "7535852633412603136", cover: "fluid-friendship.jpg", creator: "@煎妮", kind: "友情观点", title: "朋友是流动的，你能接受被动降级吗？", caption: "有些关系不是争吵结束，而是慢慢离开。你会追问、挽留，还是接受？", tags: ["友情", "依恋方式"], url: "https://www.douyin.com/video/7535852633412603136" },
+        { id: "7590413990154264442", cover: "right-to-fail.jpg", creator: "@流年冉冉", kind: "人生选择", title: "“搞砸”人生，是自由的一部分吗？", caption: "按自己的选择承担后果，还是尽量走稳妥的路？", tags: ["自由", "风险偏好"], url: "https://www.douyin.com/video/7590413990154264442" },
+        { id: "7650683559334702312", cover: "sunrise-with-friends.jpg", creator: "@我是蓝蓝哇", kind: "社交节奏", title: "临时起意，和搭子出发去看日出", caption: "你更喜欢提前计划，还是一句“走吧”就出发？", tags: ["说走就走", "行动派"], url: "https://www.douyin.com/video/7650683559334702312" },
+        { id: "7643311406674334874", cover: "park-happiness.jpg", creator: "@乔伊Joey", kind: "快乐方式", title: "公园不要钱，快乐也不贵", caption: "一片草地、一阵风、坐一会儿。这样的周末对你够不够？", tags: ["公园疗法", "低成本快乐"], url: "https://www.douyin.com/video/7643311406674334874" },
+        { id: "7631915914090384678", cover: "market-reader.jpg", creator: "@陕视新闻", kind: "兴趣与好奇", title: "卖鸡，也要和李白苏轼打交道", caption: "菜市场摊主在鸡摊旁放了一角书。你会被这种人吸引吗？", tags: ["阅读", "生命力"], url: "https://www.douyin.com/video/7631915914090384678" },
+        { id: "7578038229136444681", cover: "love-lasts.jpg", creator: "@毕英杰Johnathan", kind: "亲密关系", title: "让爱情更长久的，不只是心动", caption: "亲密关系需要沟通、尊重和不断向内看。你更看重哪一种？", tags: ["爱情", "深度沟通"], url: "https://www.douyin.com/video/7578038229136444681" },
+        { id: "7654778543125673818", cover: "ordinary-weekend.jpg", creator: "@零玖", kind: "普通周末", title: "和喜欢的人，过一个没安排的普通周末", caption: "做饭、聊天、待在一起。你向往热闹，还是这种日常？", tags: ["陪伴", "日常感"], url: "https://www.douyin.com/video/7654778543125673818" }
       ];
+
+      const videoStreams = {
+        "7643411504674409743": "./assets/taste-videos/quiet-evening.mp4",
+        "7653500525270670770": "./assets/taste-videos/night-walk.mp4",
+        "7482985809893707027": "./assets/taste-videos/not-fitting-in.mp4",
+        "7535852633412603136": "./assets/taste-videos/fluid-friendship.mp4",
+        "7590413990154264442": "./assets/taste-videos/right-to-fail.mp4",
+        "7650683559334702312": "./assets/taste-videos/sunrise-with-friends.mp4",
+        "7643311406674334874": "./assets/taste-videos/park-happiness.mp4",
+        "7631915914090384678": "./assets/taste-videos/market-reader.mp4",
+        "7578038229136444681": "./assets/taste-videos/love-lasts.mp4",
+        "7654778543125673818": "./assets/taste-videos/ordinary-weekend.mp4"
+      };
 
       const people = {
         momo: { name: "默默，25", avatar: "默", color: "#566e61", bio: "上海 · 刚刚在线", reason: "你们都喜欢低成本、慢节奏的生活，也愿意把有限的热情留给真正重要的人。" },
@@ -498,6 +552,8 @@
       const views = [...document.querySelectorAll("[data-view]")];
       const tabs = [...document.querySelectorAll(".tab-button")];
       const cover = document.querySelector("#feedCover");
+      const feedVideo = document.querySelector("#feedVideo");
+      const playVideo = document.querySelector("#playVideo");
       const likeButton = document.querySelector("#likeButton");
 
       function icons() { if (window.lucide) window.lucide.createIcons(); }
@@ -509,13 +565,44 @@
         toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1700);
       }
       function showTab(name) {
+        if (name !== "discover") stopVideo();
         phone.dataset.tab = name;
         views.forEach((view) => view.classList.toggle("is-active", view.dataset.view === name));
         tabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.tab === name));
         document.querySelector("#chatScreen").classList.remove("is-open");
       }
+      function stopVideo() {
+        feedVideo.pause();
+        feedVideo.removeAttribute("src");
+        feedVideo.load();
+        feedVideo.classList.remove("is-active");
+        cover.classList.remove("is-hidden");
+        playVideo.classList.remove("is-hidden", "is-loading");
+      }
+      async function startVideo() {
+        const item = feed[feedIndex];
+        if (feedVideo.getAttribute("src") && !feedVideo.paused) {
+          feedVideo.pause();
+          return;
+        }
+        playVideo.classList.add("is-loading");
+        if (!feedVideo.getAttribute("src")) {
+          feedVideo.src = videoStreams[item.id];
+          feedVideo.poster = `./assets/taste-covers/${item.cover}`;
+          feedVideo.classList.add("is-active");
+          cover.classList.add("is-hidden");
+          feedVideo.load();
+        }
+        try {
+          await feedVideo.play();
+        } catch (error) {
+          playVideo.classList.remove("is-loading");
+          showToast("视频加载失败，请稍后再试");
+        }
+      }
       function renderFeed() {
         const item = feed[feedIndex];
+        stopVideo();
         cover.classList.add("is-changing");
         setTimeout(() => {
           cover.src = `./assets/taste-covers/${item.cover}`;
@@ -555,6 +642,14 @@
       }
 
       tabs.forEach((tab) => tab.addEventListener("click", () => showTab(tab.dataset.tab)));
+      playVideo.addEventListener("click", startVideo);
+      feedVideo.addEventListener("click", startVideo);
+      feedVideo.addEventListener("playing", () => {
+        playVideo.classList.remove("is-loading");
+        playVideo.classList.add("is-hidden");
+      });
+      feedVideo.addEventListener("pause", () => playVideo.classList.remove("is-hidden", "is-loading"));
+      feedVideo.addEventListener("ended", () => playVideo.classList.remove("is-hidden", "is-loading"));
       document.querySelector("#nextFeed").addEventListener("click", () => { feedIndex = (feedIndex + 1) % feed.length; renderFeed(); });
       likeButton.addEventListener("click", () => {
         likeButton.classList.toggle("is-liked");
