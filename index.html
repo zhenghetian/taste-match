@@ -64,50 +64,55 @@
         </section>
 
         <section id="viewMatches" class="app-view light-view matches-view" data-view="matches" aria-labelledby="matchesTitle">
-          <header class="screen-header">
+          <header class="screen-header hunt-header">
             <div>
-              <p class="kicker">FOR YOU</p>
-              <h2 id="matchesTitle">同频的人</h2>
+              <p class="kicker">ALWAYS LOOKING</p>
+              <h2 id="matchesTitle">暗号</h2>
             </div>
-            <button id="matchFilterBtn" class="icon-button" type="button" aria-label="筛选同频对象">
-              <i data-lucide="sliders-horizontal"></i><span class="icon-fallback">☷</span>
+            <button id="createSignalBtn" class="icon-button icon-button-filled" type="button" aria-label="新建寻人暗号">
+              <i data-lucide="plus"></i><span class="icon-fallback">＋</span>
             </button>
           </header>
 
-          <section class="match-intro" aria-label="新的同频对象">
-            <div class="section-label-row">
-              <strong>今天的新同频</strong>
-              <span id="matchAccuracyText">先刷 6 条，匹配会更准</span>
+          <section class="hunt-overview" aria-label="正在运行的寻人暗号">
+            <div class="hunt-status-row">
+              <span class="hunt-live"><i aria-hidden="true"></i>正在替你寻找</span>
+              <button id="editSignalBtn" type="button">调整暗号</button>
             </div>
-            <div id="matchPeopleRail" class="people-rail"></div>
+            <h3 id="activeSignalTitle">在上海，找一个周末能一起散步，也愿意认真聊点什么的人</h3>
+            <p id="activeSignalMeta">搭子 · 上海 · 还会运行 6 天</p>
+            <div id="activeSignalTags" class="hunt-tags"></div>
+
+            <div class="hunt-result-summary">
+              <div id="huntAvatarStack" class="hunt-avatar-stack" aria-hidden="true"></div>
+              <span>
+                <strong id="huntFoundTitle">今天找到 3 位</strong>
+                <small id="huntFoundCopy">其中 1 位也在寻找你这样的人</small>
+              </span>
+              <button id="seeFreshBtn" type="button">看新的</button>
+            </div>
           </section>
 
-          <button id="unlockBanner" class="unlock-banner" type="button">
-            <span class="unlock-icon"><i data-lucide="users"></i><span class="icon-fallback">友</span></span>
-            <span>
-              <strong id="unlockTitle">邀请朋友加入你的同频圈</strong>
-              <small id="unlockCopy">还差 2 人，解锁完整候选池</small>
-            </span>
-            <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
-          </button>
+          <section id="freshPeopleSection" class="fresh-people-section" aria-label="新接上暗号的人">
+            <div class="section-label-row">
+              <strong>新接上暗号的人</strong>
+              <span id="freshPeopleHint">不是按条件上架，是彼此都可能合适</span>
+            </div>
+            <div id="signalResults" class="signal-results" aria-live="polite"></div>
+          </section>
 
-          <div id="matchGrid" class="match-deck" aria-live="polite"></div>
+          <section class="saved-signals-section" aria-label="其他寻人暗号">
+            <div class="section-label-row">
+              <strong>其他暗号</strong>
+              <span>最多同时运行 3 个</span>
+            </div>
+            <div id="savedSignalList" class="saved-signal-list"></div>
+          </section>
 
-          <div class="match-pager" aria-label="候选人切换">
-            <button id="prevMatchBtn" class="round-action round-action-muted" type="button" aria-label="上一位">
-              <i data-lucide="rotate-ccw"></i><span class="icon-fallback">↶</span>
-            </button>
-            <button id="passMatchBtn" class="round-action round-action-pass" type="button" aria-label="暂时跳过">
-              <i data-lucide="x"></i><span class="icon-fallback">×</span>
-            </button>
-            <span id="matchCounter" class="match-counter">1 / 12</span>
-            <button id="likeMatchBtn" class="round-action round-action-like" type="button" aria-label="收藏这位同频对象">
-              <i data-lucide="heart"></i><span class="icon-fallback">♥</span>
-            </button>
-            <button id="nextMatchBtn" class="round-action round-action-primary" type="button" aria-label="下一位">
-              <i data-lucide="arrow-right"></i><span class="icon-fallback">→</span>
-            </button>
-          </div>
+          <p class="hunt-assurance">
+            <i data-lucide="shield-check"></i><span class="icon-fallback">盾</span>
+            只有双方当前意图相符，才会被推荐给彼此
+          </p>
         </section>
 
         <section id="viewInbox" class="app-view light-view inbox-view" data-view="inbox" aria-labelledby="inboxTitle">
@@ -256,8 +261,8 @@
             <span>发现</span>
           </button>
           <button class="tab-button" data-tab="matches" type="button">
-            <span class="tab-icon"><i data-lucide="heart-handshake"></i><span class="icon-fallback">◇</span></span>
-            <span>同频</span>
+            <span class="tab-icon"><i data-lucide="radar"></i><span class="icon-fallback">◎</span><b id="signalTabBadge" class="tab-badge">3</b></span>
+            <span>暗号</span>
           </button>
           <button class="tab-button" data-tab="inbox" type="button">
             <span class="tab-icon"><i data-lucide="message-circle"></i><span class="icon-fallback">○</span><b class="tab-badge">2</b></span>
@@ -292,6 +297,53 @@
                 <span><i data-lucide="lock-keyhole"></i><span class="icon-fallback">锁</span> 仅用于匹配和破冰</span>
                 <button class="primary-button" type="submit">留下暗号</button>
               </div>
+            </form>
+          </section>
+        </div>
+
+        <div id="huntSheet" class="sheet-layer" aria-hidden="true">
+          <button class="sheet-backdrop" data-close-hunt-sheet type="button" aria-label="关闭暗号编辑面板"></button>
+          <section class="bottom-sheet hunt-editor" role="dialog" aria-modal="true" aria-labelledby="huntSheetTitle">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="sheet-heading">
+              <div>
+                <p class="kicker">NEW SIGNAL</p>
+                <h2 id="huntSheetTitle">你现在想认识谁？</h2>
+              </div>
+              <button class="icon-button" data-close-hunt-sheet type="button" aria-label="关闭">
+                <i data-lucide="x"></i><span class="icon-fallback">×</span>
+              </button>
+            </div>
+
+            <form id="huntForm" class="hunt-form">
+              <label for="huntInput">
+                <span>用你自己的话说</span>
+                <textarea id="huntInput" rows="3" maxlength="72">在上海，找一个周末能一起散步，也愿意认真聊点什么的人</textarea>
+              </label>
+
+              <fieldset>
+                <legend>你想建立什么关系</legend>
+                <div id="huntIntentChoices" class="hunt-choice-row">
+                  <button class="is-active" data-hunt-intent="搭子" type="button">一起做点事</button>
+                  <button data-hunt-intent="朋友" type="button">成为朋友</button>
+                  <button data-hunt-intent="恋爱" type="button">认真认识</button>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend>寻找范围</legend>
+                <div id="huntPlaceChoices" class="hunt-choice-row">
+                  <button class="is-active" data-hunt-place="上海" type="button">上海</button>
+                  <button data-hunt-place="同城" type="button">我的同城</button>
+                  <button data-hunt-place="不限城市" type="button">不限城市</button>
+                </div>
+              </fieldset>
+
+              <div class="hunt-form-note">
+                <i data-lucide="sparkles"></i><span class="icon-fallback">✦</span>
+                AI 会结合你的品味，而不是只按文字条件找人
+              </div>
+              <button class="primary-button hunt-submit" type="submit">让暗号开始寻找</button>
             </form>
           </section>
         </div>

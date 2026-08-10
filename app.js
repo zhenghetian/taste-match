@@ -258,6 +258,45 @@ const people = [
   },
 ];
 
+const huntSignals = [
+  {
+    id: "slow-city",
+    title: "在上海，找一个周末能一起散步，也愿意认真聊点什么的人",
+    intent: "搭子",
+    place: "上海",
+    expires: "还会运行 6 天",
+    tags: ["城市散步", "真实生活", "认真聊天"],
+    peopleIds: ["momo", "mina", "nuonuo"],
+    newCount: 3,
+    mutualId: "momo",
+    mutualCopy: "她也想认识一个不赶时间、愿意边走边聊的人",
+  },
+  {
+    id: "weekend-ball",
+    title: "找周末愿意上场，也爱拆篮球细节的人",
+    intent: "搭子",
+    place: "上海",
+    expires: "还会运行 4 天",
+    tags: ["篮球", "训练方法", "周末运动"],
+    peopleIds: ["ayuan", "yubai", "linjian"],
+    newCount: 1,
+    mutualId: "ayuan",
+    mutualCopy: "他也在找一个能聊球、偶尔一起上场的人",
+  },
+  {
+    id: "deep-talk",
+    title: "想认识能聊长期主义，也能谈真实生活的人",
+    intent: "朋友",
+    place: "不限城市",
+    expires: "还会运行 7 天",
+    tags: ["长期主义", "人物自传", "自我成长"],
+    peopleIds: ["mina", "xiyou", "shanzhu"],
+    newCount: 2,
+    mutualId: "mina",
+    mutualCopy: "她最近也在找愿意把一个问题聊深一点的人",
+  },
+];
+
 const starterMessages = {
   mina: [
     { type: "system", text: "你们因为都停在关系访谈和自我照顾类内容而认识" },
@@ -281,6 +320,11 @@ const state = {
   profile: null,
   profileReady: false,
   matchIndex: 0,
+  selectedHuntId: "slow-city",
+  unseenHuntCount: 3,
+  draftHuntIntent: "搭子",
+  draftHuntPlace: "上海",
+  editingHunt: false,
   selectedMatchId: null,
   inviteCount: 0,
   likedContent: new Set(),
@@ -527,15 +571,68 @@ function matchReason(person) {
   return `你们都在「${shared.join("、")}」上停下来。${person.difference}`;
 }
 
-function renderMatchRail(ranked) {
-  const rail = document.querySelector("#matchPeopleRail");
-  rail.innerHTML = ranked
-    .slice(0, 7)
+function activeHuntSignal() {
+  return huntSignals.find((signal) => signal.id === state.selectedHuntId) || huntSignals[0];
+}
+
+function huntPersonReason(signal, person) {
+  const overlaps = person.themes.filter((theme) => signal.tags.includes(theme));
+  const themes = overlaps.length ? overlaps : sharedThemes(person).slice(0, 2);
+  return `你们都在「${themes.join("、")}」上有明显信号。${person.difference}`;
+}
+
+function renderHuntResults(signal) {
+  const results = document.querySelector("#signalResults");
+  results.innerHTML = signal.peopleIds
+    .map((personId, index) => {
+      const person = findPerson(personId);
+      const isMutual = person.id === signal.mutualId;
+      const hasReplied = state.likedPeople.has(person.id);
+      const freshLabel = index === 0 ? "刚刚找到" : index === 1 ? "今天新增" : "新出现";
+      const action = isMutual
+        ? `<button class="signal-person-action is-mutual" data-person-chat="${person.id}" type="button">开始聊</button>`
+        : `<button class="signal-person-action ${hasReplied ? "is-waiting" : ""}" data-signal-reply="${person.id}" type="button" ${hasReplied ? "disabled" : ""}>${hasReplied ? "等待回应" : "发出回应"}</button>`;
+
+      return `
+        <article class="signal-person-card ${isMutual ? "has-mutual" : ""}">
+          <div class="signal-person-avatar" style="--person-bg:${person.bg}">
+            <span>${person.initials}</span>
+            <small>${freshLabel}</small>
+          </div>
+          <div class="signal-person-content">
+            <div class="signal-person-heading">
+              <span><strong>${escapeHtml(person.name)}，${person.age}</strong><small>${escapeHtml(person.city)} · ${escapeHtml(person.activity)}</small></span>
+              <b>${scorePerson(person)}%</b>
+            </div>
+            <p>${escapeHtml(person.bio)}</p>
+            <div class="signal-match-reason">
+              <i data-lucide="sparkles"></i><span class="icon-fallback">✦</span>
+              <span>${escapeHtml(isMutual ? signal.mutualCopy : huntPersonReason(signal, person))}</span>
+            </div>
+            <footer>
+              <span>${isMutual ? "双方暗号已接上" : "只有双方回应后才会进入消息"}</span>
+              ${action}
+            </footer>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderSavedSignals(active) {
+  document.querySelector("#savedSignalList").innerHTML = huntSignals
+    .filter((signal) => signal.id !== active.id)
     .map(
-      ({ person }, index) => `
-        <button class="people-chip ${index === state.matchIndex ? "is-current" : ""}" data-match-index="${index}" type="button" aria-label="查看 ${escapeHtml(person.name)}">
-          <span class="people-chip-avatar" style="--person-bg:${person.bg}">${person.initials}</span>
-          <span>${escapeHtml(person.name)}</span>
+      (signal) => `
+        <button class="saved-signal" data-hunt-id="${signal.id}" type="button">
+          <span class="saved-signal-icon"><i data-lucide="radio"></i><span class="icon-fallback">◎</span></span>
+          <span>
+            <strong>${escapeHtml(signal.title)}</strong>
+            <small>${escapeHtml(signal.intent)} · ${escapeHtml(signal.place)} · 正在寻找</small>
+          </span>
+          <b>${signal.newCount} 新</b>
+          <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
         </button>
       `,
     )
@@ -544,47 +641,33 @@ function renderMatchRail(ranked) {
 
 function renderMatches() {
   updateProfile();
-  const ranked = rankedPeople();
-  state.matchIndex = Math.min(state.matchIndex, ranked.length - 1);
-  const current = ranked[state.matchIndex];
-  const person = current.person;
-  const locked = state.inviteCount < 2 && state.matchIndex >= 3;
-  const grid = document.querySelector("#matchGrid");
-  const shared = sharedThemes(person);
-  const accuracy = uniqueReactionCount() >= 6 ? `${Math.min(96, 74 + uniqueReactionCount() * 3)}% 画像清晰度` : `再刷 ${Math.max(0, 6 - uniqueReactionCount())} 条会更准`;
+  const signal = activeHuntSignal();
+  const signalPeople = signal.peopleIds.map(findPerson);
+  const unseen = state.unseenHuntCount;
 
-  document.querySelector("#matchAccuracyText").textContent = accuracy;
-  document.querySelector("#matchCounter").textContent = `${state.matchIndex + 1} / ${ranked.length}`;
-  document.querySelector("#unlockTitle").textContent =
-    state.inviteCount >= 2 ? "完整同频池已解锁" : "邀请朋友加入你的同频圈";
-  document.querySelector("#unlockCopy").textContent =
-    state.inviteCount >= 2 ? "你现在可以查看全部候选人" : `还差 ${2 - state.inviteCount} 人，解锁完整候选池`;
+  document.querySelector("#activeSignalTitle").textContent = signal.title;
+  document.querySelector("#activeSignalMeta").textContent = `${signal.intent} · ${signal.place} · ${signal.expires}`;
+  document.querySelector("#activeSignalTags").innerHTML = signal.tags
+    .map((tag) => `<span>${escapeHtml(tag)}</span>`)
+    .join("");
+  document.querySelector("#huntAvatarStack").innerHTML = signalPeople
+    .slice(0, 3)
+    .map(
+      (person) => `<span style="--person-bg:${person.bg}" title="${escapeHtml(person.name)}">${person.initials}</span>`,
+    )
+    .join("");
+  document.querySelector("#huntFoundTitle").textContent = unseen ? `今天找到 ${signal.newCount} 位` : "本次新增已看完";
+  document.querySelector("#huntFoundCopy").textContent = unseen
+    ? "其中 1 位也在寻找你这样的人"
+    : "暗号仍在运行，有新人时会提醒你";
+  document.querySelector("#seeFreshBtn").textContent = unseen ? "看新的" : "已看完";
+  document.querySelector("#seeFreshBtn").disabled = !unseen;
+  const badge = document.querySelector("#signalTabBadge");
+  badge.textContent = String(unseen || signal.newCount);
+  badge.classList.toggle("is-hidden", !unseen);
 
-  renderMatchRail(ranked);
-  grid.innerHTML = `
-    <article class="person-card ${locked ? "is-locked" : ""}">
-      <div class="person-visual" style="--person-bg:${person.bg}">
-        <div class="photo-dots"><span></span><span></span><span></span></div>
-        <span class="match-score">${locked ? "待解锁" : `${current.score}% 同频`}</span>
-        ${
-          locked
-            ? `<div class="locked-copy"><strong>这位同频对象还没露面</strong><span>邀请朋友完成测试后，扩大你的候选池。</span></div>`
-            : `<div class="person-name-block"><h3>${escapeHtml(person.name)}，${person.age}</h3><p>${escapeHtml(person.city)} · ${escapeHtml(person.bio)}</p></div>`
-        }
-      </div>
-      <div class="person-body">
-        <div class="shared-tags">${shared.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
-        <div class="match-prompt-card">
-          <small>${locked ? "为什么推荐 TA" : "AI 找到的共同入口"}</small>
-          <p>${locked ? "你们在多个内容主题上连续表现出相似反应。" : escapeHtml(matchReason(person))}</p>
-          <button class="prompt-reply" data-person-chat="${person.id}" type="button" aria-label="用这条暗号认识 ${escapeHtml(person.name)}" ${locked ? "disabled" : ""}>
-            <i data-lucide="message-circle-heart"></i><span class="icon-fallback">聊</span>
-          </button>
-        </div>
-      </div>
-    </article>
-  `;
-
+  renderHuntResults(signal);
+  renderSavedSignals(signal);
   refreshIcons();
 }
 
@@ -854,11 +937,78 @@ function closeReplySheet() {
   replySheetEl.setAttribute("aria-hidden", "true");
 }
 
-function moveMatch(delta) {
-  const total = rankedPeople().length;
-  state.matchIndex = (state.matchIndex + delta + total) % total;
+function setHuntChoice(selector, value) {
+  document.querySelectorAll(selector).forEach((button) => {
+    const selectedValue = button.dataset.huntIntent || button.dataset.huntPlace;
+    button.classList.toggle("is-active", selectedValue === value);
+  });
+}
+
+function openHuntSheet(editing = false) {
+  const signal = activeHuntSignal();
+  state.editingHunt = editing;
+  state.draftHuntIntent = editing ? signal.intent : "搭子";
+  state.draftHuntPlace = editing ? signal.place : "上海";
+  document.querySelector("#huntSheetTitle").textContent = editing ? "调整这条暗号" : "你现在想认识谁？";
+  document.querySelector("#huntInput").value = editing
+    ? signal.title
+    : "在上海，找一个周末能一起散步，也愿意认真聊点什么的人";
+  document.querySelector(".hunt-submit").textContent = editing ? "保存并继续寻找" : "让暗号开始寻找";
+  setHuntChoice("[data-hunt-intent]", state.draftHuntIntent);
+  setHuntChoice("[data-hunt-place]", state.draftHuntPlace);
+  const sheet = document.querySelector("#huntSheet");
+  sheet.classList.add("is-open");
+  sheet.setAttribute("aria-hidden", "false");
+  refreshIcons();
+  window.setTimeout(() => document.querySelector("#huntInput").focus(), 220);
+  logEvent("hunt_sheet_opened", { editing });
+}
+
+function closeHuntSheet() {
+  const sheet = document.querySelector("#huntSheet");
+  sheet.classList.remove("is-open");
+  sheet.setAttribute("aria-hidden", "true");
+}
+
+function saveHuntSignal() {
+  const title = document.querySelector("#huntInput").value.trim();
+  if (!title) {
+    document.querySelector("#huntInput").focus();
+    showToast("先说说你想认识怎样的人");
+    return;
+  }
+
+  if (state.editingHunt) {
+    const signal = activeHuntSignal();
+    signal.title = title;
+    signal.intent = state.draftHuntIntent;
+    signal.place = state.draftHuntPlace;
+    signal.expires = "重新运行 7 天";
+    state.unseenHuntCount = signal.newCount;
+    logEvent("hunt_updated", { signalId: signal.id });
+  } else {
+    const id = `custom-${Date.now()}`;
+    if (huntSignals.length >= 3) huntSignals.pop();
+    huntSignals.unshift({
+      id,
+      title,
+      intent: state.draftHuntIntent,
+      place: state.draftHuntPlace,
+      expires: "刚刚开始 · 运行 7 天",
+      tags: rankedTags().slice(0, 3).length ? rankedTags().slice(0, 3) : ["真实生活", "轻松聊天", "好奇心"],
+      peopleIds: rankedPeople().slice(0, 3).map(({ person }) => person.id),
+      newCount: 4,
+      mutualId: rankedPeople()[0].person.id,
+      mutualCopy: "TA 的当前暗号与你的寻找方向正好重叠",
+    });
+    state.selectedHuntId = id;
+    state.unseenHuntCount = 4;
+    logEvent("hunt_created", { signalId: id });
+  }
+
+  closeHuntSheet();
   renderMatches();
-  logEvent("match_moved", { index: state.matchIndex });
+  showToast(state.editingHunt ? "暗号已调整，继续替你寻找" : "暗号已经开始寻找");
 }
 
 function openChat(personId) {
@@ -933,6 +1083,8 @@ function exportResults() {
     }),
     weightedTags: getWeightedTags(),
     profile: state.profile,
+    activeHunt: activeHuntSignal(),
+    huntSignals,
     inviteCount: state.inviteCount,
     likedPeople: [...state.likedPeople],
     selectedMatchId: state.selectedMatchId,
@@ -958,6 +1110,11 @@ function resetPrototype() {
   state.profile = null;
   state.profileReady = false;
   state.matchIndex = 0;
+  state.selectedHuntId = "slow-city";
+  state.unseenHuntCount = 3;
+  state.draftHuntIntent = "搭子";
+  state.draftHuntPlace = "上海";
+  state.editingHunt = false;
   state.selectedMatchId = null;
   state.inviteCount = 0;
   state.likedContent = new Set();
@@ -1023,7 +1180,14 @@ tabButtons.forEach((button) => {
 
 document.querySelector("#discoverBrandBtn").addEventListener("click", () => showTab("profile"));
 document.querySelector("#discoverProfileBtn").addEventListener("click", () => showTab("profile"));
-document.querySelector("#matchFilterBtn").addEventListener("click", () => showToast("筛选会在下一版接入"));
+document.querySelector("#createSignalBtn").addEventListener("click", () => openHuntSheet(false));
+document.querySelector("#editSignalBtn").addEventListener("click", () => openHuntSheet(true));
+document.querySelector("#seeFreshBtn").addEventListener("click", () => {
+  state.unseenHuntCount = 0;
+  renderMatches();
+  document.querySelector("#freshPeopleSection").scrollIntoView({ behavior: "smooth", block: "start" });
+  logEvent("fresh_hunt_results_opened", { signalId: state.selectedHuntId });
+});
 document.querySelector("#newMessageBtn").addEventListener("click", () => showTab("matches"));
 document.querySelector("#profileMenuBtn").addEventListener("click", () => showToast("设置会在下一版接入"));
 document.querySelector("#editProfileBtn").addEventListener("click", () => showToast("编辑暗号会在下一版接入"));
@@ -1032,31 +1196,52 @@ document.querySelector("#profileShareIcon").addEventListener("click", async () =
   showToast("主页分享文案已复制");
 });
 document.querySelector("#goDiscoverBtn").addEventListener("click", () => showTab("discover"));
-document.querySelector("#prevMatchBtn").addEventListener("click", () => moveMatch(-1));
-document.querySelector("#nextMatchBtn").addEventListener("click", () => moveMatch(1));
-document.querySelector("#passMatchBtn").addEventListener("click", () => {
-  const current = rankedPeople()[state.matchIndex];
-  logEvent("match_skipped", { personId: current.person.id });
-  moveMatch(1);
-});
-document.querySelector("#likeMatchBtn").addEventListener("click", () => {
-  const current = rankedPeople()[state.matchIndex];
-  state.likedPeople.add(current.person.id);
-  showToast(`已收藏 ${current.person.name}`);
-  logEvent("match_liked", { personId: current.person.id });
-});
-document.querySelector("#unlockBanner").addEventListener("click", simulateInvite);
-
-document.querySelector("#matchPeopleRail").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-match-index]");
+document.querySelector("#savedSignalList").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-hunt-id]");
   if (!button) return;
-  state.matchIndex = Number(button.dataset.matchIndex);
+  state.selectedHuntId = button.dataset.huntId;
+  state.unseenHuntCount = activeHuntSignal().newCount;
   renderMatches();
+  document.querySelector("#viewMatches").scrollTo({ top: 0, behavior: "smooth" });
+  logEvent("hunt_switched", { signalId: state.selectedHuntId });
 });
 
-document.querySelector("#matchGrid").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-person-chat]");
-  if (button && !button.disabled) openChat(button.dataset.personChat);
+document.querySelector("#signalResults").addEventListener("click", (event) => {
+  const chatButton = event.target.closest("[data-person-chat]");
+  if (chatButton) {
+    openChat(chatButton.dataset.personChat);
+    return;
+  }
+  const replyButton = event.target.closest("[data-signal-reply]");
+  if (!replyButton) return;
+  const person = findPerson(replyButton.dataset.signalReply);
+  state.likedPeople.add(person.id);
+  renderMatches();
+  showToast(`回应已送达 ${person.name}，接上后会出现在消息里`);
+  logEvent("hunt_response_sent", { signalId: state.selectedHuntId, personId: person.id });
+});
+
+document.querySelector("#huntIntentChoices").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-hunt-intent]");
+  if (!button) return;
+  state.draftHuntIntent = button.dataset.huntIntent;
+  setHuntChoice("[data-hunt-intent]", state.draftHuntIntent);
+});
+
+document.querySelector("#huntPlaceChoices").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-hunt-place]");
+  if (!button) return;
+  state.draftHuntPlace = button.dataset.huntPlace;
+  setHuntChoice("[data-hunt-place]", state.draftHuntPlace);
+});
+
+document.querySelector("#huntForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveHuntSignal();
+});
+
+document.querySelectorAll("[data-close-hunt-sheet]").forEach((button) => {
+  button.addEventListener("click", closeHuntSheet);
 });
 
 document.querySelector("#newSignalsRail").addEventListener("click", (event) => {
@@ -1119,6 +1304,7 @@ document.querySelector("#replyForm").addEventListener("submit", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && replySheetEl.classList.contains("is-open")) closeReplySheet();
+  if (event.key === "Escape" && document.querySelector("#huntSheet").classList.contains("is-open")) closeHuntSheet();
 });
 
 document.querySelector("#copyCardBtn").addEventListener("click", async () => {
