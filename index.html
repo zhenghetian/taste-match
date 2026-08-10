@@ -172,6 +172,7 @@
         left: 15px;
       }
       .feed-byline { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 12px; font-weight: 750; }
+      .feed-byline a { color: inherit; text-decoration: none; }
       .feed-kind { padding: 4px 7px; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; color: rgba(255,255,255,.76); font-size: 9px; }
       .feed-copy h1 { margin: 0 0 7px; font-size: clamp(22px, 7vw, 28px); line-height: 1.13; letter-spacing: 0; text-wrap: pretty; }
       .feed-copy p { margin: 0; color: rgba(255,255,255,.74); font-size: 12px; line-height: 1.5; }
@@ -373,7 +374,7 @@
     <main class="stage">
       <section id="phone" class="phone" data-tab="discover">
         <section class="view discover is-active" data-view="discover" aria-label="发现">
-          <img id="feedCover" class="feed-cover" src="./assets/covers/cat-report-card.jpg" alt="猫咪短视频封面" />
+          <img id="feedCover" class="feed-cover" src="./assets/taste-covers/quiet-evening.jpg" alt="独居下班夜晚视频封面" />
           <div class="feed-shade"></div>
           <header class="feed-top">
             <span class="brand-mark" aria-label="暗号">暗</span>
@@ -381,17 +382,17 @@
           </header>
           <div class="feed-actions">
             <button id="likeButton" class="feed-action" type="button" aria-label="喜欢">
-              <span class="action-disc"><i data-lucide="heart"></i></span><b id="likeCount">5.6万</b>
+              <span class="action-disc"><i data-lucide="heart"></i></span><b id="likeCount">喜欢</b>
             </button>
             <button id="talkButton" class="feed-action" type="button" aria-label="想聊聊">
               <span class="action-disc"><i data-lucide="message-circle"></i></span><b>想聊</b>
             </button>
           </div>
           <div class="feed-copy">
-            <div class="feed-byline"><span id="feedCreator">@蕉糖馒头</span><span id="feedKind" class="feed-kind">猫咪日常</span></div>
-            <h1 id="feedTitle">女儿成绩太差了，把它丢出去</h1>
-            <p id="feedCaption">有些视频不需要解释，猫的表情已经把故事说完了。</p>
-            <div id="feedTags" class="feed-tags"><span>#猫咪</span><span>#生活幽默</span></div>
+            <div class="feed-byline"><a id="feedCreator" href="https://www.douyin.com/video/7643411504674409743" target="_blank" rel="noreferrer" aria-label="打开抖音原视频">@Judy德国冷浪漫</a><span id="feedKind" class="feed-kind">生活节奏</span></div>
+            <h1 id="feedTitle">认真把东西用完，也认真吃饭</h1>
+            <p id="feedCaption">独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？</p>
+            <div id="feedTags" class="feed-tags"><span>#独居</span><span>#消费观</span></div>
           </div>
           <button id="nextFeed" class="next-feed" type="button" aria-label="换一条"><i data-lucide="chevron-up"></i></button>
         </section>
@@ -403,15 +404,15 @@
               <div class="intent-top"><span class="live-label"><i></i>正在替你寻找</span><button id="editIntent" class="text-button" type="button">调整</button></div>
               <h2>在上海，找一个周末能一起散步，也愿意认真聊点什么的人</h2>
               <p>搭子 · 上海 · 还会运行 6 天</p>
-              <div class="intent-tags"><span>猫咪</span><span>城市观察</span><span>认真聊天</span></div>
+              <div class="intent-tags"><span>慢生活</span><span>生活方式</span><span>认真聊天</span></div>
             </section>
             <div class="section-head"><h2>今天新出现 3 人</h2><span>按彼此合适程度排序</span></div>
             <div class="people-list">
               <button class="person-row" data-person="momo" type="button">
-                <span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默，25</strong><span class="match-score">82% 同频</span></span><p>猫咪、城市散步和不太用力的幽默</p><span class="common-tags"><span>猫咪</span><span>生活幽默</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
+                <span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默，25</strong><span class="match-score">82% 同频</span></span><p>独处、散步和不太用力的周末</p><span class="common-tags"><span>慢生活</span><span>低成本快乐</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
               </button>
               <button class="person-row" data-person="ayuan" type="button">
-                <span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原，27</strong><span class="match-score">76% 同频</span></span><p>球场、训练细节和周末随便走走</p><span class="common-tags"><span>篮球</span><span>城市散步</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
+                <span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原，27</strong><span class="match-score">76% 同频</span></span><p>临时出发，也喜欢给生活留点计划外</p><span class="common-tags"><span>行动派</span><span>好奇心</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
               </button>
               <button class="person-row" data-person="mina" type="button">
                 <span class="avatar" style="--avatar:#835a68">M</span><span class="row-main"><span class="row-title"><strong>Mina，24</strong><span class="match-score">71% 同频</span></span><p>关系访谈、书和认真吃晚饭</p><span class="common-tags"><span>自我照顾</span><span>长期主义</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
@@ -430,9 +431,9 @@
             </div>
             <div class="section-head"><h2>对话</h2></div>
             <div class="conversation-list">
-              <button class="conversation-row is-unread" data-chat="momo" type="button"><span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默</strong></span><p>我也被那只猫最后的眼神笑到了</p></span><time>刚刚</time></button>
-              <button class="conversation-row" data-chat="ayuan" type="button"><span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原</strong></span><p>下次可以一起去看街球比赛</p></span><time>昨天</time></button>
-              <button class="conversation-row" data-chat="mina" type="button"><span class="avatar" style="--avatar:#835a68">M</span><span class="row-main"><span class="row-title"><strong>Mina</strong></span><p>你说的“先照顾自己”很有共鸣</p></span><time>周六</time></button>
+              <button class="conversation-row is-unread" data-chat="momo" type="button"><span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默</strong></span><p>我现在周末真的很喜欢去公园坐一下午</p></span><time>刚刚</time></button>
+              <button class="conversation-row" data-chat="ayuan" type="button"><span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原</strong></span><p>下次可以临时约一次日出</p></span><time>昨天</time></button>
+              <button class="conversation-row" data-chat="mina" type="button"><span class="avatar" style="--avatar:#835a68">M</span><span class="row-main"><span class="row-title"><strong>Mina</strong></span><p>你说的“沟通不是说服”很有共鸣</p></span><time>周六</time></button>
             </div>
           </div>
         </section>
@@ -441,15 +442,15 @@
           <div class="screen">
             <header class="screen-head"><div><h1>我的</h1><p>别人如何通过品味认识你</p></div><button class="icon-button" type="button" aria-label="设置"><i data-lucide="settings"></i></button></header>
             <section class="profile-identity"><span class="avatar">我</span><div><h2>夜行观察者</h2><p>@anhao_001 · 上海</p></div><button id="editProfile" class="edit-button" type="button">编辑</button></section>
-            <section class="ai-profile"><div class="ai-profile-head"><span>AI 读到的你</span><span>清晰度 67%</span></div><h2>柔软的现实主义者</h2><p>你容易为真实、不端着的瞬间停下来，也会认真听别人谈关系、成长和城市生活。</p><div class="ai-tags"><span>真实生活</span><span>生活幽默</span><span>城市观察</span><span>长期主义</span></div></section>
+            <section class="ai-profile"><div class="ai-profile-head"><span>AI 读到的你</span><span>清晰度 67%</span></div><h2>柔软的现实主义者</h2><p>你偏爱有烟火气的普通生活，也愿意认真讨论友情、自由和如何与另一个人长期相处。</p><div class="ai-tags"><span>慢生活</span><span>关系态度</span><span>生活选择</span><span>好奇心</span></div></section>
             <div class="section-head"><h2>我停下来过的内容</h2><span>6</span></div>
             <div class="taste-grid">
-              <button data-feed-index="0" type="button"><img src="./assets/covers/cat-report-card.jpg" alt="猫咪内容" /></button>
-              <button data-feed-index="2" type="button"><img src="./assets/covers/biography-reading.jpg" alt="人物传记内容" /></button>
-              <button data-feed-index="4" type="button"><img src="./assets/covers/beijing-cbd.jpg" alt="北京城市内容" /></button>
-              <button data-feed-index="5" type="button"><img src="./assets/covers/relaxed-laugh.jpg" alt="草原生活内容" /></button>
-              <button data-feed-index="7" type="button"><img src="./assets/covers/emperor-tamarin.jpg" alt="动物科普内容" /></button>
-              <button data-feed-index="8" type="button"><img src="./assets/covers/love-yourself-first.jpg" alt="关系访谈内容" /></button>
+              <button data-feed-index="0" type="button"><img src="./assets/taste-covers/quiet-evening.jpg" alt="独居下班夜晚内容" /></button>
+              <button data-feed-index="2" type="button"><img src="./assets/taste-covers/not-fitting-in.jpg" alt="是否合群的关系讨论" /></button>
+              <button data-feed-index="4" type="button"><img src="./assets/taste-covers/right-to-fail.jpg" alt="自由与选择内容" /></button>
+              <button data-feed-index="5" type="button"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="临时看日出内容" /></button>
+              <button data-feed-index="7" type="button"><img src="./assets/taste-covers/market-reader.jpg" alt="菜市场读书角内容" /></button>
+              <button data-feed-index="8" type="button"><img src="./assets/taste-covers/love-lasts.jpg" alt="亲密关系访谈内容" /></button>
             </div>
           </div>
         </section>
@@ -461,11 +462,11 @@
           <button class="tab-button" data-tab="profile" type="button"><i data-lucide="user-round"></i><span>我的</span></button>
         </nav>
 
-        <div id="reasonSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><h2 id="reasonTitle">为什么喜欢？</h2><p id="reasonCopy">这一点会帮助暗号更准确地理解你。</p><div id="reasonGrid" class="reason-grid"><button type="button">就是很好笑</button><button type="button">有一点共鸣</button><button type="button">想和别人聊</button><button type="button">学到了东西</button></div></section></div>
+        <div id="reasonSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><h2 id="reasonTitle">为什么喜欢？</h2><p id="reasonCopy">这一点会帮助暗号更准确地理解你。</p><div id="reasonGrid" class="reason-grid"><button type="button">这更像我</button><button type="button">这是我向往的</button><button type="button">其实我不同意</button><button type="button">想找人聊聊</button></div></section></div>
 
-        <div id="personSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet person-sheet"><div class="handle"></div><div class="person-hero"><span id="personAvatar" class="avatar" style="--avatar:#566e61">默</span><div><h2 id="personName">默默，25</h2><p id="personBio">上海 · 刚刚在线</p></div></div><div class="person-signal"><small>为什么你们可能聊得来</small><p id="personReason">你们都喜欢真实、不端着的生活瞬间，也都愿意从一条猫咪视频聊到城市里的日常。</p></div><div class="shared-covers"><img src="./assets/covers/cat-report-card.jpg" alt="共同喜欢的猫咪内容" /><img src="./assets/covers/beijing-cbd.jpg" alt="共同喜欢的城市内容" /><img src="./assets/covers/relaxed-laugh.jpg" alt="共同喜欢的生活内容" /></div><button id="sayHello" class="primary-button" type="button">打个招呼</button></section></div>
+        <div id="personSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet person-sheet"><div class="handle"></div><div class="person-hero"><span id="personAvatar" class="avatar" style="--avatar:#566e61">默</span><div><h2 id="personName">默默，25</h2><p id="personBio">上海 · 刚刚在线</p></div></div><div class="person-signal"><small>为什么你们可能聊得来</small><p id="personReason">你们都喜欢低成本、慢节奏的生活，也愿意把有限的热情留给真正重要的人。</p></div><div class="shared-covers"><img src="./assets/taste-covers/quiet-evening.jpg" alt="共同喜欢的独居生活内容" /><img src="./assets/taste-covers/night-walk.jpg" alt="共同喜欢的夜晚散步内容" /><img src="./assets/taste-covers/park-happiness.jpg" alt="共同喜欢的公园生活内容" /></div><button id="sayHello" class="primary-button" type="button">打个招呼</button></section></div>
 
-        <section id="chatScreen" class="chat-screen" aria-label="聊天"><header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><strong id="chatName">默默</strong><span></span></header><div class="chat-context">你们都为「女儿成绩太差了，把它丢出去」停下来过。</div><div id="chatMessages" class="messages"><div class="bubble">我也被那只猫最后的眼神笑到了。</div><div class="bubble mine">那个表情太像被家长训完的我了。</div></div><form id="composer" class="composer"><input id="messageInput" type="text" placeholder="聊点具体的" autocomplete="off" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form></section>
+        <section id="chatScreen" class="chat-screen" aria-label="聊天"><header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><strong id="chatName">默默</strong><span></span></header><div class="chat-context">你们都为「公园不要钱，快乐也不贵」停下来过。</div><div id="chatMessages" class="messages"><div class="bubble">我现在周末真的很喜欢去公园坐一下午。</div><div class="bubble mine">我也是，比赶很多打卡点舒服多了。</div></div><form id="composer" class="composer"><input id="messageInput" type="text" placeholder="聊点具体的" autocomplete="off" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form></section>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
     </main>
@@ -473,21 +474,22 @@
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script>
       const feed = [
-        { cover: "cat-report-card.jpg", creator: "@蕉糖馒头", kind: "猫咪日常", title: "女儿成绩太差了，把它丢出去", caption: "有些视频不需要解释，猫的表情已经把故事说完了。", tags: ["猫咪", "生活幽默"], likes: "5.6万" },
-        { cover: "basketball-reverse.jpg", creator: "@布卡", kind: "篮球高光", title: "秃师傅假掩护反向上篮", caption: "一个反向动作，让整座球场都跟着转身。", tags: ["篮球", "运动高光"], likes: "3.3万" },
-        { cover: "biography-reading.jpg", creator: "@程冲冲", kind: "阅读感悟", title: "读人物自传最大的感受", caption: "后来光芒万丈的人，也曾有很长一段无人问津。", tags: ["人物自传", "长期主义"], likes: "9486" },
-        { cover: "perfect-bgm.jpg", creator: "@先别吉", kind: "BGM 梗", title: "这条视频终于迎来了最适合的 BGM", caption: "雨夜、天安门和一首恰好出现的歌。", tags: ["BGM", "反差感"], likes: "2.0万" },
-        { cover: "beijing-cbd.jpg", creator: "@最靓的仔", kind: "城市观察", title: "帝都的繁华与压迫感", caption: "车窗外是繁华，也是人在城市里的微小。", tags: ["北京CBD", "城市观察"], likes: "1.1万" },
-        { cover: "relaxed-laugh.jpg", creator: "@喜遇金安", kind: "生活现场", title: "仔细听听她说的啥", caption: "有些松弛感，是计划不出来的。", tags: ["松弛感", "生活幽默"], likes: "1.2万" },
-        { cover: "future-montage.jpg", creator: "@火星的井", kind: "电影混剪", title: "如果我能为这样的未来而死", caption: "理想主义有时不是答案，而是一种选择。", tags: ["电影", "理想主义"], likes: "1.8万" },
-        { cover: "emperor-tamarin.jpg", creator: "@科普的勾勾哒", kind: "动物科普", title: "胡子长长的皇帝狨猴", caption: "奇怪又可爱，是认识世界的另一种入口。", tags: ["动物科普", "好奇心"], likes: "2.0万" },
-        { cover: "love-yourself-first.jpg", creator: "@凉子访谈录", kind: "关系访谈", title: "爱人先爱己", caption: "我们无法给孩子，自己内心没有的东西。", tags: ["自我照顾", "关系"], likes: "9.5万" }
+        { cover: "quiet-evening.jpg", creator: "@Judy德国冷浪漫", kind: "生活节奏", title: "认真把东西用完，也认真吃饭", caption: "独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？", tags: ["独居", "消费观"], url: "https://www.douyin.com/video/7643411504674409743" },
+        { cover: "night-walk.jpg", creator: "@自信阳光", kind: "独处方式", title: "晚饭后，一个人慢慢走回生活里", caption: "散步、看人跳舞、逛超市。你会如何消化一天的情绪？", tags: ["独处", "城市散步"], url: "https://www.douyin.com/video/7653500525270670770" },
+        { cover: "not-fitting-in.jpg", creator: "@中国新闻周刊", kind: "关系态度", title: "合群，真的有那么重要吗？", caption: "把有限的热情留给真正重要的人和事。你认同吗？", tags: ["社交能量", "取舍"], url: "https://www.douyin.com/video/7482985809893707027" },
+        { cover: "fluid-friendship.jpg", creator: "@煎妮", kind: "友情观点", title: "朋友是流动的，你能接受被动降级吗？", caption: "有些关系不是争吵结束，而是慢慢离开。你会追问、挽留，还是接受？", tags: ["友情", "依恋方式"], url: "https://www.douyin.com/video/7535852633412603136" },
+        { cover: "right-to-fail.jpg", creator: "@流年冉冉", kind: "人生选择", title: "“搞砸”人生，是自由的一部分吗？", caption: "按自己的选择承担后果，还是尽量走稳妥的路？", tags: ["自由", "风险偏好"], url: "https://www.douyin.com/video/7590413990154264442" },
+        { cover: "sunrise-with-friends.jpg", creator: "@我是蓝蓝哇", kind: "社交节奏", title: "临时起意，和搭子出发去看日出", caption: "你更喜欢提前计划，还是一句“走吧”就出发？", tags: ["说走就走", "行动派"], url: "https://www.douyin.com/video/7650683559334702312" },
+        { cover: "park-happiness.jpg", creator: "@乔伊Joey", kind: "快乐方式", title: "公园不要钱，快乐也不贵", caption: "一片草地、一阵风、坐一会儿。这样的周末对你够不够？", tags: ["公园疗法", "低成本快乐"], url: "https://www.douyin.com/video/7643311406674334874" },
+        { cover: "market-reader.jpg", creator: "@陕视新闻", kind: "兴趣与好奇", title: "卖鸡，也要和李白苏轼打交道", caption: "菜市场摊主在鸡摊旁放了一角书。你会被这种人吸引吗？", tags: ["阅读", "生命力"], url: "https://www.douyin.com/video/7631915914090384678" },
+        { cover: "love-lasts.jpg", creator: "@毕英杰Johnathan", kind: "亲密关系", title: "让爱情更长久的，不只是心动", caption: "亲密关系需要沟通、尊重和不断向内看。你更看重哪一种？", tags: ["爱情", "深度沟通"], url: "https://www.douyin.com/video/7578038229136444681" },
+        { cover: "ordinary-weekend.jpg", creator: "@零玖", kind: "普通周末", title: "和喜欢的人，过一个没安排的普通周末", caption: "做饭、聊天、待在一起。你向往热闹，还是这种日常？", tags: ["陪伴", "日常感"], url: "https://www.douyin.com/video/7654778543125673818" }
       ];
 
       const people = {
-        momo: { name: "默默，25", avatar: "默", color: "#566e61", bio: "上海 · 刚刚在线", reason: "你们都喜欢真实、不端着的生活瞬间，也都愿意从一条猫咪视频聊到城市里的日常。" },
-        ayuan: { name: "阿原，27", avatar: "原", color: "#384e71", bio: "上海 · 12 分钟前在线", reason: "你们都会为球场上的临场反应停下来。TA 爱拆技术，你更容易先被情绪和高光抓住。" },
-        mina: { name: "Mina，24", avatar: "M", color: "#835a68", bio: "上海 · 在线", reason: "你们都在意关系里的真实感，也都相信照顾自己不是自私，而是理解别人的开始。" }
+        momo: { name: "默默，25", avatar: "默", color: "#566e61", bio: "上海 · 刚刚在线", reason: "你们都喜欢低成本、慢节奏的生活，也愿意把有限的热情留给真正重要的人。" },
+        ayuan: { name: "阿原，27", avatar: "原", color: "#384e71", bio: "上海 · 12 分钟前在线", reason: "你们都愿意给周末留一点计划外，也都希望有人能接住一句临时的“走吧”。" },
+        mina: { name: "Mina，24", avatar: "M", color: "#835a68", bio: "上海 · 在线", reason: "你们都重视亲密关系里的沟通和尊重，也愿意认真谈论那些没有标准答案的问题。" }
       };
 
       let feedIndex = 0;
@@ -516,14 +518,15 @@
         const item = feed[feedIndex];
         cover.classList.add("is-changing");
         setTimeout(() => {
-          cover.src = `./assets/covers/${item.cover}`;
+          cover.src = `./assets/taste-covers/${item.cover}`;
           cover.alt = `${item.title}短视频封面`;
           document.querySelector("#feedCreator").textContent = item.creator;
+          document.querySelector("#feedCreator").href = item.url;
           document.querySelector("#feedKind").textContent = item.kind;
           document.querySelector("#feedTitle").textContent = item.title;
           document.querySelector("#feedCaption").textContent = item.caption;
           document.querySelector("#feedTags").innerHTML = item.tags.map((tag) => `<span>#${tag}</span>`).join("");
-          document.querySelector("#likeCount").textContent = item.likes;
+          document.querySelector("#likeCount").textContent = "喜欢";
           likeButton.classList.remove("is-liked");
           cover.classList.remove("is-changing");
         }, 120);
@@ -557,7 +560,7 @@
         likeButton.classList.toggle("is-liked");
         document.querySelector("#signalText").textContent = likeButton.classList.contains("is-liked") ? "暗号 5/6" : "暗号 4/6";
         if (likeButton.classList.contains("is-liked")) {
-          setReasonSheet("为什么喜欢？", "这一点会帮助暗号更准确地理解你。", ["就是很好笑", "有一点共鸣", "想和别人聊", "学到了东西"]);
+          setReasonSheet("为什么喜欢？", "这一点会帮助暗号更准确地理解你。", ["这更像我", "这是我向往的", "其实我不同意", "想找人聊聊"]);
           openSheet(document.querySelector("#reasonSheet"));
         }
       });
