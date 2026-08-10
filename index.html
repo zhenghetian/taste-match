@@ -3,354 +3,596 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#09090b" />
+    <meta name="theme-color" content="#08090b" />
     <meta name="robots" content="noindex,nofollow" />
     <title>暗号 - 刷到同频的人</title>
-    <link rel="preconnect" href="https://unpkg.com" />
-    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      /*
+        Formal mobile architecture: one primary action per view.
+        Discover = express taste, Frequency = connect, Messages = reply, Me = edit.
+      */
+      :root {
+        color-scheme: light;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+        --ink: #111215;
+        --muted: #72757d;
+        --line: rgba(17, 18, 21, 0.09);
+        --paper: #f7f7f5;
+        --accent: #ef3558;
+        --teal: #188e82;
+        --safe-bottom: max(8px, env(safe-area-inset-bottom));
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; background: #d9dadd; }
+      body { min-height: 100dvh; color: var(--ink); }
+      button, input, textarea { font: inherit; letter-spacing: 0; }
+      button { border: 0; cursor: pointer; }
+      button:focus-visible, input:focus-visible, textarea:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      [hidden] { display: none !important; }
+      svg { width: 20px; height: 20px; stroke-width: 2; }
+
+      .stage {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+      }
+
+      .phone {
+        position: relative;
+        width: min(100%, 430px);
+        height: 100dvh;
+        max-height: 900px;
+        overflow: hidden;
+        background: var(--paper);
+      }
+
+      .view {
+        position: absolute;
+        inset: 0 0 calc(70px + var(--safe-bottom));
+        display: none;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+      }
+      .view::-webkit-scrollbar { display: none; }
+      .view.is-active { display: block; }
+
+      .discover {
+        inset: 0;
+        overflow: hidden;
+        background: #08090b;
+        color: white;
+      }
+
+      .feed-cover {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 180ms ease, transform 220ms ease;
+      }
+      .feed-cover.is-changing { opacity: 0; transform: scale(1.018); }
+      .feed-shade {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(180deg, rgba(0,0,0,.42) 0%, transparent 22%, transparent 48%, rgba(0,0,0,.93) 88%, #08090b 100%),
+          linear-gradient(90deg, rgba(0,0,0,.18), transparent 52%);
+        pointer-events: none;
+      }
+
+      .feed-top {
+        position: absolute;
+        z-index: 3;
+        top: max(18px, env(safe-area-inset-top));
+        right: 16px;
+        left: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .brand-mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: 7px;
+        background: rgba(8,9,11,.78);
+        color: white;
+        font-weight: 850;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.14);
+      }
+      .brand-mark::after {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        margin: 26px 0 0 27px;
+        border-radius: 50%;
+        background: var(--accent);
+        content: "";
+      }
+      .signal-meter {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 11px;
+        border: 1px solid rgba(255,255,255,.14);
+        border-radius: 999px;
+        background: rgba(8,9,11,.54);
+        backdrop-filter: blur(14px);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .signal-meter i { width: 48px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.24); }
+      .signal-meter i::after { display: block; width: 66%; height: 100%; background: var(--accent); content: ""; }
+
+      .feed-actions {
+        position: absolute;
+        z-index: 3;
+        right: 13px;
+        bottom: calc(174px + var(--safe-bottom));
+        display: grid;
+        gap: 17px;
+      }
+      .feed-action {
+        display: grid;
+        width: 54px;
+        min-height: 55px;
+        place-items: center;
+        gap: 4px;
+        padding: 0;
+        background: transparent;
+        color: white;
+        text-shadow: 0 1px 6px rgba(0,0,0,.5);
+      }
+      .feed-action .action-disc {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border: 1px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        background: rgba(12,13,15,.35);
+        backdrop-filter: blur(10px);
+      }
+      .feed-action b { font-size: 10px; }
+      .feed-action.is-liked .action-disc { border-color: var(--accent); background: var(--accent); }
+      .feed-action.is-liked svg { fill: white; }
+
+      .feed-copy {
+        position: absolute;
+        z-index: 3;
+        right: 80px;
+        bottom: calc(90px + var(--safe-bottom));
+        left: 15px;
+      }
+      .feed-byline { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 12px; font-weight: 750; }
+      .feed-kind { padding: 4px 7px; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; color: rgba(255,255,255,.76); font-size: 9px; }
+      .feed-copy h1 { margin: 0 0 7px; font-size: clamp(22px, 7vw, 28px); line-height: 1.13; letter-spacing: 0; text-wrap: pretty; }
+      .feed-copy p { margin: 0; color: rgba(255,255,255,.74); font-size: 12px; line-height: 1.5; }
+      .feed-tags { display: flex; gap: 7px; margin-top: 9px; color: rgba(255,255,255,.82); font-size: 10px; }
+
+      .next-feed {
+        position: absolute;
+        z-index: 4;
+        right: 16px;
+        bottom: calc(92px + var(--safe-bottom));
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(255,255,255,.92);
+        color: #111215;
+        box-shadow: 0 8px 24px rgba(0,0,0,.24);
+      }
+
+      .screen {
+        min-height: 100%;
+        padding: max(24px, env(safe-area-inset-top)) 17px 28px;
+        background: var(--paper);
+      }
+      .screen-head { display: flex; align-items: end; justify-content: space-between; min-height: 52px; margin-bottom: 24px; }
+      .screen-head h1 { margin: 0; font-size: 31px; line-height: 1; letter-spacing: 0; }
+      .screen-head p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+      .icon-button {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: white;
+        color: var(--ink);
+      }
+
+      .intent-band {
+        margin: 0 -17px 25px;
+        padding: 19px 17px 20px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: #eef3f1;
+      }
+      .intent-top { display: flex; align-items: center; justify-content: space-between; }
+      .live-label { display: flex; align-items: center; gap: 7px; color: var(--teal); font-size: 11px; font-weight: 800; }
+      .live-label i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 5px rgba(24,142,130,.1); }
+      .text-button { padding: 3px 0; background: transparent; color: var(--ink); font-size: 12px; font-weight: 750; }
+      .intent-band h2 { margin: 16px 0 9px; max-width: 330px; font-size: 20px; line-height: 1.38; letter-spacing: 0; text-wrap: pretty; }
+      .intent-band p { margin: 0; color: var(--muted); font-size: 11px; }
+      .intent-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+      .intent-tags span, .common-tags span { padding: 5px 8px; border-radius: 999px; background: rgba(17,18,21,.06); font-size: 10px; font-weight: 650; }
+
+      .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 8px; }
+      .section-head h2 { margin: 0; font-size: 16px; }
+      .section-head span { color: var(--muted); font-size: 11px; }
+      .people-list, .conversation-list { border-top: 1px solid var(--line); }
+      .person-row, .conversation-row {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 52px minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid var(--line);
+        background: transparent;
+        color: inherit;
+        text-align: left;
+      }
+      .avatar {
+        position: relative;
+        display: grid;
+        width: 52px;
+        height: 52px;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 50%;
+        background: var(--avatar, #303238);
+        color: white;
+        font-size: 14px;
+        font-weight: 850;
+      }
+      .avatar::after { position: absolute; inset: 5px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; content: ""; }
+      .row-main { min-width: 0; }
+      .row-title { display: flex; align-items: center; gap: 7px; }
+      .row-title strong { font-size: 15px; }
+      .match-score { color: var(--teal); font-size: 10px; font-weight: 800; }
+      .row-main p { overflow: hidden; margin: 4px 0 7px; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .common-tags { display: flex; gap: 5px; overflow: hidden; }
+      .common-tags span { padding: 3px 6px; white-space: nowrap; }
+      .row-chevron { color: #a7a8ad; }
+
+      .new-rail { display: flex; gap: 18px; padding: 4px 0 24px; overflow-x: auto; scrollbar-width: none; }
+      .new-rail::-webkit-scrollbar { display: none; }
+      .new-person { flex: 0 0 64px; padding: 0; background: transparent; color: inherit; text-align: center; }
+      .new-person .avatar { width: 58px; height: 58px; margin: auto; box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent); }
+      .new-person span { display: block; margin-top: 8px; font-size: 11px; font-weight: 700; }
+      .conversation-row { grid-template-columns: 52px minmax(0,1fr) auto; }
+      .conversation-row time { align-self: start; padding-top: 3px; color: #9b9da2; font-size: 9px; }
+      .conversation-row.is-unread .row-main p { color: var(--ink); font-weight: 650; }
+
+      .profile-identity { display: grid; grid-template-columns: 72px minmax(0,1fr) auto; gap: 14px; align-items: center; margin-bottom: 25px; }
+      .profile-identity .avatar { width: 72px; height: 72px; background: linear-gradient(145deg,#2a2d34,#7a515f); font-size: 19px; }
+      .profile-identity h2 { margin: 0 0 6px; font-size: 21px; }
+      .profile-identity p { margin: 0; color: var(--muted); font-size: 11px; }
+      .edit-button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 750; }
+
+      .ai-profile { margin: 0 -17px 26px; padding: 22px 17px 24px; background: #17191e; color: white; }
+      .ai-profile-head { display: flex; align-items: center; justify-content: space-between; color: rgba(255,255,255,.56); font-size: 10px; font-weight: 750; }
+      .ai-profile h2 { margin: 18px 0 9px; font-family: "Songti SC", "STSong", serif; font-size: 25px; font-weight: 600; letter-spacing: 0; }
+      .ai-profile p { max-width: 350px; margin: 0; color: rgba(255,255,255,.67); font-size: 12px; line-height: 1.65; }
+      .ai-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+      .ai-tags span { padding: 6px 9px; border: 1px solid rgba(255,255,255,.13); border-radius: 999px; font-size: 10px; }
+      .taste-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 3px; margin-top: 10px; }
+      .taste-grid button { position: relative; aspect-ratio: 9 / 13; overflow: hidden; padding: 0; background: #ddd; }
+      .taste-grid img { width: 100%; height: 100%; object-fit: cover; }
+      .taste-grid button::after { position: absolute; inset: 45% 0 0; background: linear-gradient(transparent,rgba(0,0,0,.55)); content: ""; }
+
+      .tab-bar {
+        position: absolute;
+        z-index: 20;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: calc(70px + var(--safe-bottom));
+        display: grid;
+        grid-template-columns: repeat(4,1fr);
+        padding: 7px 7px var(--safe-bottom);
+        border-top: 1px solid var(--line);
+        background: rgba(247,247,245,.96);
+        backdrop-filter: blur(18px);
+      }
+      .discover ~ .tab-bar { border-color: rgba(255,255,255,.1); }
+      .tab-button { position: relative; display: grid; place-items: center; gap: 2px; padding: 0; background: transparent; color: #8a8c92; font-size: 9px; }
+      .tab-button svg { width: 22px; height: 22px; }
+      .tab-button.is-active { color: var(--ink); font-weight: 800; }
+      .phone[data-tab="discover"] .tab-bar { border-color: rgba(255,255,255,.1); background: rgba(7,8,10,.9); }
+      .phone[data-tab="discover"] .tab-button { color: rgba(255,255,255,.55); }
+      .phone[data-tab="discover"] .tab-button.is-active { color: white; }
+      .badge { position: absolute; top: 0; left: calc(50% + 6px); display: grid; min-width: 15px; height: 15px; place-items: center; padding: 0 4px; border: 2px solid var(--paper); border-radius: 99px; background: var(--accent); color: white; font-size: 8px; }
+      .phone[data-tab="discover"] .badge { border-color: #08090b; }
+
+      .sheet-layer { position: absolute; z-index: 40; inset: 0; display: none; }
+      .sheet-layer.is-open { display: block; }
+      .backdrop { position: absolute; inset: 0; width: 100%; background: rgba(0,0,0,.52); backdrop-filter: blur(3px); }
+      .sheet {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        padding: 9px 17px calc(20px + var(--safe-bottom));
+        border-radius: 18px 18px 0 0;
+        background: #fbfbfa;
+        box-shadow: 0 -18px 60px rgba(0,0,0,.2);
+        animation: sheet-in 180ms ease-out;
+      }
+      @keyframes sheet-in { from { transform: translateY(16px); opacity: .6; } }
+      .handle { width: 38px; height: 4px; margin: 0 auto 20px; border-radius: 9px; background: #d5d6d8; }
+      .sheet h2 { margin: 0 0 7px; font-size: 22px; }
+      .sheet > p { margin: 0 0 18px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+      .reason-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .reason-grid button { padding: 13px 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); text-align: left; font-size: 12px; font-weight: 700; }
+
+      .person-sheet .person-hero { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
+      .person-sheet .person-hero h2 { margin: 0 0 5px; }
+      .person-sheet .person-hero p { margin: 0; color: var(--muted); font-size: 11px; }
+      .person-signal { padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .person-signal small { color: var(--teal); font-weight: 800; }
+      .person-signal p { margin: 8px 0 0; font-size: 14px; line-height: 1.55; }
+      .shared-covers { display: grid; grid-template-columns: repeat(3,1fr); gap: 3px; margin: 17px 0; }
+      .shared-covers img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+      .primary-button { width: 100%; min-height: 48px; border-radius: 7px; background: var(--ink); color: white; font-weight: 800; }
+
+      .chat-screen { position: absolute; z-index: 25; inset: 0; display: none; flex-direction: column; background: #f7f7f5; }
+      .chat-screen.is-open { display: flex; }
+      .chat-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: max(14px,env(safe-area-inset-top)) 12px 12px; border-bottom: 1px solid var(--line); background: white; }
+      .chat-head strong { text-align: center; }
+      .chat-head button { background: transparent; }
+      .chat-context { margin: 14px 16px; padding: 12px; border-left: 3px solid var(--accent); background: white; font-size: 11px; line-height: 1.5; }
+      .messages { flex: 1; padding: 8px 16px; overflow-y: auto; }
+      .bubble { max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 14px 14px 14px; background: white; font-size: 13px; line-height: 1.55; }
+      .bubble.mine { margin-left: auto; border-radius: 14px 4px 14px 14px; background: #202227; color: white; }
+      .composer { display: grid; grid-template-columns: 1fr 42px; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom)); border-top: 1px solid var(--line); background: white; }
+      .composer input { min-width: 0; height: 42px; padding: 0 13px; border: 1px solid var(--line); border-radius: 8px; background: #f4f4f3; }
+      .composer button { display: grid; place-items: center; border-radius: 8px; background: var(--ink); color: white; }
+
+      .toast { position: absolute; z-index: 60; right: 50%; bottom: calc(82px + var(--safe-bottom)); transform: translateX(50%) translateY(8px); max-width: calc(100% - 34px); padding: 9px 13px; border-radius: 999px; background: rgba(17,18,21,.9); color: white; opacity: 0; pointer-events: none; font-size: 11px; white-space: nowrap; transition: 160ms ease; }
+      .toast.is-visible { opacity: 1; transform: translateX(50%) translateY(0); }
+
+      @media (min-width: 700px) {
+        .stage { padding: 28px; background: #d9dadd; }
+        .phone { height: min(844px, calc(100dvh - 56px)); border-radius: 22px; box-shadow: 0 28px 80px rgba(21,22,25,.24); }
+      }
+    </style>
   </head>
   <body>
-    <main class="prototype-shell">
-      <aside class="desktop-companion" aria-label="产品状态">
-        <div class="desktop-brand">
-          <span class="brand-glyph">暗</span>
-          <div>
-            <strong>暗号</strong>
-            <span>刷到同频的人</span>
-          </div>
-        </div>
-
-        <div class="desktop-statement">
-          <p class="kicker">Taste is a signal</p>
-          <h1>不填问卷。<br />从你停下来的地方认识你。</h1>
-          <p>你的喜欢、略过和想聊，会逐渐组成一张暗号卡，再把你带到真正有话可聊的人面前。</p>
-        </div>
-
-        <section class="desktop-signal" aria-label="实时品味信号">
-          <div class="desktop-signal-head">
-            <span>当前暗号</span>
-            <strong id="desktopSignalCount">0 个信号</strong>
-          </div>
-          <div id="signalList" class="signal-list">
-            <span>开始刷内容后生成</span>
-          </div>
-        </section>
-
-        <p class="desktop-note">手机端为主要体验。桌面端保留一台预览设备，方便内测观察。</p>
-      </aside>
-
-      <section id="app" class="mobile-app" data-active-tab="discover">
-        <section id="viewDiscover" class="app-view discover-view is-active" data-view="discover" aria-label="发现">
-          <div class="discover-topbar">
-            <button id="discoverBrandBtn" class="brand-button" type="button" aria-label="查看我的暗号">
-              <span class="brand-glyph brand-glyph-small">暗</span>
-            </button>
-            <div class="feed-switch" role="group" aria-label="内容频道">
-              <button type="button">关注</button>
-              <button class="is-active" type="button">推荐</button>
-            </div>
-            <button id="discoverProfileBtn" class="mini-avatar" type="button" aria-label="打开个人主页">我</button>
-          </div>
-
-          <article id="contentCard" class="content-stage" data-testid="content-card" aria-live="polite"></article>
-          <div id="heartBurst" class="heart-burst" aria-hidden="true">
-            <i data-lucide="heart"></i><span class="icon-fallback">♥</span>
-          </div>
-
-          <div class="swipe-cue" aria-hidden="true">
-            <i data-lucide="chevron-up"></i><span class="icon-fallback">⌃</span>
-            <span>上滑换一条</span>
-          </div>
-        </section>
-
-        <section id="viewMatches" class="app-view light-view matches-view" data-view="matches" aria-labelledby="matchesTitle">
-          <header class="screen-header hunt-header">
-            <div>
-              <p class="kicker">ALWAYS LOOKING</p>
-              <h2 id="matchesTitle">暗号</h2>
-            </div>
-            <button id="createSignalBtn" class="icon-button icon-button-filled" type="button" aria-label="新建寻人暗号">
-              <i data-lucide="plus"></i><span class="icon-fallback">＋</span>
-            </button>
+    <main class="stage">
+      <section id="phone" class="phone" data-tab="discover">
+        <section class="view discover is-active" data-view="discover" aria-label="发现">
+          <img id="feedCover" class="feed-cover" src="./assets/covers/cat-report-card.jpg" alt="猫咪短视频封面" />
+          <div class="feed-shade"></div>
+          <header class="feed-top">
+            <span class="brand-mark" aria-label="暗号">暗</span>
+            <span class="signal-meter"><span id="signalText">暗号 4/6</span><i aria-hidden="true"></i></span>
           </header>
-
-          <section class="hunt-overview" aria-label="正在运行的寻人暗号">
-            <div class="hunt-status-row">
-              <span class="hunt-live"><i aria-hidden="true"></i>正在替你寻找</span>
-              <button id="editSignalBtn" type="button">调整暗号</button>
-            </div>
-            <h3 id="activeSignalTitle">在上海，找一个周末能一起散步，也愿意认真聊点什么的人</h3>
-            <p id="activeSignalMeta">搭子 · 上海 · 还会运行 6 天</p>
-            <div id="activeSignalTags" class="hunt-tags"></div>
-
-            <div class="hunt-result-summary">
-              <div id="huntAvatarStack" class="hunt-avatar-stack" aria-hidden="true"></div>
-              <span>
-                <strong id="huntFoundTitle">今天找到 3 位</strong>
-                <small id="huntFoundCopy">其中 1 位也在寻找你这样的人</small>
-              </span>
-              <button id="seeFreshBtn" type="button">看新的</button>
-            </div>
-          </section>
-
-          <section id="freshPeopleSection" class="fresh-people-section" aria-label="新接上暗号的人">
-            <div class="section-label-row">
-              <strong>新接上暗号的人</strong>
-              <span id="freshPeopleHint">不是按条件上架，是彼此都可能合适</span>
-            </div>
-            <div id="signalResults" class="signal-results" aria-live="polite"></div>
-          </section>
-
-          <section class="saved-signals-section" aria-label="其他寻人暗号">
-            <div class="section-label-row">
-              <strong>其他暗号</strong>
-              <span>最多同时运行 3 个</span>
-            </div>
-            <div id="savedSignalList" class="saved-signal-list"></div>
-          </section>
-
-          <p class="hunt-assurance">
-            <i data-lucide="shield-check"></i><span class="icon-fallback">盾</span>
-            只有双方当前意图相符，才会被推荐给彼此
-          </p>
-        </section>
-
-        <section id="viewInbox" class="app-view light-view inbox-view" data-view="inbox" aria-labelledby="inboxTitle">
-          <div id="inboxHome" class="inbox-home">
-            <header class="screen-header">
-              <div>
-                <p class="kicker">CONVERSATIONS</p>
-                <h2 id="inboxTitle">消息</h2>
-              </div>
-              <button id="newMessageBtn" class="icon-button" type="button" aria-label="发起新消息">
-                <i data-lucide="square-pen"></i><span class="icon-fallback">＋</span>
-              </button>
-            </header>
-
-            <section class="new-signals" aria-label="新的暗号">
-              <div class="section-label-row">
-                <strong>新的暗号</strong>
-                <span>有人对你的品味有话想说</span>
-              </div>
-              <div id="newSignalsRail" class="new-signals-rail"></div>
-            </section>
-
-            <section class="conversation-section" aria-label="会话列表">
-              <div class="conversation-filter">
-                <button class="is-active" type="button">全部</button>
-                <button type="button">未读</button>
-                <button type="button">新同频</button>
-              </div>
-              <div id="conversationList" class="conversation-list"></div>
-            </section>
+          <div class="feed-actions">
+            <button id="likeButton" class="feed-action" type="button" aria-label="喜欢">
+              <span class="action-disc"><i data-lucide="heart"></i></span><b id="likeCount">5.6万</b>
+            </button>
+            <button id="talkButton" class="feed-action" type="button" aria-label="想聊聊">
+              <span class="action-disc"><i data-lucide="message-circle"></i></span><b>想聊</b>
+            </button>
           </div>
-
-          <section id="chatThread" class="chat-thread" aria-label="聊天会话" hidden>
-            <header class="chat-header">
-              <button id="backToInboxBtn" class="icon-button" type="button" aria-label="返回消息列表">
-                <i data-lucide="chevron-left"></i><span class="icon-fallback">‹</span>
-              </button>
-              <div id="chatIdentity" class="chat-identity"></div>
-              <button class="icon-button" type="button" aria-label="更多会话选项">
-                <i data-lucide="more-horizontal"></i><span class="icon-fallback">···</span>
-              </button>
-            </header>
-
-            <div id="chatContext" class="chat-context"></div>
-            <div id="messageList" class="message-list" aria-live="polite"></div>
-            <div id="icebreakers" class="icebreaker-row"></div>
-            <form id="composerForm" class="composer">
-              <button class="composer-add" type="button" aria-label="添加内容">
-                <i data-lucide="plus"></i><span class="icon-fallback">＋</span>
-              </button>
-              <input id="chatInput" type="text" autocomplete="off" placeholder="聊聊你们共同停下来的那条内容" />
-              <button id="sendBtn" class="composer-send" type="submit" aria-label="发送消息">
-                <i data-lucide="arrow-up"></i><span class="icon-fallback">↑</span>
-              </button>
-            </form>
-          </section>
+          <div class="feed-copy">
+            <div class="feed-byline"><span id="feedCreator">@蕉糖馒头</span><span id="feedKind" class="feed-kind">猫咪日常</span></div>
+            <h1 id="feedTitle">女儿成绩太差了，把它丢出去</h1>
+            <p id="feedCaption">有些视频不需要解释，猫的表情已经把故事说完了。</p>
+            <div id="feedTags" class="feed-tags"><span>#猫咪</span><span>#生活幽默</span></div>
+          </div>
+          <button id="nextFeed" class="next-feed" type="button" aria-label="换一条"><i data-lucide="chevron-up"></i></button>
         </section>
 
-        <section id="viewProfile" class="app-view light-view profile-view" data-view="profile" aria-labelledby="profileTitle">
-          <header class="screen-header profile-header">
-            <div>
-              <p class="kicker">MY SIGNAL</p>
-              <h2 id="profileTitle">我的暗号</h2>
-            </div>
-            <button id="profileMenuBtn" class="icon-button" type="button" aria-label="个人页设置">
-              <i data-lucide="menu"></i><span class="icon-fallback">☰</span>
-            </button>
-          </header>
-
-          <section class="profile-identity">
-            <div class="profile-avatar-wrap">
-              <div class="profile-avatar">我</div>
-              <span class="profile-status-dot"></span>
-            </div>
-            <div class="profile-name-row">
-              <h3 id="profileVibeName">暗号正在形成</h3>
-              <span class="verified-dot"><i data-lucide="sparkles"></i><span class="icon-fallback">✦</span></span>
-            </div>
-            <p id="profileHandle">@anhao_001 · 上海</p>
-            <div class="profile-stats">
-              <button type="button"><strong id="profileSignalStat">0</strong><span>品味信号</span></button>
-              <button type="button"><strong id="profileMatchStat">3</strong><span>同频的人</span></button>
-              <button type="button"><strong id="profileInviteStat">0</strong><span>同频好友</span></button>
-            </div>
-            <div class="profile-actions">
-              <button id="editProfileBtn" class="secondary-button" type="button">编辑暗号</button>
-              <button id="copyCardBtn" class="secondary-button" type="button">分享主页</button>
-              <button id="profileShareIcon" class="icon-button icon-button-filled" type="button" aria-label="更多分享方式">
-                <i data-lucide="user-plus"></i><span class="icon-fallback">＋</span>
+        <section class="view" data-view="frequency" aria-label="同频">
+          <div class="screen">
+            <header class="screen-head"><div><h1>同频</h1><p>正在出现的新的人</p></div></header>
+            <section class="intent-band" aria-label="正在运行的寻找条件">
+              <div class="intent-top"><span class="live-label"><i></i>正在替你寻找</span><button id="editIntent" class="text-button" type="button">调整</button></div>
+              <h2>在上海，找一个周末能一起散步，也愿意认真聊点什么的人</h2>
+              <p>搭子 · 上海 · 还会运行 6 天</p>
+              <div class="intent-tags"><span>猫咪</span><span>城市观察</span><span>认真聊天</span></div>
+            </section>
+            <div class="section-head"><h2>今天新出现 3 人</h2><span>按彼此合适程度排序</span></div>
+            <div class="people-list">
+              <button class="person-row" data-person="momo" type="button">
+                <span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默，25</strong><span class="match-score">82% 同频</span></span><p>猫咪、城市散步和不太用力的幽默</p><span class="common-tags"><span>猫咪</span><span>生活幽默</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
+              </button>
+              <button class="person-row" data-person="ayuan" type="button">
+                <span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原，27</strong><span class="match-score">76% 同频</span></span><p>球场、训练细节和周末随便走走</p><span class="common-tags"><span>篮球</span><span>城市散步</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
+              </button>
+              <button class="person-row" data-person="mina" type="button">
+                <span class="avatar" style="--avatar:#835a68">M</span><span class="row-main"><span class="row-title"><strong>Mina，24</strong><span class="match-score">71% 同频</span></span><p>关系访谈、书和认真吃晚饭</p><span class="common-tags"><span>自我照顾</span><span>长期主义</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
               </button>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <section class="taste-card" aria-label="AI 暗号画像">
-            <div class="taste-card-head">
-              <span>AI 读到的你</span>
-              <strong id="profileConfidence">0%</strong>
+        <section class="view" data-view="messages" aria-label="消息">
+          <div class="screen">
+            <header class="screen-head"><div><h1>消息</h1><p>接上之后，再慢慢认识</p></div></header>
+            <div class="section-head"><h2>新同频</h2><span>2</span></div>
+            <div class="new-rail">
+              <button class="new-person" data-chat="momo" type="button"><span class="avatar" style="--avatar:#566e61">默</span><span>默默</span></button>
+              <button class="new-person" data-chat="mina" type="button"><span class="avatar" style="--avatar:#835a68">M</span><span>Mina</span></button>
             </div>
-            <h3 id="vibeName">再刷几条，让我先认识你</h3>
-            <p id="vibeSummary">你不需要填写冗长资料。每一次停留、喜欢和想聊，都会让这张卡更像你。</p>
-            <div id="themePills" class="taste-tags"></div>
-            <div class="taste-progress"><span id="tasteProgressBar"></span></div>
-          </section>
-
-          <section class="profile-section profile-prompts">
-            <div class="section-label-row">
-              <strong>可以从这里认识我</strong>
-              <button id="regenerateBtn" type="button">换一组</button>
+            <div class="section-head"><h2>对话</h2></div>
+            <div class="conversation-list">
+              <button class="conversation-row is-unread" data-chat="momo" type="button"><span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默</strong></span><p>我也被那只猫最后的眼神笑到了</p></span><time>刚刚</time></button>
+              <button class="conversation-row" data-chat="ayuan" type="button"><span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原</strong></span><p>下次可以一起去看街球比赛</p></span><time>昨天</time></button>
+              <button class="conversation-row" data-chat="mina" type="button"><span class="avatar" style="--avatar:#835a68">M</span><span class="row-main"><span class="row-title"><strong>Mina</strong></span><p>你说的“先照顾自己”很有共鸣</p></span><time>周六</time></button>
             </div>
-            <div id="hooksList" class="profile-prompt-list"></div>
-          </section>
+          </div>
+        </section>
 
-          <section class="profile-section">
-            <div class="section-label-row">
-              <strong>我停下来过的内容</strong>
-              <button id="goDiscoverBtn" type="button">继续刷</button>
+        <section class="view" data-view="profile" aria-label="我的">
+          <div class="screen">
+            <header class="screen-head"><div><h1>我的</h1><p>别人如何通过品味认识你</p></div><button class="icon-button" type="button" aria-label="设置"><i data-lucide="settings"></i></button></header>
+            <section class="profile-identity"><span class="avatar">我</span><div><h2>夜行观察者</h2><p>@anhao_001 · 上海</p></div><button id="editProfile" class="edit-button" type="button">编辑</button></section>
+            <section class="ai-profile"><div class="ai-profile-head"><span>AI 读到的你</span><span>清晰度 67%</span></div><h2>柔软的现实主义者</h2><p>你容易为真实、不端着的瞬间停下来，也会认真听别人谈关系、成长和城市生活。</p><div class="ai-tags"><span>真实生活</span><span>生活幽默</span><span>城市观察</span><span>长期主义</span></div></section>
+            <div class="section-head"><h2>我停下来过的内容</h2><span>6</span></div>
+            <div class="taste-grid">
+              <button data-feed-index="0" type="button"><img src="./assets/covers/cat-report-card.jpg" alt="猫咪内容" /></button>
+              <button data-feed-index="2" type="button"><img src="./assets/covers/biography-reading.jpg" alt="人物传记内容" /></button>
+              <button data-feed-index="4" type="button"><img src="./assets/covers/beijing-cbd.jpg" alt="北京城市内容" /></button>
+              <button data-feed-index="5" type="button"><img src="./assets/covers/relaxed-laugh.jpg" alt="草原生活内容" /></button>
+              <button data-feed-index="7" type="button"><img src="./assets/covers/emperor-tamarin.jpg" alt="动物科普内容" /></button>
+              <button data-feed-index="8" type="button"><img src="./assets/covers/love-yourself-first.jpg" alt="关系访谈内容" /></button>
             </div>
-            <div id="tasteGrid" class="taste-grid"></div>
-          </section>
-
-          <section class="profile-tools" aria-label="内测工具">
-            <button id="copyInviteBtn" type="button">
-              <span><i data-lucide="users"></i><span class="icon-fallback">友</span></span>
-              <b>邀请朋友测同频</b>
-              <small>只分享抽象暗号，不分享观看记录</small>
-              <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
-            </button>
-            <button id="exportBtn" type="button">
-              <span><i data-lucide="download"></i><span class="icon-fallback">↓</span></span>
-              <b>导出内测数据</b>
-              <small>保存本机上的反馈记录</small>
-              <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
-            </button>
-            <button id="resetBtn" type="button">
-              <span><i data-lucide="refresh-cw"></i><span class="icon-fallback">↻</span></span>
-              <b>重新体验</b>
-              <small>清空当前原型状态</small>
-              <i data-lucide="chevron-right"></i><span class="icon-fallback">›</span>
-            </button>
-          </section>
+          </div>
         </section>
 
         <nav class="tab-bar" aria-label="主导航">
-          <button class="tab-button is-active" data-tab="discover" type="button">
-            <span class="tab-icon"><i data-lucide="play"></i><span class="icon-fallback">▶</span></span>
-            <span>发现</span>
-          </button>
-          <button class="tab-button" data-tab="matches" type="button">
-            <span class="tab-icon"><i data-lucide="radar"></i><span class="icon-fallback">◎</span><b id="signalTabBadge" class="tab-badge">3</b></span>
-            <span>暗号</span>
-          </button>
-          <button class="tab-button" data-tab="inbox" type="button">
-            <span class="tab-icon"><i data-lucide="message-circle"></i><span class="icon-fallback">○</span><b class="tab-badge">2</b></span>
-            <span>消息</span>
-          </button>
-          <button class="tab-button" data-tab="profile" type="button">
-            <span class="tab-icon tab-profile-icon">我<span id="profileTabDot" class="profile-tab-dot"></span></span>
-            <span>我的</span>
-          </button>
+          <button class="tab-button is-active" data-tab="discover" type="button"><i data-lucide="play"></i><span>发现</span></button>
+          <button class="tab-button" data-tab="frequency" type="button"><i data-lucide="users-round"></i><span>同频</span><b class="badge">3</b></button>
+          <button class="tab-button" data-tab="messages" type="button"><i data-lucide="message-circle"></i><span>消息</span><b class="badge">2</b></button>
+          <button class="tab-button" data-tab="profile" type="button"><i data-lucide="user-round"></i><span>我的</span></button>
         </nav>
 
+        <div id="reasonSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><h2 id="reasonTitle">为什么喜欢？</h2><p id="reasonCopy">这一点会帮助暗号更准确地理解你。</p><div id="reasonGrid" class="reason-grid"><button type="button">就是很好笑</button><button type="button">有一点共鸣</button><button type="button">想和别人聊</button><button type="button">学到了东西</button></div></section></div>
+
+        <div id="personSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet person-sheet"><div class="handle"></div><div class="person-hero"><span id="personAvatar" class="avatar" style="--avatar:#566e61">默</span><div><h2 id="personName">默默，25</h2><p id="personBio">上海 · 刚刚在线</p></div></div><div class="person-signal"><small>为什么你们可能聊得来</small><p id="personReason">你们都喜欢真实、不端着的生活瞬间，也都愿意从一条猫咪视频聊到城市里的日常。</p></div><div class="shared-covers"><img src="./assets/covers/cat-report-card.jpg" alt="共同喜欢的猫咪内容" /><img src="./assets/covers/beijing-cbd.jpg" alt="共同喜欢的城市内容" /><img src="./assets/covers/relaxed-laugh.jpg" alt="共同喜欢的生活内容" /></div><button id="sayHello" class="primary-button" type="button">打个招呼</button></section></div>
+
+        <section id="chatScreen" class="chat-screen" aria-label="聊天"><header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><strong id="chatName">默默</strong><span></span></header><div class="chat-context">你们都为「女儿成绩太差了，把它丢出去」停下来过。</div><div id="chatMessages" class="messages"><div class="bubble">我也被那只猫最后的眼神笑到了。</div><div class="bubble mine">那个表情太像被家长训完的我了。</div></div><form id="composer" class="composer"><input id="messageInput" type="text" placeholder="聊点具体的" autocomplete="off" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form></section>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-        <div id="replySheet" class="sheet-layer" aria-hidden="true">
-          <button class="sheet-backdrop" data-close-sheet type="button" aria-label="关闭回复面板"></button>
-          <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="replySheetTitle">
-            <div class="sheet-handle" aria-hidden="true"></div>
-            <div class="sheet-heading">
-              <div>
-                <p class="kicker">LEAVE A SIGNAL</p>
-                <h2 id="replySheetTitle">给这条内容留个暗号</h2>
-              </div>
-              <button class="icon-button" data-close-sheet type="button" aria-label="关闭">
-                <i data-lucide="x"></i><span class="icon-fallback">×</span>
-              </button>
-            </div>
-            <div id="replyContentPreview" class="reply-content-preview"></div>
-            <div id="replySuggestions" class="reply-suggestions"></div>
-            <form id="replyForm" class="reply-form">
-              <textarea id="replyInput" rows="3" maxlength="120" placeholder="你为什么会为它停下来？"></textarea>
-              <div class="reply-form-foot">
-                <span><i data-lucide="lock-keyhole"></i><span class="icon-fallback">锁</span> 仅用于匹配和破冰</span>
-                <button class="primary-button" type="submit">留下暗号</button>
-              </div>
-            </form>
-          </section>
-        </div>
-
-        <div id="huntSheet" class="sheet-layer" aria-hidden="true">
-          <button class="sheet-backdrop" data-close-hunt-sheet type="button" aria-label="关闭暗号编辑面板"></button>
-          <section class="bottom-sheet hunt-editor" role="dialog" aria-modal="true" aria-labelledby="huntSheetTitle">
-            <div class="sheet-handle" aria-hidden="true"></div>
-            <div class="sheet-heading">
-              <div>
-                <p class="kicker">NEW SIGNAL</p>
-                <h2 id="huntSheetTitle">你现在想认识谁？</h2>
-              </div>
-              <button class="icon-button" data-close-hunt-sheet type="button" aria-label="关闭">
-                <i data-lucide="x"></i><span class="icon-fallback">×</span>
-              </button>
-            </div>
-
-            <form id="huntForm" class="hunt-form">
-              <label for="huntInput">
-                <span>用你自己的话说</span>
-                <textarea id="huntInput" rows="3" maxlength="72">在上海，找一个周末能一起散步，也愿意认真聊点什么的人</textarea>
-              </label>
-
-              <fieldset>
-                <legend>你想建立什么关系</legend>
-                <div id="huntIntentChoices" class="hunt-choice-row">
-                  <button class="is-active" data-hunt-intent="搭子" type="button">一起做点事</button>
-                  <button data-hunt-intent="朋友" type="button">成为朋友</button>
-                  <button data-hunt-intent="恋爱" type="button">认真认识</button>
-                </div>
-              </fieldset>
-
-              <fieldset>
-                <legend>寻找范围</legend>
-                <div id="huntPlaceChoices" class="hunt-choice-row">
-                  <button class="is-active" data-hunt-place="上海" type="button">上海</button>
-                  <button data-hunt-place="同城" type="button">我的同城</button>
-                  <button data-hunt-place="不限城市" type="button">不限城市</button>
-                </div>
-              </fieldset>
-
-              <div class="hunt-form-note">
-                <i data-lucide="sparkles"></i><span class="icon-fallback">✦</span>
-                AI 会结合你的品味，而不是只按文字条件找人
-              </div>
-              <button class="primary-button hunt-submit" type="submit">让暗号开始寻找</button>
-            </form>
-          </section>
-        </div>
       </section>
     </main>
 
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="./app.js"></script>
+    <script>
+      const feed = [
+        { cover: "cat-report-card.jpg", creator: "@蕉糖馒头", kind: "猫咪日常", title: "女儿成绩太差了，把它丢出去", caption: "有些视频不需要解释，猫的表情已经把故事说完了。", tags: ["猫咪", "生活幽默"], likes: "5.6万" },
+        { cover: "basketball-reverse.jpg", creator: "@布卡", kind: "篮球高光", title: "秃师傅假掩护反向上篮", caption: "一个反向动作，让整座球场都跟着转身。", tags: ["篮球", "运动高光"], likes: "3.3万" },
+        { cover: "biography-reading.jpg", creator: "@程冲冲", kind: "阅读感悟", title: "读人物自传最大的感受", caption: "后来光芒万丈的人，也曾有很长一段无人问津。", tags: ["人物自传", "长期主义"], likes: "9486" },
+        { cover: "perfect-bgm.jpg", creator: "@先别吉", kind: "BGM 梗", title: "这条视频终于迎来了最适合的 BGM", caption: "雨夜、天安门和一首恰好出现的歌。", tags: ["BGM", "反差感"], likes: "2.0万" },
+        { cover: "beijing-cbd.jpg", creator: "@最靓的仔", kind: "城市观察", title: "帝都的繁华与压迫感", caption: "车窗外是繁华，也是人在城市里的微小。", tags: ["北京CBD", "城市观察"], likes: "1.1万" },
+        { cover: "relaxed-laugh.jpg", creator: "@喜遇金安", kind: "生活现场", title: "仔细听听她说的啥", caption: "有些松弛感，是计划不出来的。", tags: ["松弛感", "生活幽默"], likes: "1.2万" },
+        { cover: "future-montage.jpg", creator: "@火星的井", kind: "电影混剪", title: "如果我能为这样的未来而死", caption: "理想主义有时不是答案，而是一种选择。", tags: ["电影", "理想主义"], likes: "1.8万" },
+        { cover: "emperor-tamarin.jpg", creator: "@科普的勾勾哒", kind: "动物科普", title: "胡子长长的皇帝狨猴", caption: "奇怪又可爱，是认识世界的另一种入口。", tags: ["动物科普", "好奇心"], likes: "2.0万" },
+        { cover: "love-yourself-first.jpg", creator: "@凉子访谈录", kind: "关系访谈", title: "爱人先爱己", caption: "我们无法给孩子，自己内心没有的东西。", tags: ["自我照顾", "关系"], likes: "9.5万" }
+      ];
+
+      const people = {
+        momo: { name: "默默，25", avatar: "默", color: "#566e61", bio: "上海 · 刚刚在线", reason: "你们都喜欢真实、不端着的生活瞬间，也都愿意从一条猫咪视频聊到城市里的日常。" },
+        ayuan: { name: "阿原，27", avatar: "原", color: "#384e71", bio: "上海 · 12 分钟前在线", reason: "你们都会为球场上的临场反应停下来。TA 爱拆技术，你更容易先被情绪和高光抓住。" },
+        mina: { name: "Mina，24", avatar: "M", color: "#835a68", bio: "上海 · 在线", reason: "你们都在意关系里的真实感，也都相信照顾自己不是自私，而是理解别人的开始。" }
+      };
+
+      let feedIndex = 0;
+      let toastTimer;
+      const phone = document.querySelector("#phone");
+      const views = [...document.querySelectorAll("[data-view]")];
+      const tabs = [...document.querySelectorAll(".tab-button")];
+      const cover = document.querySelector("#feedCover");
+      const likeButton = document.querySelector("#likeButton");
+
+      function icons() { if (window.lucide) window.lucide.createIcons(); }
+      function showToast(text) {
+        const toast = document.querySelector("#toast");
+        toast.textContent = text;
+        toast.classList.add("is-visible");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1700);
+      }
+      function showTab(name) {
+        phone.dataset.tab = name;
+        views.forEach((view) => view.classList.toggle("is-active", view.dataset.view === name));
+        tabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.tab === name));
+        document.querySelector("#chatScreen").classList.remove("is-open");
+      }
+      function renderFeed() {
+        const item = feed[feedIndex];
+        cover.classList.add("is-changing");
+        setTimeout(() => {
+          cover.src = `./assets/covers/${item.cover}`;
+          cover.alt = `${item.title}短视频封面`;
+          document.querySelector("#feedCreator").textContent = item.creator;
+          document.querySelector("#feedKind").textContent = item.kind;
+          document.querySelector("#feedTitle").textContent = item.title;
+          document.querySelector("#feedCaption").textContent = item.caption;
+          document.querySelector("#feedTags").innerHTML = item.tags.map((tag) => `<span>#${tag}</span>`).join("");
+          document.querySelector("#likeCount").textContent = item.likes;
+          likeButton.classList.remove("is-liked");
+          cover.classList.remove("is-changing");
+        }, 120);
+      }
+      function openSheet(sheet) { sheet.classList.add("is-open"); sheet.setAttribute("aria-hidden", "false"); }
+      function closeSheets() { document.querySelectorAll(".sheet-layer").forEach((sheet) => { sheet.classList.remove("is-open"); sheet.setAttribute("aria-hidden", "true"); }); }
+      function setReasonSheet(title, copy, options) {
+        document.querySelector("#reasonTitle").textContent = title;
+        document.querySelector("#reasonCopy").textContent = copy;
+        document.querySelectorAll("#reasonGrid button").forEach((button, index) => { button.textContent = options[index]; });
+      }
+      function openPerson(id) {
+        const person = people[id];
+        document.querySelector("#personName").textContent = person.name;
+        document.querySelector("#personBio").textContent = person.bio;
+        document.querySelector("#personReason").textContent = person.reason;
+        const avatar = document.querySelector("#personAvatar");
+        avatar.textContent = person.avatar;
+        avatar.style.setProperty("--avatar", person.color);
+        openSheet(document.querySelector("#personSheet"));
+      }
+      function openChat(id) {
+        const person = people[id] || people.momo;
+        document.querySelector("#chatName").textContent = person.name.split("，")[0];
+        document.querySelector("#chatScreen").classList.add("is-open");
+      }
+
+      tabs.forEach((tab) => tab.addEventListener("click", () => showTab(tab.dataset.tab)));
+      document.querySelector("#nextFeed").addEventListener("click", () => { feedIndex = (feedIndex + 1) % feed.length; renderFeed(); });
+      likeButton.addEventListener("click", () => {
+        likeButton.classList.toggle("is-liked");
+        document.querySelector("#signalText").textContent = likeButton.classList.contains("is-liked") ? "暗号 5/6" : "暗号 4/6";
+        if (likeButton.classList.contains("is-liked")) {
+          setReasonSheet("为什么喜欢？", "这一点会帮助暗号更准确地理解你。", ["就是很好笑", "有一点共鸣", "想和别人聊", "学到了东西"]);
+          openSheet(document.querySelector("#reasonSheet"));
+        }
+      });
+      document.querySelector("#talkButton").addEventListener("click", () => {
+        setReasonSheet("想从哪里聊起？", "选一个真实的反应，它会成为更自然的开场。", ["这个表情太真实了", "我也经历过类似的", "想听听你的看法", "这条让我想到……"]);
+        openSheet(document.querySelector("#reasonSheet"));
+      });
+      document.querySelectorAll("[data-close-sheet]").forEach((button) => button.addEventListener("click", closeSheets));
+      document.querySelectorAll("#reasonGrid button").forEach((button) => button.addEventListener("click", () => { closeSheets(); showToast(`已记住：${button.textContent}`); }));
+      document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => openPerson(button.dataset.person)));
+      document.querySelector("#sayHello").addEventListener("click", () => { closeSheets(); showToast("招呼已发出，回应后进入消息"); });
+      document.querySelectorAll("[data-chat]").forEach((button) => button.addEventListener("click", () => openChat(button.dataset.chat)));
+      document.querySelector("#closeChat").addEventListener("click", () => document.querySelector("#chatScreen").classList.remove("is-open"));
+      document.querySelector("#composer").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const input = document.querySelector("#messageInput");
+        if (!input.value.trim()) return;
+        const bubble = document.createElement("div");
+        bubble.className = "bubble mine";
+        bubble.textContent = input.value.trim();
+        document.querySelector("#chatMessages").appendChild(bubble);
+        input.value = "";
+      });
+      document.querySelectorAll("[data-feed-index]").forEach((button) => button.addEventListener("click", () => { feedIndex = Number(button.dataset.feedIndex); renderFeed(); showTab("discover"); }));
+      document.querySelector("#editIntent").addEventListener("click", () => showToast("这里进入寻找条件编辑"));
+      document.querySelector("#editProfile").addEventListener("click", () => showToast("这里进入个人资料编辑"));
+
+      let touchY = null;
+      document.querySelector(".discover").addEventListener("touchstart", (event) => { touchY = event.touches[0].clientY; }, { passive: true });
+      document.querySelector(".discover").addEventListener("touchend", (event) => {
+        if (touchY !== null && touchY - event.changedTouches[0].clientY > 52) { feedIndex = (feedIndex + 1) % feed.length; renderFeed(); }
+        touchY = null;
+      }, { passive: true });
+
+      icons();
+    </script>
   </body>
 </html>
