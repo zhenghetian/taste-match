@@ -12,6 +12,7 @@ const contentCards = [
     peers: 28,
     douyinUrl: "https://v.douyin.com/PMg0WCVCmMs/",
     canonicalUrl: "https://www.douyin.com/video/7656275297339198138",
+    cover: "./assets/covers/cat-report-card.jpg",
     visual: "linear-gradient(145deg, #31271f 0%, #8f603b 30%, #d4b17e 52%, #4c5345 76%, #161917 100%)",
   },
   {
@@ -27,6 +28,7 @@ const contentCards = [
     peers: 41,
     douyinUrl: "https://v.douyin.com/TD1_dzAY-zA/",
     canonicalUrl: "https://www.douyin.com/video/7653472854248719461",
+    cover: "./assets/covers/basketball-reverse.jpg",
     visual: "linear-gradient(150deg, #11141b 0%, #283a57 28%, #a43334 29%, #e2a436 56%, #111217 100%)",
   },
   {
@@ -42,6 +44,7 @@ const contentCards = [
     peers: 36,
     douyinUrl: "https://v.douyin.com/xSK2cfb4lvI/",
     canonicalUrl: "https://www.douyin.com/note/7649001209977664869",
+    cover: "./assets/covers/biography-reading.jpg",
     visual: "linear-gradient(145deg, #ece2cf 0%, #bf985e 35%, #31425c 36%, #566d82 67%, #1d2027 100%)",
   },
   {
@@ -57,6 +60,7 @@ const contentCards = [
     peers: 52,
     douyinUrl: "https://v.douyin.com/O0R0TlxRdSI/",
     canonicalUrl: "https://www.douyin.com/video/7656988310985138803",
+    cover: "./assets/covers/perfect-bgm.jpg",
     visual: "linear-gradient(140deg, #202128 0%, #5f5bd6 28%, #ed4f70 29%, #e0ad3d 57%, #151820 100%)",
   },
   {
@@ -72,6 +76,7 @@ const contentCards = [
     peers: 33,
     douyinUrl: "https://v.douyin.com/DdtcO0wrNzU/",
     canonicalUrl: "https://www.douyin.com/video/7649030962278077923",
+    cover: "./assets/covers/beijing-cbd.jpg",
     visual: "linear-gradient(150deg, #0d141c 0%, #2f4258 34%, #aebac9 35%, #5b748b 58%, #171d24 100%)",
   },
   {
@@ -87,6 +92,7 @@ const contentCards = [
     peers: 47,
     douyinUrl: "https://v.douyin.com/Hf-HJQXzwR0/",
     canonicalUrl: "https://www.douyin.com/video/7657870760896202918",
+    cover: "./assets/covers/relaxed-laugh.jpg",
     visual: "linear-gradient(145deg, #dfcfbb 0%, #7f9b6e 38%, #dda73c 39%, #a8516a 62%, #252c2a 100%)",
   },
   {
@@ -102,6 +108,7 @@ const contentCards = [
     peers: 39,
     douyinUrl: "https://v.douyin.com/XcVrwDBIc98/",
     canonicalUrl: "https://www.douyin.com/video/7652178073122835195",
+    cover: "./assets/covers/future-montage.jpg",
     visual: "linear-gradient(150deg, #080d1d 0%, #213a72 34%, #d8546f 35%, #daa237 54%, #0f1118 100%)",
   },
   {
@@ -117,6 +124,7 @@ const contentCards = [
     peers: 31,
     douyinUrl: "https://v.douyin.com/BCUjL5RQFeM/",
     canonicalUrl: "https://www.douyin.com/video/7658193299651448090",
+    cover: "./assets/covers/emperor-tamarin.jpg",
     visual: "linear-gradient(145deg, #243027 0%, #607c48 34%, #d0b47e 35%, #986840 58%, #181f1b 100%)",
   },
   {
@@ -132,6 +140,7 @@ const contentCards = [
     peers: 64,
     douyinUrl: "https://v.douyin.com/d7xwFccudQA/",
     canonicalUrl: "https://www.douyin.com/video/7658182895558790435",
+    cover: "./assets/covers/love-yourself-first.jpg",
     visual: "linear-gradient(145deg, #eadfd4 0%, #d8526d 32%, #6860cd 33%, #344059 61%, #1c1e25 100%)",
   },
   {
@@ -147,6 +156,7 @@ const contentCards = [
     peers: 44,
     douyinUrl: "https://v.douyin.com/L_tJ9dSJo94/",
     canonicalUrl: "https://www.douyin.com/video/7657150975639816635",
+    cover: "./assets/covers/basketball-finishing.jpg",
     visual: "linear-gradient(145deg, #171d24 0%, #9d5239 30%, #dda738 31%, #30445c 59%, #0e1116 100%)",
   },
 ];
@@ -433,6 +443,7 @@ function renderContent() {
 
   contentCardEl.innerHTML = `
     <div class="content-media" style="--content-visual:${card.visual}">
+      <img class="content-cover" src="${card.cover}" alt="" aria-hidden="true" decoding="async" onerror="this.hidden=true">
       <span class="media-watermark"><i data-lucide="play"></i><span class="icon-fallback">▶</span> 来自真实抖音内容</span>
     </div>
 
@@ -808,6 +819,7 @@ function renderProfile() {
           const card = contentCards.find((item) => item.id === reaction.cardId);
           return `
             <button class="taste-tile" data-content-id="${card.id}" type="button" style="--content-visual:${card.visual}">
+              <img src="${card.cover}" alt="" aria-hidden="true" loading="lazy" onerror="this.hidden=true">
               <span>${escapeHtml(card.title)}</span>
             </button>
           `;
