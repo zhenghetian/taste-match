@@ -7,8 +7,8 @@
     <title>暗号 · 回声原型</title>
     <!--
       Prototype assumptions:
-      1. Lacan is expressed through interaction structure, never clinical labels or jargon.
-      2. A shared signifier plus a different position is more valuable than a similarity score.
+      1. Theory is expressed through interaction structure, never through labels or jargon.
+      2. A shared moment plus a different response is more valuable than a similarity score.
       3. Identity is revealed only after both people answer the same concrete question.
       4. The visual form comes from an echo: one signal, two positions, a delayed return.
     -->
@@ -35,32 +35,28 @@
       [hidden] { display: none !important; }
 
       .prototype-head {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        max-width: 1520px;
+        max-width: 560px;
         margin: 0 auto;
-        padding: 34px 42px 14px;
+        padding: 32px 18px 12px;
+        text-align: center;
       }
-      .prototype-head h1 { margin: 0; font-size: 28px; letter-spacing: 0; }
-      .prototype-head p { max-width: 520px; margin: 0; color: #616468; font-size: 12px; line-height: 1.6; text-align: right; }
+      .prototype-head h1 { margin: 0; font-size: 27px; letter-spacing: 0; }
+      .prototype-head p { max-width: 430px; margin: 8px auto 0; color: #616468; font-size: 12px; line-height: 1.6; }
       .prototype-kicker { margin-bottom: 7px; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 
       .wall {
         display: flex;
-        max-width: 1520px;
+        justify-content: center;
+        max-width: 700px;
         margin: 0 auto;
-        gap: 24px;
         align-items: flex-start;
-        padding: 20px 42px 58px;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
+        padding: 14px 18px 54px;
       }
-      .device-column { flex: 0 0 318px; scroll-snap-align: center; }
+      .device-column { flex: 0 0 376px; }
       .device-label { display: flex; justify-content: space-between; margin: 0 3px 9px; color: #626568; font-size: 10px; }
       .device-label em { color: var(--ink); font-style: normal; font-weight: 800; }
-      .device-scale { position: relative; width: 318px; height: 667px; }
-      .device-scale-inner { position: absolute; top: 0; left: 0; transform: scale(.762); transform-origin: top left; }
+      .device-scale { position: relative; width: 376px; height: 789px; }
+      .device-scale-inner { position: absolute; top: 0; left: 0; transform: scale(.9); transform-origin: top left; }
 
       .app {
         position: relative;
@@ -88,14 +84,13 @@
       .wordmark i { display: inline-block; width: 6px; height: 6px; margin-left: 3px; border-radius: 50%; background: var(--accent); }
       .trace-progress { padding: 7px 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 99px; background: rgba(0,0,0,.36); font-size: 10px; backdrop-filter: blur(10px); }
       .video-sound { position: absolute; z-index: 4; top: 59px; right: 16px; display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: rgba(0,0,0,.42); color: white; backdrop-filter: blur(10px); }
-      .discover-copy { position: absolute; z-index: 3; top: 60.5%; right: 17px; left: 17px; }
+      .discover-copy { position: absolute; z-index: 3; top: 61%; right: 18px; left: 18px; }
       .discover-copy small { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 750; }
       .discover-copy small span { padding: 4px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-size: 9px; }
       .discover-copy h2 { max-width: 310px; margin: 9px 0 7px; font-size: 25px; line-height: 1.14; text-wrap: pretty; }
       .discover-copy p { max-width: 315px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
-      .reaction-dock { position: absolute; z-index: 5; top: 78%; right: 10px; left: 10px; display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: #e6eaed; }
-      .reaction-dock button { min-height: 38px; padding: 0 3px; border-radius: 5px; background: transparent; color: #686b6f; font-size: 9px; font-weight: 750; }
-      .reaction-dock button:hover, .reaction-dock button.is-selected { background: white; color: var(--accent); box-shadow: 0 2px 9px rgba(42,43,44,.08); }
+      .pause-action { position: absolute; z-index: 5; right: 18px; bottom: 82px; left: 18px; display: flex; min-height: 52px; align-items: center; justify-content: space-between; padding: 0 16px; border-radius: 7px; background: var(--accent); color: white; font-size: 13px; font-weight: 850; box-shadow: 0 10px 25px rgba(82,107,132,.2); }
+      .pause-action i { font-size: 19px; }
 
       .tab-bar { position: absolute; z-index: 20; right: 0; bottom: 0; left: 0; height: 68px; display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--line); background: rgba(250,250,247,.96); backdrop-filter: blur(18px); }
       .tab-bar.is-dark { border-color: rgba(255,255,255,.1); background: rgba(8,9,11,.94); }
@@ -107,7 +102,7 @@
       .tab b { position: absolute; top: 7px; left: calc(50% + 7px); display: grid; min-width: 15px; height: 15px; place-items: center; padding: 0 4px; border: 2px solid var(--paper); border-radius: 99px; background: var(--accent); color: white; font-size: 8px; }
       .is-dark .tab b { border-color: #08090b; }
 
-      .echo-lead { margin: 0 18px 23px; padding: 14px 0 17px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .echo-lead { margin: 0; padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
       .echo-meta { display: flex; align-items: center; justify-content: space-between; color: var(--signal); font-size: 10px; font-weight: 800; }
       .echo-meta span:last-child { color: var(--muted); font-weight: 600; }
       .echo-media { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: center; margin: 14px 0 16px; }
@@ -121,7 +116,10 @@
       .position.you span { color: var(--accent); }
       .echo-open { display: flex; width: 100%; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 0 0; border-top: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 12px; font-weight: 850; text-align: left; }
       .echo-open i { font-size: 18px; }
-      .waiting { margin: 0 18px; padding: 15px 0; border-top: 1px solid var(--line); }
+      .subsection-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 18px 9px; }
+      .subsection-head h3 { margin: 0; font-size: 13px; }
+      .subsection-head span { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 850; }
+      .waiting { margin: 0; padding: 16px 18px 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #f1f3f3; }
       .waiting small { color: var(--muted); font-size: 9px; }
       .waiting p { margin: 7px 0 0; font-size: 13px; line-height: 1.5; }
 
@@ -141,21 +139,21 @@
       .composer input { min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); }
       .composer button { display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: white; font-size: 18px; }
 
-      .trace-intro { margin: 0 18px 26px; padding: 20px 0 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .trace-intro { margin: 0; padding: 22px 18px 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
       .trace-intro small { color: var(--muted); font-size: 9px; font-weight: 800; }
       .trace-intro h2 { margin: 12px 0 10px; font-family: "Songti SC", "STSong", serif; font-size: 27px; font-weight: 500; line-height: 1.28; }
       .trace-intro p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
-      .trace-section { margin: 0 18px 24px; }
+      .trace-section { margin: 0; padding: 21px 18px 23px; border-bottom: 1px solid var(--line); }
       .trace-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
       .trace-section-head h3 { margin: 0; font-size: 14px; }
       .trace-section-head span { color: var(--muted); font-size: 9px; }
-      .signifiers { display: flex; flex-wrap: wrap; gap: 6px; }
-      .signifiers span { padding: 7px 9px; border-radius: 99px; background: #e5eaed; font-size: 10px; }
+      .recurring-topics { display: flex; flex-wrap: wrap; gap: 6px; }
+      .recurring-topics span { padding: 7px 9px; border-radius: 99px; background: #e5eaed; font-size: 10px; }
       .trace-thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
       .trace-thumb { position: relative; aspect-ratio: 4/3; overflow: hidden; border-radius: 5px; }
       .trace-thumb img { width: 100%; height: 100%; object-fit: cover; }
       .trace-thumb span { position: absolute; right: 6px; bottom: 6px; left: 6px; color: white; font-size: 9px; font-weight: 750; text-shadow: 0 1px 5px black; }
-      .uncertain { margin: 0 -18px; padding: 18px; background: #e5ebef; color: var(--ink); }
+      .uncertain { margin: -21px -18px -23px; padding: 21px 18px 23px; background: #e5ebef; color: var(--ink); }
       .uncertain small { color: var(--signal); font-size: 9px; font-weight: 800; }
       .uncertain p { margin: 11px 0 14px; font-family: "Songti SC", "STSong", serif; font-size: 17px; line-height: 1.55; }
       .uncertain-actions { display: flex; gap: 7px; }
@@ -179,12 +177,12 @@
       .revealed-person span { color: var(--muted); font-size: 10px; }
 
       @media (max-width: 760px) {
-        .prototype-head { display: block; padding: 24px 18px 8px; }
-        .prototype-head p { margin-top: 9px; text-align: left; }
-        .wall { gap: 18px; padding: 16px 18px 38px; }
-        .device-column { flex-basis: 302px; }
-        .device-scale { width: 302px; height: 634px; }
-        .device-scale-inner { transform: scale(.724); }
+        .prototype-head { padding: 24px 18px 8px; }
+        .prototype-head h1 { font-size: 24px; }
+        .wall { padding: 12px 8px 38px; }
+        .device-column { flex-basis: 326px; }
+        .device-scale { width: 326px; height: 685px; }
+        .device-scale-inner { transform: scale(.782); }
       }
     </style>
   </head>
@@ -232,47 +230,41 @@
 
       const tabs = [
         { id:'discover', label:'发现', icon:'ph-play' },
-        { id:'echo', label:'回声', icon:'ph-waves', badge:'2' },
+        { id:'echo', label:'回声', icon:'ph-waves', badge:'1' },
         { id:'messages', label:'对话', icon:'ph-chat-circle', badge:'1' },
-        { id:'traces', label:'痕迹', icon:'ph-fingerprint' }
+        { id:'traces', label:'我的', icon:'ph-user-circle' }
       ];
 
       function TabBar({ active, onChange, dark }) {
         return <nav className={`tab-bar ${dark?'is-dark':''}`} aria-label="主导航">{tabs.map(tab=><button key={tab.id} className={`tab ${active===tab.id?'is-active':''}`} onClick={()=>onChange(tab.id)} aria-label={tab.label}><i className={`ph ${tab.icon}`}/><span>{tab.label}</span>{tab.badge&&<b>{tab.badge}</b>}</button>)}</nav>;
       }
 
-      function Discover({ onSignal }) {
+      function Discover({ onPause }) {
         const videoRef = useRef(null);
         const [muted,setMuted] = useState(true);
         const [posterHidden,setPosterHidden] = useState(false);
-        const [selected,setSelected] = useState('');
         useEffect(()=>{ const v=videoRef.current; if(!v)return; v.muted=muted; v.play().catch(()=>{}); return()=>v.pause(); },[muted]);
-        const react = (key,label) => { setSelected(key); window.setTimeout(()=>onSignal(label),160); };
         return <section className="screen discover-screen">
-          <video ref={videoRef} className="discover-video" src="./assets/taste-videos/night-walk.mp4?v=lacan" playsInline muted loop autoPlay onPlaying={()=>setPosterHidden(true)} />
+          <video ref={videoRef} className="discover-video" src="./assets/taste-videos/night-walk.mp4?v=echo" playsInline muted loop autoPlay onPlaying={()=>setPosterHidden(true)} />
           <img className={`discover-poster ${posterHidden?'is-hidden':''}`} src="./assets/taste-covers/night-walk.jpg" alt="夜晚独自散步" />
           <div className="discover-shade" />
           <div className="discover-top"><span className="wordmark">暗号<i/></span><span className="trace-progress">留下 7 处痕迹</span></div>
           <button className="video-sound" onClick={()=>setMuted(v=>!v)} aria-label={muted?'打开声音':'关闭声音'}><i className={`ph ${muted?'ph-speaker-slash':'ph-speaker-high'}`}/></button>
           <div className="discover-copy"><small>@自信阳光 <span>独处方式</span></small><h2>晚饭后，一个人慢慢走回生活里</h2><p>散步、看人跳舞、逛超市。你会如何消化一天的情绪？</p></div>
-          <div className="reaction-dock" aria-label="这条内容让你有什么感觉">
-            <button className={selected==='me'?'is-selected':''} onClick={()=>react('me','这很像我')}>像我</button>
-            <button className={selected==='wish'?'is-selected':''} onClick={()=>react('wish','这是我向往的')}>向往</button>
-            <button className={selected==='resist'?'is-selected':''} onClick={()=>react('resist','我抗拒，但停下了')}>抗拒</button>
-            <button className={selected==='unknown'?'is-selected':''} onClick={()=>react('unknown','说不清，但我停下了')}>说不清</button>
-          </div>
+          <button className="pause-action" onClick={onPause}><span>我在这里停下了</span><i className="ph ph-arrow-up-right"/></button>
         </section>;
       }
 
       function Echo({ onOpen }) {
         return <section className="screen">
-          <header className="screen-head"><small>今天抵达 2 次</small><h1>回声</h1><p>有人在和你相同的地方停了下来。</p></header>
+          <header className="screen-head"><small>今天有 1 次新的相遇</small><h1>回声</h1><p>不是推荐名单，是一处意外重合。</p></header>
           <article className="echo-lead">
             <div className="echo-meta"><span>一条新的回声</span><span>9 分钟前</span></div>
-            <div className="echo-media"><img src="./assets/taste-covers/fluid-friendship.jpg" alt="友情流动的视频"/><div><h2>你们看见了同一句话</h2><p>朋友不是突然离开，而是在一些没有察觉的时刻慢慢走远。</p></div></div>
+            <div className="echo-media"><img src="./assets/taste-covers/fluid-friendship.jpg" alt="友情流动的视频"/><div><h2>有人在同一处停下</h2><p>朋友不是突然离开，而是在一些没有察觉的时刻慢慢走远。</p></div></div>
             <div className="positions"><div className="position you"><b>你留下</b><span>「我抗拒，但停下了」</span></div><div className="position"><b>另一个人</b><span>「这很像我」</span></div></div>
             <button className="echo-open" onClick={onOpen}><span>接住这句暗号</span><i className="ph ph-arrow-right"/></button>
           </article>
+          <div className="subsection-head"><h3>还在路上</h3><span>1</span></div>
           <div className="waiting"><small>另一条回声还在路上</small><p>你们都向往没安排的普通周末，但 Ta 还没有回答那个问题。</p></div>
         </section>;
       }
@@ -293,15 +285,16 @@
         return <section className="screen">
           <header className="screen-head"><small>不是结论，仍在变化</small><h1>我的痕迹</h1><p>别人暂时可以从这些地方认出你。</p></header>
           <div className="trace-intro"><small>暗号正在变清晰 · 37%</small><h2>你似乎不怕独处，<br/>更怕无意义的热闹。</h2><p>这是一个暂时的猜测。它可以被你否认，也可能被下一次停留改写。</p></div>
-          <section className="trace-section"><div className="trace-section-head"><h3>反复出现的能指</h3><span>过去 7 天</span></div><div className="signifiers"><span>独处</span><span>普通生活</span><span>认真沟通</span><span>计划之外</span></div></section>
+          <section className="trace-section"><div className="trace-section-head"><h3>反复出现的主题</h3><span>过去 7 天</span></div><div className="recurring-topics"><span>独处</span><span>普通生活</span><span>认真沟通</span><span>计划之外</span></div></section>
           <section className="trace-section"><div className="trace-section-head"><h3>你想靠近的生活</h3><span>2 处</span></div><div className="trace-thumbs"><div className="trace-thumb"><img src="./assets/taste-covers/ordinary-weekend.jpg" alt="普通周末"/><span>没有安排的周末</span></div><div className="trace-thumb"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="和朋友看日出"/><span>临时起意的出发</span></div></div></section>
           <section className="trace-section"><div className="uncertain"><small>{corrected?'这个猜测已被收回':'一处仍然说不清'}</small><p>{corrected?'你没有被归类。下一次停留会从这里重新开始。':'你会在亲密关系的内容前停留，却很少选择「这很像我」。'}</p>{!corrected&&<div className="uncertain-actions"><button onClick={()=>setCorrected(false)}>有一点</button><button onClick={()=>setCorrected(true)}>不是这样</button></div>}</div></section>
         </section>;
       }
 
-      function Sheet({ type, signal, onClose, onAnswer, onChat }) {
+      function Sheet({ type, signal, onClose, onSignal, onAnswer, onChat }) {
         if(!type)return null;
         return <div className="sheet-layer"><button className="backdrop" onClick={onClose} aria-label="关闭"/><section className="sheet"><div className="handle"/>
+          {type==='reaction'&&<><span className="sheet-kicker">这一刻</span><h2>它为什么让你停下来？</h2><p>不需要解释完整，先选择最接近的一种感觉。</p><div className="sheet-options"><button onClick={()=>onSignal('这很像我')}><span>这很像我</span><i className="ph ph-arrow-right"/></button><button onClick={()=>onSignal('这是我向往的')}><span>这是我向往的</span><i className="ph ph-arrow-right"/></button><button onClick={()=>onSignal('我抗拒，但停下了')}><span>我抗拒，但停下了</span><i className="ph ph-arrow-right"/></button><button onClick={()=>onSignal('说不清，但我停下了')}><span>说不清，但我停下了</span><i className="ph ph-arrow-right"/></button></div></>}
           {type==='signal'&&<><span className="sheet-kicker">你留下了一句暗号 · {signal}</span><h2 className="serif">你似乎不是害怕独处，<br/>而是厌倦无意义的热闹。</h2><p>这不是对你的定义。它只记录了这一刻，你在什么地方停了下来。</p><button className="primary" onClick={onClose}>收下</button></>}
           {type==='question'&&<><span className="sheet-kicker">在见到 Ta 之前</span><h2>如果很重要的朋友慢慢疏远，你会怎么做？</h2><p>你们回答的是同一个问题，但不需要给出相同答案。</p><div className="sheet-options"><button onClick={onAnswer}><span>我会主动问一次发生了什么</span><i className="ph ph-arrow-right"/></button><button onClick={onAnswer}><span>我会尊重距离，等对方开口</span><i className="ph ph-arrow-right"/></button><button onClick={onAnswer}><span>我可能嘴上接受，心里放不下</span><i className="ph ph-arrow-right"/></button></div></>}
           {type==='reveal'&&<><span className="sheet-kicker">这句暗号被接住了</span><h2 className="serif">你们没有给出相同答案，<br/>但都愿意认真回答。</h2><div className="revealed-person"><div className="avatar">默</div><div><strong>默默，25</strong><span>上海 · 刚刚也完成了回答</span></div></div><button className="primary" onClick={onChat}>开始对话</button></>}
@@ -317,24 +310,17 @@
         const dark = false;
         const change = id => { setModal(null); setScreen(id); };
         return <IosFrame darkMode={dark}><div className="app">
-          {screen==='discover'&&<Discover onSignal={chooseSignal}/>} 
-          {screen==='echo'&&<Echo onOpen={()=>setModal('question')}/>} 
-          {screen==='messages'&&<Messages messages={messages} onSend={text=>setMessages(v=>[...v,{text,mine:true}])}/>} 
+          {screen==='discover'&&<Discover onPause={()=>setModal('reaction')}/>}
+          {screen==='echo'&&<Echo onOpen={()=>setModal('question')}/>}
+          {screen==='messages'&&<Messages messages={messages} onSend={text=>setMessages(v=>[...v,{text,mine:true}])}/>}
           {screen==='traces'&&<Traces/>}
           <TabBar active={screen} onChange={change} dark={dark}/>
-          <Sheet type={modal} signal={signal} onClose={()=>setModal(null)} onAnswer={()=>setModal('reveal')} onChat={()=>{setModal(null);setScreen('messages')}}/>
+          <Sheet type={modal} signal={signal} onClose={()=>setModal(null)} onSignal={chooseSignal} onAnswer={()=>setModal('reveal')} onChat={()=>{setModal(null);setScreen('messages')}}/>
         </div></IosFrame>;
       }
 
-      const devices = [
-        {id:'discover',index:'01',label:'留下一句暗号'},
-        {id:'echo',index:'02',label:'回声意外抵达'},
-        {id:'messages',index:'03',label:'从差异开始对话'},
-        {id:'traces',index:'04',label:'看见未完成的自己'}
-      ];
-
       function Prototype() {
-        return <><header className="prototype-head"><div><div className="prototype-kicker">Anhao / Encounter Prototype</div><h1>暗号 · 回声原型</h1></div><p>不是找到与我相同的人，而是让一句没有说完的话，被另一个人从不同的位置接住。</p></header><main className="wall">{devices.map(d=><section className="device-column" key={d.id}><div className="device-label"><em>{d.index}</em><span>{d.label}</span></div><div className="device-scale"><div className="device-scale-inner"><AppPhone initial={d.id}/></div></div></section>)}</main></>;
+        return <><header className="prototype-head"><div className="prototype-kicker">Anhao / Encounter Prototype</div><h1>暗号</h1><p>一句没有说完的话，被另一个人从不同的位置接住。</p></header><main className="wall"><section className="device-column"><div className="device-label"><em>交互原型</em><span>发现 → 回声 → 对话</span></div><div className="device-scale"><div className="device-scale-inner"><AppPhone initial="discover"/></div></div></section></main></>;
       }
 
       ReactDOM.createRoot(document.getElementById('root')).render(<Prototype/>);
