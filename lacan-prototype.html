@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#d7dad8" />
+    <title>暗号 · 回声原型</title>
+    <!--
+      Prototype assumptions:
+      1. Lacan is expressed through interaction structure, never clinical labels or jargon.
+      2. A shared signifier plus a different position is more valuable than a similarity score.
+      3. Identity is revealed only after both people answer the same concrete question.
+      4. The visual form comes from an echo: one signal, two positions, a delayed return.
+    -->
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.2/src/regular/style.css" />
+    <style>
+      :root {
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: #141517;
+        background: #d7dad8;
+        --ink: #141517;
+        --paper: #f4f4f1;
+        --muted: #797c80;
+        --line: rgba(20,21,23,.12);
+        --accent: #c72f4f;
+        --accent-soft: #f0d9df;
+        --signal: #196f65;
+      }
+
+      * { box-sizing: border-box; }
+      html, body, #root { min-height: 100%; margin: 0; }
+      button, input { font: inherit; letter-spacing: 0; }
+      button { border: 0; cursor: pointer; }
+      button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      [hidden] { display: none !important; }
+
+      .prototype-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        max-width: 1520px;
+        margin: 0 auto;
+        padding: 34px 42px 14px;
+      }
+      .prototype-head h1 { margin: 0; font-size: 28px; letter-spacing: 0; }
+      .prototype-head p { max-width: 520px; margin: 0; color: #616468; font-size: 12px; line-height: 1.6; text-align: right; }
+      .prototype-kicker { margin-bottom: 7px; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+
+      .wall {
+        display: flex;
+        max-width: 1520px;
+        margin: 0 auto;
+        gap: 24px;
+        align-items: flex-start;
+        padding: 20px 42px 58px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+      }
+      .device-column { flex: 0 0 318px; scroll-snap-align: center; }
+      .device-label { display: flex; justify-content: space-between; margin: 0 3px 9px; color: #626568; font-size: 10px; }
+      .device-label em { color: var(--ink); font-style: normal; font-weight: 800; }
+      .device-scale { position: relative; width: 318px; height: 667px; }
+      .device-scale-inner { position: absolute; top: 0; left: 0; transform: scale(.762); transform-origin: top left; }
+
+      .app {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+      }
+      .screen { position: absolute; inset: 0 0 68px; overflow-y: auto; scrollbar-width: none; }
+      .screen::-webkit-scrollbar { display: none; }
+      .screen.dark { inset: 0; background: #08090b; color: white; overflow: hidden; }
+
+      .screen-head { padding: 24px 18px 17px; }
+      .screen-head small { display: block; margin-bottom: 7px; color: var(--accent); font-size: 10px; font-weight: 850; }
+      .screen-head h1 { margin: 0; font-size: 30px; line-height: 1.05; }
+      .screen-head p { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+
+      .discover-video, .discover-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .discover-poster { transition: opacity 180ms ease; }
+      .discover-poster.is-hidden { opacity: 0; pointer-events: none; }
+      .discover-shade { position: absolute; inset: 0; background: linear-gradient(180deg,rgba(0,0,0,.38),transparent 27%,transparent 43%,rgba(0,0,0,.94) 88%,#08090b); pointer-events: none; }
+      .discover-top { position: absolute; z-index: 3; top: 17px; right: 16px; left: 16px; display: flex; align-items: center; justify-content: space-between; }
+      .wordmark { font-size: 18px; font-weight: 900; }
+      .wordmark i { display: inline-block; width: 6px; height: 6px; margin-left: 3px; border-radius: 50%; background: var(--accent); }
+      .trace-progress { padding: 7px 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 99px; background: rgba(0,0,0,.36); font-size: 10px; backdrop-filter: blur(10px); }
+      .video-sound { position: absolute; z-index: 4; top: 59px; right: 16px; display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: rgba(0,0,0,.42); color: white; backdrop-filter: blur(10px); }
+      .discover-copy { position: absolute; z-index: 3; right: 17px; bottom: 116px; left: 17px; }
+      .discover-copy small { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 750; }
+      .discover-copy small span { padding: 4px 7px; border: 1px solid rgba(255,255,255,.2); border-radius: 99px; color: rgba(255,255,255,.72); font-size: 9px; }
+      .discover-copy h2 { max-width: 310px; margin: 9px 0 7px; font-size: 25px; line-height: 1.14; text-wrap: pretty; }
+      .discover-copy p { max-width: 315px; margin: 0; color: rgba(255,255,255,.72); font-size: 11px; line-height: 1.55; }
+      .reaction-dock { position: absolute; z-index: 5; right: 10px; bottom: 67px; left: 10px; display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; padding: 3px; border: 1px solid rgba(255,255,255,.13); border-radius: 8px; background: rgba(8,9,11,.78); backdrop-filter: blur(16px); }
+      .reaction-dock button { min-height: 38px; padding: 0 3px; border-radius: 5px; background: transparent; color: rgba(255,255,255,.62); font-size: 9px; font-weight: 750; }
+      .reaction-dock button:hover, .reaction-dock button.is-selected { background: white; color: #111215; }
+
+      .tab-bar { position: absolute; z-index: 20; right: 0; bottom: 0; left: 0; height: 68px; display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--line); background: rgba(244,244,241,.96); backdrop-filter: blur(18px); }
+      .tab-bar.is-dark { border-color: rgba(255,255,255,.1); background: rgba(8,9,11,.94); }
+      .tab { position: relative; display: grid; place-items: center; align-content: center; gap: 3px; padding: 0; background: transparent; color: #8a8c90; font-size: 9px; }
+      .tab i { font-size: 22px; }
+      .tab.is-active { color: var(--ink); font-weight: 850; }
+      .is-dark .tab { color: rgba(255,255,255,.48); }
+      .is-dark .tab.is-active { color: white; }
+      .tab b { position: absolute; top: 7px; left: calc(50% + 7px); display: grid; min-width: 15px; height: 15px; place-items: center; padding: 0 4px; border: 2px solid var(--paper); border-radius: 99px; background: var(--accent); color: white; font-size: 8px; }
+      .is-dark .tab b { border-color: #08090b; }
+
+      .echo-lead { margin: 0 18px 23px; padding: 14px 0 17px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .echo-meta { display: flex; align-items: center; justify-content: space-between; color: var(--signal); font-size: 10px; font-weight: 800; }
+      .echo-meta span:last-child { color: var(--muted); font-weight: 600; }
+      .echo-media { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: center; margin: 14px 0 16px; }
+      .echo-media img { width: 92px; aspect-ratio: 3/4; object-fit: cover; border-radius: 6px; }
+      .echo-media h2 { margin: 0 0 8px; font-size: 20px; line-height: 1.25; }
+      .echo-media p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+      .positions { display: grid; gap: 7px; }
+      .position { display: grid; grid-template-columns: 57px 1fr; gap: 8px; align-items: baseline; font-size: 11px; }
+      .position b { color: var(--muted); font-size: 9px; }
+      .position.you span { color: var(--accent); }
+      .echo-open { display: flex; width: 100%; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 0 0; border-top: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 12px; font-weight: 850; text-align: left; }
+      .echo-open i { font-size: 18px; }
+      .waiting { margin: 0 18px; padding: 15px 0; border-top: 1px solid var(--line); }
+      .waiting small { color: var(--muted); font-size: 9px; }
+      .waiting p { margin: 7px 0 0; font-size: 13px; line-height: 1.5; }
+
+      .conversation-head { display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; padding: 18px 13px 12px; border-bottom: 1px solid var(--line); background: var(--paper); }
+      .conversation-head button { display: grid; place-items: center; background: transparent; color: var(--ink); font-size: 20px; }
+      .conversation-head div { text-align: center; }
+      .conversation-head strong { display: block; font-size: 14px; }
+      .conversation-head small { color: var(--signal); font-size: 9px; }
+      .shared-context { display: grid; grid-template-columns: 47px 1fr; gap: 10px; margin: 13px 15px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+      .shared-context img { width: 47px; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
+      .shared-context p { margin: 2px 0 0; color: #55585d; font-size: 10px; line-height: 1.5; }
+      .chat-body { padding: 6px 15px 84px; }
+      .chat-note { margin: 9px auto 19px; color: #97999c; font-size: 9px; text-align: center; }
+      .bubble { width: fit-content; max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 13px 13px 13px; background: white; font-size: 12px; line-height: 1.5; }
+      .bubble.mine { margin-left: auto; border-radius: 13px 4px 13px 13px; background: #1c1e21; color: white; }
+      .composer { position: absolute; z-index: 5; right: 0; bottom: 68px; left: 0; display: grid; grid-template-columns: 1fr 40px; gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); background: rgba(244,244,241,.98); }
+      .composer input { min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); }
+      .composer button { display: grid; place-items: center; border-radius: 7px; background: var(--ink); color: white; font-size: 18px; }
+
+      .trace-intro { margin: 0 18px 26px; padding: 20px 0 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .trace-intro small { color: var(--muted); font-size: 9px; font-weight: 800; }
+      .trace-intro h2 { margin: 12px 0 10px; font-family: "Songti SC", "STSong", serif; font-size: 27px; font-weight: 500; line-height: 1.28; }
+      .trace-intro p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      .trace-section { margin: 0 18px 24px; }
+      .trace-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+      .trace-section-head h3 { margin: 0; font-size: 14px; }
+      .trace-section-head span { color: var(--muted); font-size: 9px; }
+      .signifiers { display: flex; flex-wrap: wrap; gap: 6px; }
+      .signifiers span { padding: 7px 9px; border-radius: 99px; background: #e4e5e2; font-size: 10px; }
+      .trace-thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+      .trace-thumb { position: relative; aspect-ratio: 4/3; overflow: hidden; border-radius: 5px; }
+      .trace-thumb img { width: 100%; height: 100%; object-fit: cover; }
+      .trace-thumb span { position: absolute; right: 6px; bottom: 6px; left: 6px; color: white; font-size: 9px; font-weight: 750; text-shadow: 0 1px 5px black; }
+      .uncertain { margin: 0 -18px; padding: 18px; background: #1a1c1f; color: white; }
+      .uncertain small { color: rgba(255,255,255,.48); font-size: 9px; font-weight: 800; }
+      .uncertain p { margin: 11px 0 14px; font-family: "Songti SC", "STSong", serif; font-size: 17px; line-height: 1.55; }
+      .uncertain-actions { display: flex; gap: 7px; }
+      .uncertain-actions button { padding: 8px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: transparent; color: white; font-size: 9px; }
+
+      .sheet-layer { position: absolute; z-index: 40; inset: 0; }
+      .backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); }
+      .sheet { position: absolute; right: 0; bottom: 0; left: 0; padding: 9px 18px 24px; border-radius: 19px 19px 0 0; background: #f7f7f4; color: var(--ink); animation: sheet-in 180ms ease-out; }
+      @keyframes sheet-in { from { opacity: .5; transform: translateY(18px); } }
+      .handle { width: 38px; height: 4px; margin: 0 auto 18px; border-radius: 99px; background: #d2d3d0; }
+      .sheet-kicker { color: var(--accent); font-size: 9px; font-weight: 850; }
+      .sheet h2 { margin: 10px 0 8px; font-size: 22px; line-height: 1.28; }
+      .sheet h2.serif { font-family: "Songti SC", "STSong", serif; font-size: 25px; font-weight: 500; }
+      .sheet p { margin: 0 0 18px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      .sheet-options { display: grid; gap: 7px; }
+      .sheet-options button { display: flex; min-height: 43px; align-items: center; justify-content: space-between; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 750; text-align: left; }
+      .primary { width: 100%; min-height: 46px; border-radius: 7px; background: var(--ink); color: white; font-weight: 850; }
+      .revealed-person { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .avatar { display: grid; width: 50px; height: 50px; place-items: center; border-radius: 50%; background: #566e61; color: white; font-weight: 850; }
+      .revealed-person strong { display: block; margin-bottom: 4px; }
+      .revealed-person span { color: var(--muted); font-size: 10px; }
+
+      @media (max-width: 760px) {
+        .prototype-head { display: block; padding: 24px 18px 8px; }
+        .prototype-head p { margin-top: 9px; text-align: left; }
+        .wall { gap: 18px; padding: 16px 18px 38px; }
+        .device-column { flex-basis: 302px; }
+        .device-scale { width: 302px; height: 634px; }
+        .device-scale-inner { transform: scale(.724); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      window.__prototypeErrors = [];
+      window.addEventListener("error", (event) => window.__prototypeErrors.push(event.message));
+      window.addEventListener("unhandledrejection", (event) => window.__prototypeErrors.push(String(event.reason)));
+    </script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="text/babel">
+      const { useEffect, useRef, useState } = React;
+
+      const iosFrameStyles = {
+        wrapper: { display:'inline-block', padding:12, background:'#000', borderRadius:60, boxShadow:'0 0 0 2px #1f2937, 0 20px 60px rgba(0,0,0,.3)', position:'relative' },
+        screen: { position:'relative', borderRadius:48, overflow:'hidden', background:'#fff' },
+        statusBar: { position:'absolute', top:0, left:0, right:0, height:54, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 32px', fontSize:16, fontWeight:600, fontFamily:'-apple-system,"SF Pro Text",sans-serif', zIndex:20, pointerEvents:'none' },
+        dynamicIsland: { position:'absolute', top:12, left:'50%', transform:'translateX(-50%)', width:124, height:36, background:'#000', borderRadius:999, zIndex:30 },
+        statusIcons: { display:'flex', alignItems:'center', gap:6 },
+        signalIcon: { display:'flex', alignItems:'flex-end', gap:2, height:12 },
+        signalBar: { width:3, background:'currentColor', borderRadius:1 },
+        batteryIcon: { width:26, height:12, border:'1.5px solid currentColor', borderRadius:3, padding:1, position:'relative', opacity:.8 },
+        batteryCap: { position:'absolute', top:3, right:-3, width:2, height:6, background:'currentColor', borderRadius:'0 1px 1px 0' },
+        content: { position:'absolute', top:54, left:0, right:0, bottom:34, overflow:'auto' },
+        homeIndicator: { position:'absolute', bottom:10, left:'50%', transform:'translateX(-50%)', width:140, height:5, background:'rgba(0,0,0,.3)', borderRadius:999, zIndex:10 },
+        homeIndicatorDark: { background:'rgba(255,255,255,.5)' }
+      };
+
+      function IosFrame({ children, width=393, height=852, time='9:41', battery=92, darkMode=false }) {
+        const textColor = darkMode ? '#fff' : '#000';
+        return <div style={iosFrameStyles.wrapper}><div style={{...iosFrameStyles.screen,width,height,background:darkMode?'#000':'#fff'}}>
+          <div style={{...iosFrameStyles.statusBar,color:textColor}}><span>{time}</span><div style={iosFrameStyles.statusIcons}>
+            <div style={iosFrameStyles.signalIcon}>{[4,6,9,11].map(h=><div key={h} style={{...iosFrameStyles.signalBar,height:h}} />)}</div>
+            <svg width="16" height="12" viewBox="0 0 16 12" fill="none" style={{color:textColor}}><path d="M8 11.5a1 1 0 100-2 1 1 0 000 2z" fill="currentColor"/><path d="M3 7.5a7 7 0 0110 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M1 4.5a11 11 0 0114 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity=".7"/></svg>
+            <div style={iosFrameStyles.batteryIcon}><div style={{width:`${battery}%`,height:'100%',background:'currentColor',borderRadius:1,opacity:.9}}/><div style={iosFrameStyles.batteryCap}/></div>
+          </div></div>
+          <div style={iosFrameStyles.dynamicIsland}/>
+          <div style={iosFrameStyles.content}>{children}</div>
+          <div style={{...iosFrameStyles.homeIndicator,...(darkMode?iosFrameStyles.homeIndicatorDark:{})}}/>
+        </div></div>;
+      }
+
+      const tabs = [
+        { id:'discover', label:'发现', icon:'ph-play' },
+        { id:'echo', label:'回声', icon:'ph-waves', badge:'2' },
+        { id:'messages', label:'对话', icon:'ph-chat-circle', badge:'1' },
+        { id:'traces', label:'痕迹', icon:'ph-fingerprint' }
+      ];
+
+      function TabBar({ active, onChange, dark }) {
+        return <nav className={`tab-bar ${dark?'is-dark':''}`} aria-label="主导航">{tabs.map(tab=><button key={tab.id} className={`tab ${active===tab.id?'is-active':''}`} onClick={()=>onChange(tab.id)} aria-label={tab.label}><i className={`ph ${tab.icon}`}/><span>{tab.label}</span>{tab.badge&&<b>{tab.badge}</b>}</button>)}</nav>;
+      }
+
+      function Discover({ onSignal }) {
+        const videoRef = useRef(null);
+        const [muted,setMuted] = useState(true);
+        const [posterHidden,setPosterHidden] = useState(false);
+        const [selected,setSelected] = useState('');
+        useEffect(()=>{ const v=videoRef.current; if(!v)return; v.muted=muted; v.play().catch(()=>{}); return()=>v.pause(); },[muted]);
+        const react = (key,label) => { setSelected(key); window.setTimeout(()=>onSignal(label),160); };
+        return <section className="screen dark">
+          <video ref={videoRef} className="discover-video" src="./assets/taste-videos/night-walk.mp4?v=lacan" playsInline muted loop autoPlay onPlaying={()=>setPosterHidden(true)} />
+          <img className={`discover-poster ${posterHidden?'is-hidden':''}`} src="./assets/taste-covers/night-walk.jpg" alt="夜晚独自散步" />
+          <div className="discover-shade" />
+          <div className="discover-top"><span className="wordmark">暗号<i/></span><span className="trace-progress">留下 7 处痕迹</span></div>
+          <button className="video-sound" onClick={()=>setMuted(v=>!v)} aria-label={muted?'打开声音':'关闭声音'}><i className={`ph ${muted?'ph-speaker-slash':'ph-speaker-high'}`}/></button>
+          <div className="discover-copy"><small>@自信阳光 <span>独处方式</span></small><h2>晚饭后，一个人慢慢走回生活里</h2><p>散步、看人跳舞、逛超市。你会如何消化一天的情绪？</p></div>
+          <div className="reaction-dock" aria-label="这条内容让你有什么感觉">
+            <button className={selected==='me'?'is-selected':''} onClick={()=>react('me','这很像我')}>像我</button>
+            <button className={selected==='wish'?'is-selected':''} onClick={()=>react('wish','这是我向往的')}>向往</button>
+            <button className={selected==='resist'?'is-selected':''} onClick={()=>react('resist','我抗拒，但停下了')}>抗拒</button>
+            <button className={selected==='unknown'?'is-selected':''} onClick={()=>react('unknown','说不清，但我停下了')}>说不清</button>
+          </div>
+        </section>;
+      }
+
+      function Echo({ onOpen }) {
+        return <section className="screen">
+          <header className="screen-head"><small>今天抵达 2 次</small><h1>回声</h1><p>有人在和你相同的地方停了下来。</p></header>
+          <article className="echo-lead">
+            <div className="echo-meta"><span>一条新的回声</span><span>9 分钟前</span></div>
+            <div className="echo-media"><img src="./assets/taste-covers/fluid-friendship.jpg" alt="友情流动的视频"/><div><h2>你们看见了同一句话</h2><p>朋友不是突然离开，而是在一些没有察觉的时刻慢慢走远。</p></div></div>
+            <div className="positions"><div className="position you"><b>你留下</b><span>「我抗拒，但停下了」</span></div><div className="position"><b>另一个人</b><span>「这很像我」</span></div></div>
+            <button className="echo-open" onClick={onOpen}><span>接住这句暗号</span><i className="ph ph-arrow-right"/></button>
+          </article>
+          <div className="waiting"><small>另一条回声还在路上</small><p>你们都向往没安排的普通周末，但 Ta 还没有回答那个问题。</p></div>
+        </section>;
+      }
+
+      function Messages({ messages, onSend }) {
+        const [value,setValue] = useState('');
+        const submit = e => { e.preventDefault(); if(!value.trim())return; onSend(value.trim()); setValue(''); };
+        return <section className="screen">
+          <header className="conversation-head"><button aria-label="返回"><i className="ph ph-caret-left"/></button><div><strong>默默</strong><small>一条回声已经被接住</small></div><span/></header>
+          <div className="shared-context"><img src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停留的内容"/><p>你们在同一条视频前停下，却给出了不同答案。</p></div>
+          <div className="chat-body"><div className="chat-note">从一句没有标准答案的话开始</div>{messages.map((m,i)=><div key={i} className={`bubble ${m.mine?'mine':''}`}>{m.text}</div>)}</div>
+          <form className="composer" onSubmit={submit}><input value={value} onChange={e=>setValue(e.target.value)} aria-label="消息" placeholder="接着说点具体的"/><button aria-label="发送"><i className="ph ph-arrow-up"/></button></form>
+        </section>;
+      }
+
+      function Traces() {
+        const [corrected,setCorrected] = useState(false);
+        return <section className="screen">
+          <header className="screen-head"><small>不是结论，仍在变化</small><h1>我的痕迹</h1><p>别人暂时可以从这些地方认出你。</p></header>
+          <div className="trace-intro"><small>暗号正在变清晰 · 37%</small><h2>你似乎不怕独处，<br/>更怕无意义的热闹。</h2><p>这是一个暂时的猜测。它可以被你否认，也可能被下一次停留改写。</p></div>
+          <section className="trace-section"><div className="trace-section-head"><h3>反复出现的能指</h3><span>过去 7 天</span></div><div className="signifiers"><span>独处</span><span>普通生活</span><span>认真沟通</span><span>计划之外</span></div></section>
+          <section className="trace-section"><div className="trace-section-head"><h3>你想靠近的生活</h3><span>2 处</span></div><div className="trace-thumbs"><div className="trace-thumb"><img src="./assets/taste-covers/ordinary-weekend.jpg" alt="普通周末"/><span>没有安排的周末</span></div><div className="trace-thumb"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="和朋友看日出"/><span>临时起意的出发</span></div></div></section>
+          <section className="trace-section"><div className="uncertain"><small>{corrected?'这个猜测已被收回':'一处仍然说不清'}</small><p>{corrected?'你没有被归类。下一次停留会从这里重新开始。':'你会在亲密关系的内容前停留，却很少选择「这很像我」。'}</p>{!corrected&&<div className="uncertain-actions"><button onClick={()=>setCorrected(false)}>有一点</button><button onClick={()=>setCorrected(true)}>不是这样</button></div>}</div></section>
+        </section>;
+      }
+
+      function Sheet({ type, signal, onClose, onAnswer, onChat }) {
+        if(!type)return null;
+        return <div className="sheet-layer"><button className="backdrop" onClick={onClose} aria-label="关闭"/><section className="sheet"><div className="handle"/>
+          {type==='signal'&&<><span className="sheet-kicker">你留下了一句暗号 · {signal}</span><h2 className="serif">你似乎不是害怕独处，<br/>而是厌倦无意义的热闹。</h2><p>这不是对你的定义。它只记录了这一刻，你在什么地方停了下来。</p><button className="primary" onClick={onClose}>收下</button></>}
+          {type==='question'&&<><span className="sheet-kicker">在见到 Ta 之前</span><h2>如果很重要的朋友慢慢疏远，你会怎么做？</h2><p>你们回答的是同一个问题，但不需要给出相同答案。</p><div className="sheet-options"><button onClick={onAnswer}><span>我会主动问一次发生了什么</span><i className="ph ph-arrow-right"/></button><button onClick={onAnswer}><span>我会尊重距离，等对方开口</span><i className="ph ph-arrow-right"/></button><button onClick={onAnswer}><span>我可能嘴上接受，心里放不下</span><i className="ph ph-arrow-right"/></button></div></>}
+          {type==='reveal'&&<><span className="sheet-kicker">这句暗号被接住了</span><h2 className="serif">你们没有给出相同答案，<br/>但都愿意认真回答。</h2><div className="revealed-person"><div className="avatar">默</div><div><strong>默默，25</strong><span>上海 · 刚刚也完成了回答</span></div></div><button className="primary" onClick={onChat}>开始对话</button></>}
+        </section></div>;
+      }
+
+      function AppPhone({ initial }) {
+        const [screen,setScreen] = useState(initial);
+        const [modal,setModal] = useState(null);
+        const [signal,setSignal] = useState('');
+        const [messages,setMessages] = useState([{text:'我觉得关系慢慢变淡，比吵一架更难接受。'},{text:'我反而会假装没看见，可能是怕问出不想听的答案。',mine:true}]);
+        const chooseSignal = label => { setSignal(label); setModal('signal'); };
+        const dark = screen==='discover';
+        const change = id => { setModal(null); setScreen(id); };
+        return <IosFrame darkMode={dark}><div className="app">
+          {screen==='discover'&&<Discover onSignal={chooseSignal}/>} 
+          {screen==='echo'&&<Echo onOpen={()=>setModal('question')}/>} 
+          {screen==='messages'&&<Messages messages={messages} onSend={text=>setMessages(v=>[...v,{text,mine:true}])}/>} 
+          {screen==='traces'&&<Traces/>}
+          <TabBar active={screen} onChange={change} dark={dark}/>
+          <Sheet type={modal} signal={signal} onClose={()=>setModal(null)} onAnswer={()=>setModal('reveal')} onChat={()=>{setModal(null);setScreen('messages')}}/>
+        </div></IosFrame>;
+      }
+
+      const devices = [
+        {id:'discover',index:'01',label:'留下一句暗号'},
+        {id:'echo',index:'02',label:'回声意外抵达'},
+        {id:'messages',index:'03',label:'从差异开始对话'},
+        {id:'traces',index:'04',label:'看见未完成的自己'}
+      ];
+
+      function Prototype() {
+        return <><header className="prototype-head"><div><div className="prototype-kicker">Anhao / Encounter Prototype</div><h1>暗号 · 回声原型</h1></div><p>不是找到与我相同的人，而是让一句没有说完的话，被另一个人从不同的位置接住。</p></header><main className="wall">{devices.map(d=><section className="device-column" key={d.id}><div className="device-label"><em>{d.index}</em><span>{d.label}</span></div><div className="device-scale"><div className="device-scale-inner"><AppPhone initial={d.id}/></div></div></section>)}</main></>;
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<Prototype/>);
+    </script>
+  </body>
+</html>
