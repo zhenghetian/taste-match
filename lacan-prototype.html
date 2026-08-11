@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#d7dad8" />
+    <meta name="theme-color" content="#e8edef" />
     <title>暗号 · 回声原型</title>
     <!--
       Prototype assumptions:
@@ -16,15 +16,15 @@
     <style>
       :root {
         font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-        color: #141517;
-        background: #eef0ed;
-        --ink: #141517;
-        --paper: #f8f8f5;
-        --muted: #797c80;
-        --line: rgba(20,21,23,.12);
-        --accent: #c72f4f;
-        --accent-soft: #f0d9df;
-        --signal: #9d3150;
+        color: #1d2226;
+        background: #e8edef;
+        --ink: #1d2226;
+        --paper: #fafaf7;
+        --muted: #717981;
+        --line: rgba(29,34,38,.13);
+        --accent: #526b84;
+        --accent-soft: #e1e7eb;
+        --signal: #526b84;
       }
 
       * { box-sizing: border-box; }
@@ -93,11 +93,11 @@
       .discover-copy small span { padding: 4px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-size: 9px; }
       .discover-copy h2 { max-width: 310px; margin: 9px 0 7px; font-size: 25px; line-height: 1.14; text-wrap: pretty; }
       .discover-copy p { max-width: 315px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
-      .reaction-dock { position: absolute; z-index: 5; top: 78%; right: 10px; left: 10px; display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: #e9eae7; }
+      .reaction-dock { position: absolute; z-index: 5; top: 78%; right: 10px; left: 10px; display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: #e6eaed; }
       .reaction-dock button { min-height: 38px; padding: 0 3px; border-radius: 5px; background: transparent; color: #686b6f; font-size: 9px; font-weight: 750; }
       .reaction-dock button:hover, .reaction-dock button.is-selected { background: white; color: var(--accent); box-shadow: 0 2px 9px rgba(42,43,44,.08); }
 
-      .tab-bar { position: absolute; z-index: 20; right: 0; bottom: 0; left: 0; height: 68px; display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--line); background: rgba(244,244,241,.96); backdrop-filter: blur(18px); }
+      .tab-bar { position: absolute; z-index: 20; right: 0; bottom: 0; left: 0; height: 68px; display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--line); background: rgba(250,250,247,.96); backdrop-filter: blur(18px); }
       .tab-bar.is-dark { border-color: rgba(255,255,255,.1); background: rgba(8,9,11,.94); }
       .tab { position: relative; display: grid; place-items: center; align-content: center; gap: 3px; padding: 0; background: transparent; color: #8a8c90; font-size: 9px; }
       .tab i { font-size: 22px; }
@@ -114,7 +114,8 @@
       .echo-media img { width: 92px; aspect-ratio: 3/4; object-fit: cover; border-radius: 6px; }
       .echo-media h2 { margin: 0 0 8px; font-size: 20px; line-height: 1.25; }
       .echo-media p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
-      .positions { display: grid; gap: 7px; }
+      .positions { position: relative; display: grid; gap: 7px; padding-left: 13px; }
+      .positions::before { position: absolute; top: 3px; bottom: 3px; left: 0; width: 1px; background: var(--accent); content: ""; }
       .position { display: grid; grid-template-columns: 57px 1fr; gap: 8px; align-items: baseline; font-size: 11px; }
       .position b { color: var(--muted); font-size: 9px; }
       .position.you span { color: var(--accent); }
@@ -136,7 +137,7 @@
       .chat-note { margin: 9px auto 19px; color: #97999c; font-size: 9px; text-align: center; }
       .bubble { width: fit-content; max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 13px 13px 13px; background: white; font-size: 12px; line-height: 1.5; }
       .bubble.mine { margin-left: auto; border-radius: 13px 4px 13px 13px; background: var(--accent); color: white; }
-      .composer { position: absolute; z-index: 5; right: 0; bottom: 68px; left: 0; display: grid; grid-template-columns: 1fr 40px; gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); background: rgba(244,244,241,.98); }
+      .composer { position: absolute; z-index: 5; right: 0; bottom: 68px; left: 0; display: grid; grid-template-columns: 1fr 40px; gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); background: rgba(250,250,247,.98); }
       .composer input { min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); }
       .composer button { display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: white; font-size: 18px; }
 
@@ -149,12 +150,12 @@
       .trace-section-head h3 { margin: 0; font-size: 14px; }
       .trace-section-head span { color: var(--muted); font-size: 9px; }
       .signifiers { display: flex; flex-wrap: wrap; gap: 6px; }
-      .signifiers span { padding: 7px 9px; border-radius: 99px; background: #e4e5e2; font-size: 10px; }
+      .signifiers span { padding: 7px 9px; border-radius: 99px; background: #e5eaed; font-size: 10px; }
       .trace-thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
       .trace-thumb { position: relative; aspect-ratio: 4/3; overflow: hidden; border-radius: 5px; }
       .trace-thumb img { width: 100%; height: 100%; object-fit: cover; }
       .trace-thumb span { position: absolute; right: 6px; bottom: 6px; left: 6px; color: white; font-size: 9px; font-weight: 750; text-shadow: 0 1px 5px black; }
-      .uncertain { margin: 0 -18px; padding: 18px; background: #e7ece9; color: var(--ink); }
+      .uncertain { margin: 0 -18px; padding: 18px; background: #e5ebef; color: var(--ink); }
       .uncertain small { color: var(--signal); font-size: 9px; font-weight: 800; }
       .uncertain p { margin: 11px 0 14px; font-family: "Songti SC", "STSong", serif; font-size: 17px; line-height: 1.55; }
       .uncertain-actions { display: flex; gap: 7px; }
@@ -173,7 +174,7 @@
       .sheet-options button { display: flex; min-height: 43px; align-items: center; justify-content: space-between; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 750; text-align: left; }
       .primary { width: 100%; min-height: 46px; border-radius: 7px; background: var(--accent); color: white; font-weight: 850; }
       .revealed-person { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-      .avatar { display: grid; width: 50px; height: 50px; place-items: center; border-radius: 50%; background: #8e4054; color: white; font-weight: 850; }
+      .avatar { display: grid; width: 50px; height: 50px; place-items: center; border-radius: 50%; background: #60758a; color: white; font-weight: 850; }
       .revealed-person strong { display: block; margin-bottom: 4px; }
       .revealed-person span { color: var(--muted); font-size: 10px; }
 
