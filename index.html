@@ -3,44 +3,34 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#08090b" />
+    <meta name="theme-color" content="#fafaf7" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>暗号 - 刷到同频的人</title>
+    <title>暗号 - 遇见接得住的人</title>
     <style>
-      /*
-        Formal mobile architecture: one primary action per view.
-        Discover = express taste, Frequency = connect, Messages = reply, Me = edit.
-      */
       :root {
         color-scheme: light;
         font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-        --ink: #111215;
-        --muted: #72757d;
-        --line: rgba(17, 18, 21, 0.09);
-        --paper: #f7f7f5;
-        --accent: #ef3558;
-        --teal: #188e82;
+        --ink: #1d2226;
+        --paper: #fafaf7;
+        --muted: #717981;
+        --line: rgba(29,34,38,.13);
+        --accent: #526b84;
+        --accent-soft: #e1e7eb;
+        --band: #eef1f2;
         --safe-bottom: max(8px, env(safe-area-inset-bottom));
       }
 
       * { box-sizing: border-box; }
-      html, body { margin: 0; min-height: 100%; background: #d9dadd; }
+      html, body { min-height: 100%; margin: 0; background: #e8edef; }
       body { min-height: 100dvh; color: var(--ink); }
-      button, input, textarea { font: inherit; letter-spacing: 0; }
+      button, input { font: inherit; letter-spacing: 0; }
       button { border: 0; cursor: pointer; }
-      button:focus-visible, input:focus-visible, textarea:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-      }
+      button:active { transform: scale(.985); }
+      button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       [hidden] { display: none !important; }
-      svg { width: 20px; height: 20px; stroke-width: 2; }
+      svg { width: 20px; height: 20px; stroke-width: 1.8; }
 
-      .stage {
-        min-height: 100dvh;
-        display: grid;
-        place-items: center;
-      }
-
+      .stage { min-height: 100dvh; display: grid; place-items: center; }
       .phone {
         position: relative;
         width: min(100%, 430px);
@@ -49,7 +39,6 @@
         overflow: hidden;
         background: var(--paper);
       }
-
       .view {
         position: absolute;
         inset: 0 0 calc(70px + var(--safe-bottom));
@@ -61,276 +50,190 @@
       .view::-webkit-scrollbar { display: none; }
       .view.is-active { display: block; }
 
-      .discover {
-        inset: 0;
-        overflow: hidden;
-        background: #08090b;
-        color: white;
-      }
-
-      .feed-video,
-      .feed-cover {
+      .discover { inset: 0; overflow: hidden; background: var(--paper); }
+      .feed-video, .feed-cover {
         position: absolute;
-        inset: 0;
+        top: 0;
+        right: 0;
+        left: 0;
         width: 100%;
-        height: 100%;
-      }
-      .feed-video {
-        z-index: 0;
-        background: #08090b;
-        opacity: 0;
-        object-fit: contain;
-        pointer-events: none;
-        transition: opacity 180ms ease;
-      }
-      .feed-video.is-active { opacity: 1; pointer-events: auto; }
-      .feed-cover {
-        z-index: 1;
+        height: 58%;
         object-fit: cover;
-        transition: opacity 180ms ease, transform 220ms ease;
       }
+      .feed-video { z-index: 0; background: #15181b; opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+      .feed-video.is-active { opacity: 1; pointer-events: auto; }
+      .feed-cover { z-index: 1; transition: opacity 180ms ease, transform 220ms ease; }
       .feed-cover.is-changing { opacity: 0; transform: scale(1.018); }
       .feed-cover.is-hidden { opacity: 0; pointer-events: none; }
       .feed-shade {
         position: absolute;
         z-index: 2;
-        inset: 0;
-        background:
-          linear-gradient(180deg, rgba(0,0,0,.42) 0%, transparent 22%, transparent 48%, rgba(0,0,0,.93) 88%, #08090b 100%),
-          linear-gradient(90deg, rgba(0,0,0,.18), transparent 52%);
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 58%;
+        background: linear-gradient(180deg,rgba(0,0,0,.36),transparent 34%,transparent 73%,rgba(0,0,0,.2));
         pointer-events: none;
       }
-
-      .play-video {
-        position: absolute;
-        z-index: 4;
-        top: 48%;
-        left: 50%;
-        display: grid;
-        width: 64px;
-        height: 64px;
-        place-items: center;
-        padding: 0;
-        border: 1px solid rgba(255,255,255,.34);
-        border-radius: 50%;
-        background: rgba(8,9,11,.66);
-        color: white;
-        box-shadow: 0 12px 34px rgba(0,0,0,.3);
-        backdrop-filter: blur(12px);
-        transform: translate(-50%,-50%);
-        transition: opacity 150ms ease, transform 150ms ease;
-      }
-      .play-video svg { width: 27px; height: 27px; margin-left: 3px; fill: white; }
-      .play-video.is-loading svg { animation: play-pulse 800ms ease-in-out infinite alternate; }
-      .play-video.is-hidden { opacity: 0; pointer-events: none; transform: translate(-50%,-50%) scale(.92); }
-      @keyframes play-pulse { to { opacity: .42; transform: scale(.88); } }
-
       .feed-top {
         position: absolute;
-        z-index: 3;
-        top: max(18px, env(safe-area-inset-top));
+        z-index: 4;
+        top: max(16px, env(safe-area-inset-top));
         right: 16px;
         left: 16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
       }
-      .brand-mark {
-        display: grid;
-        width: 36px;
-        height: 36px;
-        place-items: center;
-        border-radius: 7px;
-        background: rgba(8,9,11,.78);
-        color: white;
-        font-weight: 850;
-        box-shadow: 0 0 0 1px rgba(255,255,255,.14);
-      }
-      .brand-mark::after {
-        position: absolute;
-        width: 5px;
-        height: 5px;
-        margin: 26px 0 0 27px;
-        border-radius: 50%;
-        background: var(--accent);
-        content: "";
-      }
-      .signal-meter {
-        display: inline-flex;
-        align-items: center;
-        gap: 9px;
-        padding: 8px 11px;
-        border: 1px solid rgba(255,255,255,.14);
+      .wordmark { color: white; font-size: 19px; font-weight: 900; text-shadow: 0 1px 8px rgba(0,0,0,.35); }
+      .wordmark i { display: inline-block; width: 6px; height: 6px; margin-left: 3px; border-radius: 50%; background: var(--accent); }
+      .trace-count {
+        padding: 7px 10px;
+        border: 1px solid rgba(255,255,255,.2);
         border-radius: 999px;
-        background: rgba(8,9,11,.54);
-        backdrop-filter: blur(14px);
-        font-size: 12px;
-        font-weight: 700;
-      }
-      .signal-meter i { width: 48px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.24); }
-      .signal-meter i::after { display: block; width: 66%; height: 100%; background: var(--accent); content: ""; }
-
-      .feed-actions {
-        position: absolute;
-        z-index: 3;
-        right: 13px;
-        bottom: calc(174px + var(--safe-bottom));
-        display: grid;
-        gap: 17px;
-      }
-      .feed-action {
-        display: grid;
-        width: 54px;
-        min-height: 55px;
-        place-items: center;
-        gap: 4px;
-        padding: 0;
-        background: transparent;
+        background: rgba(0,0,0,.36);
         color: white;
-        text-shadow: 0 1px 6px rgba(0,0,0,.5);
-      }
-      .feed-action .action-disc {
-        display: grid;
-        width: 44px;
-        height: 44px;
-        place-items: center;
-        border: 1px solid rgba(255,255,255,.3);
-        border-radius: 50%;
-        background: rgba(12,13,15,.35);
+        font-size: 10px;
         backdrop-filter: blur(10px);
       }
-      .feed-action b { font-size: 10px; }
-      .feed-action.is-liked .action-disc { border-color: var(--accent); background: var(--accent); }
-      .feed-action.is-liked svg { fill: white; }
-
-      .feed-copy {
+      .sound-button, .next-feed {
         position: absolute;
-        z-index: 3;
-        right: 80px;
-        bottom: calc(90px + var(--safe-bottom));
-        left: 15px;
-      }
-      .feed-byline { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 12px; font-weight: 750; }
-      .feed-byline a { color: inherit; text-decoration: none; }
-      .feed-kind { padding: 4px 7px; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; color: rgba(255,255,255,.76); font-size: 9px; }
-      .feed-copy h1 { margin: 0 0 7px; font-size: clamp(22px, 7vw, 28px); line-height: 1.13; letter-spacing: 0; text-wrap: pretty; }
-      .feed-copy p { margin: 0; color: rgba(255,255,255,.74); font-size: 12px; line-height: 1.5; }
-      .feed-tags { display: flex; gap: 7px; margin-top: 9px; color: rgba(255,255,255,.82); font-size: 10px; }
-
-      .next-feed {
-        position: absolute;
-        z-index: 4;
-        right: 16px;
-        bottom: calc(92px + var(--safe-bottom));
-        display: grid;
-        width: 42px;
-        height: 42px;
-        place-items: center;
-        border-radius: 50%;
-        background: rgba(255,255,255,.92);
-        color: #111215;
-        box-shadow: 0 8px 24px rgba(0,0,0,.24);
-      }
-
-      .screen {
-        min-height: 100%;
-        padding: max(24px, env(safe-area-inset-top)) 17px 28px;
-        background: var(--paper);
-      }
-      .screen-head { display: flex; align-items: end; justify-content: space-between; min-height: 52px; margin-bottom: 24px; }
-      .screen-head h1 { margin: 0; font-size: 31px; line-height: 1; letter-spacing: 0; }
-      .screen-head p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
-      .icon-button {
+        z-index: 5;
         display: grid;
         width: 40px;
         height: 40px;
         place-items: center;
-        border: 1px solid var(--line);
         border-radius: 50%;
-        background: white;
-        color: var(--ink);
+        backdrop-filter: blur(10px);
       }
-
-      .intent-band {
-        margin: 0 -17px 25px;
-        padding: 19px 17px 20px;
-        border-top: 1px solid var(--line);
-        border-bottom: 1px solid var(--line);
-        background: #eef3f1;
-      }
-      .intent-top { display: flex; align-items: center; justify-content: space-between; }
-      .live-label { display: flex; align-items: center; gap: 7px; color: var(--teal); font-size: 11px; font-weight: 800; }
-      .live-label i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 5px rgba(24,142,130,.1); }
-      .text-button { padding: 3px 0; background: transparent; color: var(--ink); font-size: 12px; font-weight: 750; }
-      .intent-band h2 { margin: 16px 0 9px; max-width: 330px; font-size: 20px; line-height: 1.38; letter-spacing: 0; text-wrap: pretty; }
-      .intent-band p { margin: 0; color: var(--muted); font-size: 11px; }
-      .intent-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
-      .intent-tags span, .common-tags span { padding: 5px 8px; border-radius: 999px; background: rgba(17,18,21,.06); font-size: 10px; font-weight: 650; }
-
-      .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 8px; }
-      .section-head h2 { margin: 0; font-size: 16px; }
-      .section-head span { color: var(--muted); font-size: 11px; }
-      .people-list, .conversation-list { border-top: 1px solid var(--line); }
-      .person-row, .conversation-row {
-        width: 100%;
+      .sound-button { top: max(60px, calc(env(safe-area-inset-top) + 52px)); right: 16px; background: rgba(0,0,0,.42); color: white; }
+      .next-feed { top: calc(58% - 56px); right: 16px; border: 1px solid rgba(255,255,255,.22); background: rgba(0,0,0,.34); color: white; }
+      .play-video {
+        position: absolute;
+        z-index: 5;
+        top: 30%;
+        left: 50%;
         display: grid;
-        grid-template-columns: 52px minmax(0, 1fr) auto;
+        width: 58px;
+        height: 58px;
+        place-items: center;
+        border: 1px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        background: rgba(0,0,0,.46);
+        color: white;
+        backdrop-filter: blur(10px);
+        transform: translate(-50%,-50%);
+        transition: opacity 160ms ease, transform 160ms ease;
+      }
+      .play-video svg { width: 26px; height: 26px; margin-left: 3px; fill: currentColor; }
+      .play-video.is-hidden { opacity: 0; pointer-events: none; transform: translate(-50%,-50%) scale(.9); }
+      .play-video.is-loading svg { animation: pulse 800ms ease-in-out infinite alternate; }
+      @keyframes pulse { to { opacity: .4; transform: scale(.88); } }
+
+      .feed-copy { position: absolute; z-index: 3; top: calc(58% + 18px); right: 18px; left: 18px; }
+      .feed-byline { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 750; }
+      .feed-byline a { color: inherit; text-decoration: none; }
+      .feed-kind { padding: 4px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 9px; }
+      .feed-copy h1 { max-width: 350px; margin: 9px 0 7px; font-size: clamp(23px,6.5vw,28px); line-height: 1.13; text-wrap: pretty; }
+      .feed-copy p { max-width: 360px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+      .pause-action {
+        position: absolute;
+        z-index: 5;
+        right: 18px;
+        bottom: calc(82px + var(--safe-bottom));
+        left: 18px;
+        display: flex;
+        min-height: 52px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        border-radius: 7px;
+        background: var(--accent);
+        color: white;
+        font-size: 13px;
+        font-weight: 850;
+        box-shadow: 0 10px 25px rgba(82,107,132,.2);
+      }
+
+      .screen { min-height: 100%; background: var(--paper); }
+      .screen-head { padding: max(24px, env(safe-area-inset-top)) 18px 18px; }
+      .screen-head small { display: block; margin-bottom: 7px; color: var(--accent); font-size: 10px; font-weight: 850; }
+      .screen-head h1 { margin: 0; font-size: 31px; line-height: 1.05; }
+      .screen-head p { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 18px 9px; }
+      .section-head h2 { margin: 0; font-size: 14px; }
+      .section-head span { color: var(--muted); font-size: 10px; }
+
+      .echo-lead { padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
+      .echo-meta { display: flex; align-items: center; justify-content: space-between; color: var(--accent); font-size: 10px; font-weight: 800; }
+      .echo-meta span:last-child { color: var(--muted); font-weight: 600; }
+      .echo-media { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; margin: 14px 0 16px; }
+      .echo-media img { width: 96px; aspect-ratio: 3/4; object-fit: cover; border-radius: 6px; }
+      .echo-media h2 { margin: 0 0 8px; font-size: 21px; line-height: 1.23; }
+      .echo-media p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+      .responses { position: relative; display: grid; gap: 8px; padding-left: 14px; }
+      .responses::before { position: absolute; top: 3px; bottom: 3px; left: 0; width: 1px; background: var(--accent); content: ""; }
+      .response { display: grid; grid-template-columns: 60px 1fr; gap: 8px; align-items: baseline; font-size: 11px; }
+      .response b { color: var(--muted); font-size: 9px; }
+      .response.you span { color: var(--accent); }
+      .echo-open { display: flex; width: 100%; align-items: center; justify-content: space-between; margin-top: 17px; padding: 13px 0 0; border-top: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 12px; font-weight: 850; text-align: left; }
+      .waiting { padding: 17px 18px 19px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--band); }
+      .waiting small { color: var(--muted); font-size: 9px; }
+      .waiting p { margin: 7px 0 0; font-size: 13px; line-height: 1.5; }
+
+      .conversation-list { border-top: 1px solid var(--line); background: white; }
+      .conversation-row {
+        display: grid;
+        width: 100%;
+        grid-template-columns: 52px minmax(0,1fr) auto;
         gap: 12px;
         align-items: center;
-        padding: 15px 0;
+        padding: 15px 18px;
         border-bottom: 1px solid var(--line);
         background: transparent;
         color: inherit;
         text-align: left;
       }
       .avatar {
-        position: relative;
         display: grid;
         width: 52px;
         height: 52px;
         place-items: center;
-        overflow: hidden;
         border-radius: 50%;
-        background: var(--avatar, #303238);
+        background: var(--avatar,#60758a);
         color: white;
         font-size: 14px;
         font-weight: 850;
       }
-      .avatar::after { position: absolute; inset: 5px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; content: ""; }
       .row-main { min-width: 0; }
-      .row-title { display: flex; align-items: center; gap: 7px; }
-      .row-title strong { font-size: 15px; }
-      .match-score { color: var(--teal); font-size: 10px; font-weight: 800; }
-      .row-main p { overflow: hidden; margin: 4px 0 7px; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-      .common-tags { display: flex; gap: 5px; overflow: hidden; }
-      .common-tags span { padding: 3px 6px; white-space: nowrap; }
-      .row-chevron { color: #a7a8ad; }
-
-      .new-rail { display: flex; gap: 18px; padding: 4px 0 24px; overflow-x: auto; scrollbar-width: none; }
-      .new-rail::-webkit-scrollbar { display: none; }
-      .new-person { flex: 0 0 64px; padding: 0; background: transparent; color: inherit; text-align: center; }
-      .new-person .avatar { width: 58px; height: 58px; margin: auto; box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent); }
-      .new-person span { display: block; margin-top: 8px; font-size: 11px; font-weight: 700; }
-      .conversation-row { grid-template-columns: 52px minmax(0,1fr) auto; }
-      .conversation-row time { align-self: start; padding-top: 3px; color: #9b9da2; font-size: 9px; }
+      .row-main strong { font-size: 15px; }
+      .row-main p { overflow: hidden; margin: 5px 0 0; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
       .conversation-row.is-unread .row-main p { color: var(--ink); font-weight: 650; }
+      .conversation-row time { align-self: start; padding-top: 4px; color: #999da1; font-size: 9px; }
+      .message-origin { padding: 17px 18px; border-bottom: 1px solid var(--line); background: var(--band); }
+      .message-origin small { color: var(--accent); font-size: 9px; font-weight: 800; }
+      .message-origin p { margin: 7px 0 0; font-size: 12px; line-height: 1.5; }
 
-      .profile-identity { display: grid; grid-template-columns: 72px minmax(0,1fr) auto; gap: 14px; align-items: center; margin-bottom: 25px; }
-      .profile-identity .avatar { width: 72px; height: 72px; background: linear-gradient(145deg,#2a2d34,#7a515f); font-size: 19px; }
-      .profile-identity h2 { margin: 0 0 6px; font-size: 21px; }
-      .profile-identity p { margin: 0; color: var(--muted); font-size: 11px; }
-      .edit-button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 750; }
-
-      .ai-profile { margin: 0 -17px 26px; padding: 22px 17px 24px; background: #17191e; color: white; }
-      .ai-profile-head { display: flex; align-items: center; justify-content: space-between; color: rgba(255,255,255,.56); font-size: 10px; font-weight: 750; }
-      .ai-profile h2 { margin: 18px 0 9px; font-family: "Songti SC", "STSong", serif; font-size: 25px; font-weight: 600; letter-spacing: 0; }
-      .ai-profile p { max-width: 350px; margin: 0; color: rgba(255,255,255,.67); font-size: 12px; line-height: 1.65; }
-      .ai-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
-      .ai-tags span { padding: 6px 9px; border: 1px solid rgba(255,255,255,.13); border-radius: 999px; font-size: 10px; }
-      .taste-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 3px; margin-top: 10px; }
-      .taste-grid button { position: relative; aspect-ratio: 9 / 13; overflow: hidden; padding: 0; background: #ddd; }
+      .profile-summary { padding: 22px 18px 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
+      .profile-summary small { color: var(--muted); font-size: 9px; font-weight: 800; }
+      .profile-summary h2 { margin: 12px 0 10px; font-family: "Songti SC","STSong",serif; font-size: 28px; font-weight: 500; line-height: 1.28; }
+      .profile-summary p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      .profile-section { padding: 21px 18px 23px; border-bottom: 1px solid var(--line); }
+      .profile-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+      .profile-section-head h2 { margin: 0; font-size: 14px; }
+      .profile-section-head span { color: var(--muted); font-size: 9px; }
+      .recurring-topics { display: flex; flex-wrap: wrap; gap: 7px; }
+      .recurring-topics span { padding: 7px 9px; border-radius: 999px; background: #e5eaed; font-size: 10px; }
+      .taste-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 3px; }
+      .taste-grid button { position: relative; aspect-ratio: 4/3; overflow: hidden; padding: 0; border-radius: 5px; background: #dfe2e3; }
       .taste-grid img { width: 100%; height: 100%; object-fit: cover; }
-      .taste-grid button::after { position: absolute; inset: 45% 0 0; background: linear-gradient(transparent,rgba(0,0,0,.55)); content: ""; }
+      .taste-grid span { position: absolute; right: 7px; bottom: 7px; left: 7px; z-index: 2; color: white; font-size: 9px; font-weight: 750; text-align: left; text-shadow: 0 1px 5px #000; }
+      .taste-grid button::after { position: absolute; inset: 45% 0 0; background: linear-gradient(transparent,rgba(0,0,0,.62)); content: ""; }
+      .uncertain { margin: -21px -18px -23px; padding: 21px 18px 23px; background: #e5ebef; }
+      .uncertain small { color: var(--accent); font-size: 9px; font-weight: 800; }
+      .uncertain p { margin: 11px 0 14px; font-family: "Songti SC","STSong",serif; font-size: 18px; line-height: 1.5; }
+      .uncertain-actions { display: flex; gap: 8px; }
+      .uncertain-actions button { min-height: 35px; padding: 0 11px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.68); color: var(--ink); font-size: 10px; }
 
       .tab-bar {
         position: absolute;
@@ -343,69 +246,77 @@
         grid-template-columns: repeat(4,1fr);
         padding: 7px 7px var(--safe-bottom);
         border-top: 1px solid var(--line);
-        background: rgba(247,247,245,.96);
+        background: rgba(250,250,247,.96);
         backdrop-filter: blur(18px);
       }
-      .discover ~ .tab-bar { border-color: rgba(255,255,255,.1); }
-      .tab-button { position: relative; display: grid; place-items: center; gap: 2px; padding: 0; background: transparent; color: #8a8c92; font-size: 9px; }
+      .tab-button { position: relative; display: grid; place-items: center; align-content: center; gap: 2px; padding: 0; background: transparent; color: #8a8d91; font-size: 9px; }
       .tab-button svg { width: 22px; height: 22px; }
-      .tab-button.is-active { color: var(--ink); font-weight: 800; }
-      .phone[data-tab="discover"] .tab-bar { border-color: rgba(255,255,255,.1); background: rgba(7,8,10,.9); }
-      .phone[data-tab="discover"] .tab-button { color: rgba(255,255,255,.55); }
-      .phone[data-tab="discover"] .tab-button.is-active { color: white; }
-      .badge { position: absolute; top: 0; left: calc(50% + 6px); display: grid; min-width: 15px; height: 15px; place-items: center; padding: 0 4px; border: 2px solid var(--paper); border-radius: 99px; background: var(--accent); color: white; font-size: 8px; }
-      .phone[data-tab="discover"] .badge { border-color: #08090b; }
+      .tab-button.is-active { color: var(--accent); font-weight: 850; }
+      .badge { position: absolute; top: 0; left: calc(50% + 7px); display: grid; min-width: 15px; height: 15px; place-items: center; padding: 0 4px; border: 2px solid var(--paper); border-radius: 999px; background: var(--accent); color: white; font-size: 8px; }
 
       .sheet-layer { position: absolute; z-index: 40; inset: 0; display: none; }
       .sheet-layer.is-open { display: block; }
-      .backdrop { position: absolute; inset: 0; width: 100%; background: rgba(0,0,0,.52); backdrop-filter: blur(3px); }
+      .backdrop { position: absolute; inset: 0; width: 100%; background: rgba(0,0,0,.5); backdrop-filter: blur(3px); }
       .sheet {
         position: absolute;
         right: 0;
         bottom: 0;
         left: 0;
-        padding: 9px 17px calc(20px + var(--safe-bottom));
-        border-radius: 18px 18px 0 0;
-        background: #fbfbfa;
-        box-shadow: 0 -18px 60px rgba(0,0,0,.2);
+        padding: 9px 18px calc(22px + var(--safe-bottom));
+        border-radius: 19px 19px 0 0;
+        background: #f8f8f5;
+        color: var(--ink);
+        box-shadow: 0 -18px 60px rgba(30,34,38,.18);
         animation: sheet-in 180ms ease-out;
       }
-      @keyframes sheet-in { from { transform: translateY(16px); opacity: .6; } }
-      .handle { width: 38px; height: 4px; margin: 0 auto 20px; border-radius: 9px; background: #d5d6d8; }
-      .sheet h2 { margin: 0 0 7px; font-size: 22px; }
-      .sheet > p { margin: 0 0 18px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-      .reason-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .reason-grid button { padding: 13px 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); text-align: left; font-size: 12px; font-weight: 700; }
+      @keyframes sheet-in { from { opacity: .5; transform: translateY(18px); } }
+      .handle { width: 38px; height: 4px; margin: 0 auto 18px; border-radius: 999px; background: #d2d4d3; }
+      .sheet-kicker { color: var(--accent); font-size: 9px; font-weight: 850; }
+      .sheet h2 { margin: 10px 0 8px; font-size: 22px; line-height: 1.28; }
+      .sheet h2.serif { font-family: "Songti SC","STSong",serif; font-size: 25px; font-weight: 500; }
+      .sheet p { margin: 0 0 18px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      .sheet-options { display: grid; gap: 8px; }
+      .sheet-options button { display: flex; min-height: 45px; align-items: center; justify-content: space-between; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 750; text-align: left; }
+      .primary-button { width: 100%; min-height: 48px; border-radius: 7px; background: var(--accent); color: white; font-weight: 850; }
+      .revealed-person { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .revealed-person strong { display: block; margin-bottom: 4px; }
+      .revealed-person span { color: var(--muted); font-size: 10px; }
 
-      .person-sheet .person-hero { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
-      .person-sheet .person-hero h2 { margin: 0 0 5px; }
-      .person-sheet .person-hero p { margin: 0; color: var(--muted); font-size: 11px; }
-      .person-signal { padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-      .person-signal small { color: var(--teal); font-weight: 800; }
-      .person-signal p { margin: 8px 0 0; font-size: 14px; line-height: 1.55; }
-      .shared-covers { display: grid; grid-template-columns: repeat(3,1fr); gap: 3px; margin: 17px 0; }
-      .shared-covers img { width: 100%; aspect-ratio: 1; object-fit: cover; }
-      .primary-button { width: 100%; min-height: 48px; border-radius: 7px; background: var(--ink); color: white; font-weight: 800; }
-
-      .chat-screen { position: absolute; z-index: 25; inset: 0; display: none; flex-direction: column; background: #f7f7f5; }
+      .chat-screen { position: absolute; z-index: 30; inset: 0; display: none; flex-direction: column; background: var(--paper); }
       .chat-screen.is-open { display: flex; }
       .chat-head { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: max(14px,env(safe-area-inset-top)) 12px 12px; border-bottom: 1px solid var(--line); background: white; }
-      .chat-head strong { text-align: center; }
-      .chat-head button { background: transparent; }
-      .chat-context { margin: 14px 16px; padding: 12px; border-left: 3px solid var(--accent); background: white; font-size: 11px; line-height: 1.5; }
-      .messages { flex: 1; padding: 8px 16px; overflow-y: auto; }
-      .bubble { max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 14px 14px 14px; background: white; font-size: 13px; line-height: 1.55; }
-      .bubble.mine { margin-left: auto; border-radius: 14px 4px 14px 14px; background: #202227; color: white; }
+      .chat-head button { display: grid; place-items: center; background: transparent; color: var(--ink); }
+      .chat-head div { text-align: center; }
+      .chat-head strong { display: block; font-size: 14px; }
+      .chat-head small { color: var(--accent); font-size: 9px; }
+      .chat-context { display: grid; grid-template-columns: 48px 1fr; gap: 10px; margin: 13px 15px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+      .chat-context img { width: 48px; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
+      .chat-context p { margin: 2px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+      .messages { flex: 1; padding: 7px 15px; overflow-y: auto; }
+      .chat-note { margin: 8px auto 18px; color: #979a9d; font-size: 9px; text-align: center; }
+      .bubble { width: fit-content; max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 13px 13px 13px; background: white; font-size: 12px; line-height: 1.5; }
+      .bubble.mine { margin-left: auto; border-radius: 13px 4px 13px 13px; background: var(--accent); color: white; }
       .composer { display: grid; grid-template-columns: 1fr 42px; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom)); border-top: 1px solid var(--line); background: white; }
-      .composer input { min-width: 0; height: 42px; padding: 0 13px; border: 1px solid var(--line); border-radius: 8px; background: #f4f4f3; }
-      .composer button { display: grid; place-items: center; border-radius: 8px; background: var(--ink); color: white; }
+      .composer input { min-width: 0; height: 42px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: #f4f5f4; color: var(--ink); }
+      .composer button { display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: white; }
 
-      .toast { position: absolute; z-index: 60; right: 50%; bottom: calc(82px + var(--safe-bottom)); transform: translateX(50%) translateY(8px); max-width: calc(100% - 34px); padding: 9px 13px; border-radius: 999px; background: rgba(17,18,21,.9); color: white; opacity: 0; pointer-events: none; font-size: 11px; white-space: nowrap; transition: 160ms ease; }
+      .toast { position: absolute; z-index: 60; right: 50%; bottom: calc(82px + var(--safe-bottom)); max-width: calc(100% - 34px); padding: 9px 13px; border-radius: 999px; background: rgba(29,34,38,.92); color: white; opacity: 0; pointer-events: none; font-size: 11px; white-space: nowrap; transform: translateX(50%) translateY(8px); transition: 160ms ease; }
       .toast.is-visible { opacity: 1; transform: translateX(50%) translateY(0); }
 
+      @media (max-height: 700px) {
+        .feed-video, .feed-cover, .feed-shade { height: 54%; }
+        .next-feed { top: calc(54% - 52px); }
+        .feed-copy { top: calc(54% + 12px); }
+        .feed-copy h1 { margin: 7px 0 5px; font-size: 21px; }
+        .feed-copy p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        .pause-action { bottom: calc(76px + var(--safe-bottom)); min-height: 46px; }
+      }
       @media (min-width: 700px) {
-        .stage { padding: 28px; background: #d9dadd; }
-        .phone { height: min(844px, calc(100dvh - 56px)); border-radius: 22px; box-shadow: 0 28px 80px rgba(21,22,25,.24); }
+        .stage { padding: 28px; }
+        .phone { height: min(844px,calc(100dvh - 56px)); border-radius: 22px; box-shadow: 0 28px 80px rgba(38,48,56,.2); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
       }
     </style>
   </head>
@@ -413,155 +324,132 @@
     <main class="stage">
       <section id="phone" class="phone" data-tab="discover">
         <section class="view discover is-active" data-view="discover" aria-label="发现">
-          <video id="feedVideo" class="feed-video" playsinline webkit-playsinline preload="metadata" autoplay muted loop disablepictureinpicture aria-label="当前抖音视频"></video>
-          <img id="feedCover" class="feed-cover" src="./assets/taste-covers/quiet-evening.jpg" alt="独居下班夜晚视频封面" />
+          <video id="feedVideo" class="feed-video" playsinline webkit-playsinline preload="metadata" autoplay muted loop disablepictureinpicture aria-label="当前短视频"></video>
+          <img id="feedCover" class="feed-cover" src="./assets/taste-covers/night-walk.jpg" alt="夜晚独自散步视频封面" />
           <div class="feed-shade"></div>
-          <header class="feed-top">
-            <span class="brand-mark" aria-label="暗号">暗</span>
-            <span class="signal-meter"><span id="signalText">暗号 4/6</span><i aria-hidden="true"></i></span>
-          </header>
-          <button id="playVideo" class="play-video" type="button" aria-label="播放这条视频" title="播放视频"><i data-lucide="play"></i></button>
-          <div class="feed-actions">
-            <button id="soundButton" class="feed-action" type="button" aria-label="打开声音">
-              <span class="action-disc"><span id="soundOffIcon"><i data-lucide="volume-x"></i></span><span id="soundOnIcon" hidden><i data-lucide="volume-2"></i></span></span><b id="soundLabel">声音</b>
-            </button>
-            <button id="likeButton" class="feed-action" type="button" aria-label="喜欢">
-              <span class="action-disc"><i data-lucide="heart"></i></span><b id="likeCount">喜欢</b>
-            </button>
-            <button id="talkButton" class="feed-action" type="button" aria-label="想聊聊">
-              <span class="action-disc"><i data-lucide="message-circle"></i></span><b>想聊</b>
-            </button>
-          </div>
+          <header class="feed-top"><span class="wordmark">暗号<i></i></span><span class="trace-count"><span id="traceCount">留下 7 处痕迹</span></span></header>
+          <button id="soundButton" class="sound-button" type="button" aria-label="打开声音"><i id="soundIcon" data-lucide="volume-x"></i></button>
+          <button id="playVideo" class="play-video" type="button" aria-label="播放这条视频"><i data-lucide="play"></i></button>
           <div class="feed-copy">
-            <div class="feed-byline"><a id="feedCreator" href="https://www.douyin.com/video/7643411504674409743" target="_blank" rel="noreferrer" aria-label="打开抖音原视频">@Judy德国冷浪漫</a><span id="feedKind" class="feed-kind">生活节奏</span></div>
-            <h1 id="feedTitle">认真把东西用完，也认真吃饭</h1>
-            <p id="feedCaption">独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？</p>
-            <div id="feedTags" class="feed-tags"><span>#独居</span><span>#消费观</span></div>
+            <div class="feed-byline"><a id="feedCreator" href="https://www.douyin.com/video/7653500525270670770" target="_blank" rel="noreferrer">@自信阳光</a><span id="feedKind" class="feed-kind">独处方式</span></div>
+            <h1 id="feedTitle">晚饭后，一个人慢慢走回生活里</h1>
+            <p id="feedCaption">散步、看人跳舞、逛超市。你会如何消化一天的情绪？</p>
           </div>
-          <button id="nextFeed" class="next-feed" type="button" aria-label="换一条"><i data-lucide="chevron-up"></i></button>
+          <button id="pauseAction" class="pause-action" type="button"><span>我在这里停下了</span><i data-lucide="arrow-up-right"></i></button>
+          <button id="nextFeed" class="next-feed" type="button" aria-label="下一条" title="下一条"><i data-lucide="chevron-up"></i></button>
         </section>
 
-        <section class="view" data-view="frequency" aria-label="同频">
+        <section class="view" data-view="echo" aria-label="回声">
           <div class="screen">
-            <header class="screen-head"><div><h1>同频</h1><p>正在出现的新的人</p></div></header>
-            <section class="intent-band" aria-label="正在运行的寻找条件">
-              <div class="intent-top"><span class="live-label"><i></i>正在替你寻找</span><button id="editIntent" class="text-button" type="button">调整</button></div>
-              <h2>在上海，找一个周末能一起散步，也愿意认真聊点什么的人</h2>
-              <p>搭子 · 上海 · 还会运行 6 天</p>
-              <div class="intent-tags"><span>慢生活</span><span>生活方式</span><span>认真聊天</span></div>
-            </section>
-            <div class="section-head"><h2>今天新出现 3 人</h2><span>按彼此合适程度排序</span></div>
-            <div class="people-list">
-              <button class="person-row" data-person="momo" type="button">
-                <span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默，25</strong><span class="match-score">82% 同频</span></span><p>独处、散步和不太用力的周末</p><span class="common-tags"><span>慢生活</span><span>低成本快乐</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
-              </button>
-              <button class="person-row" data-person="ayuan" type="button">
-                <span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原，27</strong><span class="match-score">76% 同频</span></span><p>临时出发，也喜欢给生活留点计划外</p><span class="common-tags"><span>行动派</span><span>好奇心</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
-              </button>
-              <button class="person-row" data-person="mina" type="button">
-                <span class="avatar" style="--avatar:#835a68">M</span><span class="row-main"><span class="row-title"><strong>Mina，24</strong><span class="match-score">71% 同频</span></span><p>关系访谈、书和认真吃晚饭</p><span class="common-tags"><span>自我照顾</span><span>长期主义</span></span></span><i class="row-chevron" data-lucide="chevron-right"></i>
-              </button>
-            </div>
+            <header class="screen-head"><small>今天有 1 次新的相遇</small><h1>回声</h1><p>不是推荐名单，是一处意外重合。</p></header>
+            <article class="echo-lead">
+              <div class="echo-meta"><span>一条新的回声</span><span>9 分钟前</span></div>
+              <div class="echo-media"><img id="echoCover" src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停下的视频" /><div><h2>有人在同一处停下</h2><p id="echoCaption">朋友不是突然离开，而是在一些没有察觉的时刻慢慢走远。</p></div></div>
+              <div class="responses"><div class="response you"><b>你留下</b><span id="echoYourResponse">「我抗拒，但停下了」</span></div><div class="response"><b>另一个人</b><span id="echoOtherResponse">「这很像我」</span></div></div>
+              <button id="catchEcho" class="echo-open" type="button"><span>接住这句暗号</span><i data-lucide="arrow-right"></i></button>
+            </article>
+            <div class="section-head"><h2>还在路上</h2><span>1</span></div>
+            <div class="waiting"><small>另一条回声还在路上</small><p>你们都向往没安排的普通周末，但 Ta 还没有回答那个问题。</p></div>
           </div>
         </section>
 
-        <section class="view" data-view="messages" aria-label="消息">
+        <section class="view" data-view="messages" aria-label="对话">
           <div class="screen">
-            <header class="screen-head"><div><h1>消息</h1><p>接上之后，再慢慢认识</p></div></header>
-            <div class="section-head"><h2>新同频</h2><span>2</span></div>
-            <div class="new-rail">
-              <button class="new-person" data-chat="momo" type="button"><span class="avatar" style="--avatar:#566e61">默</span><span>默默</span></button>
-              <button class="new-person" data-chat="mina" type="button"><span class="avatar" style="--avatar:#835a68">M</span><span>Mina</span></button>
-            </div>
-            <div class="section-head"><h2>对话</h2></div>
+            <header class="screen-head"><small>已经发生的关系</small><h1>对话</h1><p>从一处共同停留开始，慢慢认识。</p></header>
+            <div class="message-origin"><small>最新的一次相遇</small><p>你和默默没有给出相同答案，但都愿意认真回答。</p></div>
             <div class="conversation-list">
-              <button class="conversation-row is-unread" data-chat="momo" type="button"><span class="avatar" style="--avatar:#566e61">默</span><span class="row-main"><span class="row-title"><strong>默默</strong></span><p>我现在周末真的很喜欢去公园坐一下午</p></span><time>刚刚</time></button>
-              <button class="conversation-row" data-chat="ayuan" type="button"><span class="avatar" style="--avatar:#384e71">原</span><span class="row-main"><span class="row-title"><strong>阿原</strong></span><p>下次可以临时约一次日出</p></span><time>昨天</time></button>
-              <button class="conversation-row" data-chat="mina" type="button"><span class="avatar" style="--avatar:#835a68">M</span><span class="row-main"><span class="row-title"><strong>Mina</strong></span><p>你说的“沟通不是说服”很有共鸣</p></span><time>周六</time></button>
+              <button class="conversation-row is-unread" data-chat="momo" type="button"><span class="avatar" style="--avatar:#60758a">默</span><span class="row-main"><strong>默默</strong><p>我觉得关系慢慢变淡，比吵一架更难接受。</p></span><time>刚刚</time></button>
+              <button class="conversation-row" data-chat="ayuan" type="button"><span class="avatar" style="--avatar:#526879">原</span><span class="row-main"><strong>阿原</strong><p>下次可以临时约一次日出</p></span><time>昨天</time></button>
+              <button class="conversation-row" data-chat="mina" type="button"><span class="avatar" style="--avatar:#766978">M</span><span class="row-main"><strong>Mina</strong><p>你说的“沟通不是说服”很有共鸣</p></span><time>周六</time></button>
             </div>
           </div>
         </section>
 
         <section class="view" data-view="profile" aria-label="我的">
           <div class="screen">
-            <header class="screen-head"><div><h1>我的</h1><p>别人如何通过品味认识你</p></div><button class="icon-button" type="button" aria-label="设置"><i data-lucide="settings"></i></button></header>
-            <section class="profile-identity"><span class="avatar">我</span><div><h2>夜行观察者</h2><p>@anhao_001 · 上海</p></div><button id="editProfile" class="edit-button" type="button">编辑</button></section>
-            <section class="ai-profile"><div class="ai-profile-head"><span>AI 读到的你</span><span>清晰度 67%</span></div><h2>柔软的现实主义者</h2><p>你偏爱有烟火气的普通生活，也愿意认真讨论友情、自由和如何与另一个人长期相处。</p><div class="ai-tags"><span>慢生活</span><span>关系态度</span><span>生活选择</span><span>好奇心</span></div></section>
-            <div class="section-head"><h2>我停下来过的内容</h2><span>6</span></div>
-            <div class="taste-grid">
-              <button data-feed-index="0" type="button"><img src="./assets/taste-covers/quiet-evening.jpg" alt="独居下班夜晚内容" /></button>
-              <button data-feed-index="2" type="button"><img src="./assets/taste-covers/not-fitting-in.jpg" alt="是否合群的关系讨论" /></button>
-              <button data-feed-index="4" type="button"><img src="./assets/taste-covers/right-to-fail.jpg" alt="自由与选择内容" /></button>
-              <button data-feed-index="5" type="button"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="临时看日出内容" /></button>
-              <button data-feed-index="7" type="button"><img src="./assets/taste-covers/market-reader.jpg" alt="菜市场读书角内容" /></button>
-              <button data-feed-index="8" type="button"><img src="./assets/taste-covers/love-lasts.jpg" alt="亲密关系访谈内容" /></button>
-            </div>
+            <header class="screen-head"><small>不是结论，仍在变化</small><h1>我的痕迹</h1><p>别人暂时可以从这些地方认出你。</p></header>
+            <section class="profile-summary"><small>暗号正在变清晰 · 37%</small><h2>你似乎不怕独处，<br />更怕无意义的热闹。</h2><p>这是一个暂时的猜测。它可以被你否认，也可能被下一次停留改写。</p></section>
+            <section class="profile-section"><div class="profile-section-head"><h2>反复出现的主题</h2><span>过去 7 天</span></div><div class="recurring-topics"><span>独处</span><span>普通生活</span><span>认真沟通</span><span>计划之外</span></div></section>
+            <section class="profile-section"><div class="profile-section-head"><h2>你想靠近的生活</h2><span>2 处</span></div><div class="taste-grid"><button data-feed-index="9" type="button"><img src="./assets/taste-covers/ordinary-weekend.jpg" alt="没有安排的周末" /><span>没有安排的周末</span></button><button data-feed-index="5" type="button"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="临时起意的出发" /><span>临时起意的出发</span></button></div></section>
+            <section class="profile-section"><div id="uncertain" class="uncertain"><small id="uncertainLabel">一处仍然说不清</small><p id="uncertainCopy">你会在亲密关系的内容前停留，却很少选择「这很像我」。</p><div id="uncertainActions" class="uncertain-actions"><button id="acceptGuess" type="button">有一点</button><button id="rejectGuess" type="button">不是这样</button></div></div></section>
           </div>
         </section>
 
         <nav class="tab-bar" aria-label="主导航">
           <button class="tab-button is-active" data-tab="discover" type="button"><i data-lucide="play"></i><span>发现</span></button>
-          <button class="tab-button" data-tab="frequency" type="button"><i data-lucide="users-round"></i><span>同频</span><b class="badge">3</b></button>
-          <button class="tab-button" data-tab="messages" type="button"><i data-lucide="message-circle"></i><span>消息</span><b class="badge">2</b></button>
-          <button class="tab-button" data-tab="profile" type="button"><i data-lucide="user-round"></i><span>我的</span></button>
+          <button class="tab-button" data-tab="echo" type="button"><i data-lucide="waves"></i><span>回声</span><b class="badge">1</b></button>
+          <button class="tab-button" data-tab="messages" type="button"><i data-lucide="message-circle"></i><span>对话</span><b class="badge">1</b></button>
+          <button class="tab-button" data-tab="profile" type="button"><i data-lucide="user-circle"></i><span>我的</span></button>
         </nav>
 
-        <div id="reasonSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><h2 id="reasonTitle">为什么喜欢？</h2><p id="reasonCopy">这一点会帮助暗号更准确地理解你。</p><div id="reasonGrid" class="reason-grid"><button type="button">这更像我</button><button type="button">这是我向往的</button><button type="button">其实我不同意</button><button type="button">想找人聊聊</button></div></section></div>
+        <div id="reactionSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">这一刻</span><h2>它为什么让你停下来？</h2><p>不需要解释完整，先选择最接近的一种感觉。</p><div class="sheet-options"><button data-reaction="这很像我" type="button"><span>这很像我</span><i data-lucide="arrow-right"></i></button><button data-reaction="这是我向往的" type="button"><span>这是我向往的</span><i data-lucide="arrow-right"></i></button><button data-reaction="我抗拒，但停下了" type="button"><span>我抗拒，但停下了</span><i data-lucide="arrow-right"></i></button><button data-reaction="说不清，但我停下了" type="button"><span>说不清，但我停下了</span><i data-lucide="arrow-right"></i></button></div></section></div>
 
-        <div id="personSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet person-sheet"><div class="handle"></div><div class="person-hero"><span id="personAvatar" class="avatar" style="--avatar:#566e61">默</span><div><h2 id="personName">默默，25</h2><p id="personBio">上海 · 刚刚在线</p></div></div><div class="person-signal"><small>为什么你们可能聊得来</small><p id="personReason">你们都喜欢低成本、慢节奏的生活，也愿意把有限的热情留给真正重要的人。</p></div><div class="shared-covers"><img src="./assets/taste-covers/quiet-evening.jpg" alt="共同喜欢的独居生活内容" /><img src="./assets/taste-covers/night-walk.jpg" alt="共同喜欢的夜晚散步内容" /><img src="./assets/taste-covers/park-happiness.jpg" alt="共同喜欢的公园生活内容" /></div><button id="sayHello" class="primary-button" type="button">打个招呼</button></section></div>
+        <div id="insightSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span id="insightKicker" class="sheet-kicker">你留下了一句暗号</span><h2 id="insightTitle" class="serif">有些感受，不需要立刻被说清。</h2><p id="insightCopy">它只记录了这一刻，你在什么地方停了下来。</p><button id="keepSignal" class="primary-button" type="button">收下</button></section></div>
 
-        <section id="chatScreen" class="chat-screen" aria-label="聊天"><header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><strong id="chatName">默默</strong><span></span></header><div class="chat-context">你们都为「公园不要钱，快乐也不贵」停下来过。</div><div id="chatMessages" class="messages"><div class="bubble">我现在周末真的很喜欢去公园坐一下午。</div><div class="bubble mine">我也是，比赶很多打卡点舒服多了。</div></div><form id="composer" class="composer"><input id="messageInput" type="text" placeholder="聊点具体的" autocomplete="off" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form></section>
+        <div id="questionSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">在见到 Ta 之前</span><h2>如果很重要的朋友慢慢疏远，你会怎么做？</h2><p>你们回答的是同一个问题，但不需要给出相同答案。</p><div class="sheet-options"><button data-answer type="button"><span>我会主动问一次发生了什么</span><i data-lucide="arrow-right"></i></button><button data-answer type="button"><span>我会尊重距离，等对方开口</span><i data-lucide="arrow-right"></i></button><button data-answer type="button"><span>我可能嘴上接受，心里放不下</span><i data-lucide="arrow-right"></i></button></div></section></div>
+
+        <div id="revealSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">这句暗号被接住了</span><h2 class="serif">你们没有给出相同答案，<br />但都愿意认真回答。</h2><div class="revealed-person"><span class="avatar">默</span><div><strong>默默，25</strong><span>上海 · 刚刚也完成了回答</span></div></div><button id="startChat" class="primary-button" type="button">开始对话</button></section></div>
+
+        <section id="chatScreen" class="chat-screen" aria-label="聊天">
+          <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">默默</strong><small>一条回声已经被接住</small></div><span></span></header>
+          <div class="chat-context"><img src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停留的内容" /><p>你们在同一条视频前停下，却给出了不同答案。</p></div>
+          <div id="chatMessages" class="messages"><div class="chat-note">从一句没有标准答案的话开始</div><div class="bubble">我觉得关系慢慢变淡，比吵一架更难接受。</div><div class="bubble mine">我反而会假装没看见，可能是怕问出不想听的答案。</div></div>
+          <form id="composer" class="composer"><input id="messageInput" type="text" placeholder="接着说点具体的" autocomplete="off" aria-label="消息" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
+        </section>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
     </main>
 
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script>
+      window.__appErrors = [];
+      window.addEventListener("error", (event) => window.__appErrors.push(event.message));
+      window.addEventListener("unhandledrejection", (event) => window.__appErrors.push(String(event.reason)));
+
       const feed = [
-        { id: "7643411504674409743", cover: "quiet-evening.jpg", creator: "@Judy德国冷浪漫", kind: "生活节奏", title: "认真把东西用完，也认真吃饭", caption: "独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？", tags: ["独居", "消费观"], url: "https://www.douyin.com/video/7643411504674409743" },
-        { id: "7653500525270670770", cover: "night-walk.jpg", creator: "@自信阳光", kind: "独处方式", title: "晚饭后，一个人慢慢走回生活里", caption: "散步、看人跳舞、逛超市。你会如何消化一天的情绪？", tags: ["独处", "城市散步"], url: "https://www.douyin.com/video/7653500525270670770" },
-        { id: "7482985809893707027", cover: "not-fitting-in.jpg", creator: "@中国新闻周刊", kind: "关系态度", title: "合群，真的有那么重要吗？", caption: "把有限的热情留给真正重要的人和事。你认同吗？", tags: ["社交能量", "取舍"], url: "https://www.douyin.com/video/7482985809893707027" },
-        { id: "7535852633412603136", cover: "fluid-friendship.jpg", creator: "@煎妮", kind: "友情观点", title: "朋友是流动的，你能接受被动降级吗？", caption: "有些关系不是争吵结束，而是慢慢离开。你会追问、挽留，还是接受？", tags: ["友情", "依恋方式"], url: "https://www.douyin.com/video/7535852633412603136" },
-        { id: "7590413990154264442", cover: "right-to-fail.jpg", creator: "@流年冉冉", kind: "人生选择", title: "“搞砸”人生，是自由的一部分吗？", caption: "按自己的选择承担后果，还是尽量走稳妥的路？", tags: ["自由", "风险偏好"], url: "https://www.douyin.com/video/7590413990154264442" },
-        { id: "7650683559334702312", cover: "sunrise-with-friends.jpg", creator: "@我是蓝蓝哇", kind: "社交节奏", title: "临时起意，和搭子出发去看日出", caption: "你更喜欢提前计划，还是一句“走吧”就出发？", tags: ["说走就走", "行动派"], url: "https://www.douyin.com/video/7650683559334702312" },
-        { id: "7643311406674334874", cover: "park-happiness.jpg", creator: "@乔伊Joey", kind: "快乐方式", title: "公园不要钱，快乐也不贵", caption: "一片草地、一阵风、坐一会儿。这样的周末对你够不够？", tags: ["公园疗法", "低成本快乐"], url: "https://www.douyin.com/video/7643311406674334874" },
-        { id: "7631915914090384678", cover: "market-reader.jpg", creator: "@陕视新闻", kind: "兴趣与好奇", title: "卖鸡，也要和李白苏轼打交道", caption: "菜市场摊主在鸡摊旁放了一角书。你会被这种人吸引吗？", tags: ["阅读", "生命力"], url: "https://www.douyin.com/video/7631915914090384678" },
-        { id: "7578038229136444681", cover: "love-lasts.jpg", creator: "@毕英杰Johnathan", kind: "亲密关系", title: "让爱情更长久的，不只是心动", caption: "亲密关系需要沟通、尊重和不断向内看。你更看重哪一种？", tags: ["爱情", "深度沟通"], url: "https://www.douyin.com/video/7578038229136444681" },
-        { id: "7654778543125673818", cover: "ordinary-weekend.jpg", creator: "@零玖", kind: "普通周末", title: "和喜欢的人，过一个没安排的普通周末", caption: "做饭、聊天、待在一起。你向往热闹，还是这种日常？", tags: ["陪伴", "日常感"], url: "https://www.douyin.com/video/7654778543125673818" }
+        { id:"7643411504674409743", cover:"quiet-evening.jpg", creator:"@Judy德国冷浪漫", kind:"生活节奏", title:"认真把东西用完，也认真吃饭", caption:"独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？", url:"https://www.douyin.com/video/7643411504674409743" },
+        { id:"7653500525270670770", cover:"night-walk.jpg", creator:"@自信阳光", kind:"独处方式", title:"晚饭后，一个人慢慢走回生活里", caption:"散步、看人跳舞、逛超市。你会如何消化一天的情绪？", url:"https://www.douyin.com/video/7653500525270670770" },
+        { id:"7482985809893707027", cover:"not-fitting-in.jpg", creator:"@中国新闻周刊", kind:"关系态度", title:"合群，真的有那么重要吗？", caption:"把有限的热情留给真正重要的人和事。你认同吗？", url:"https://www.douyin.com/video/7482985809893707027" },
+        { id:"7535852633412603136", cover:"fluid-friendship.jpg", creator:"@煎妮", kind:"友情观点", title:"朋友是流动的，你能接受被动降级吗？", caption:"有些关系不是争吵结束，而是慢慢离开。你会追问、挽留，还是接受？", url:"https://www.douyin.com/video/7535852633412603136" },
+        { id:"7590413990154264442", cover:"right-to-fail.jpg", creator:"@流年冉冉", kind:"人生选择", title:"“搞砸”人生，是自由的一部分吗？", caption:"按自己的选择承担后果，还是尽量走稳妥的路？", url:"https://www.douyin.com/video/7590413990154264442" },
+        { id:"7650683559334702312", cover:"sunrise-with-friends.jpg", creator:"@我是蓝蓝哇", kind:"社交节奏", title:"临时起意，和搭子出发去看日出", caption:"你更喜欢提前计划，还是一句“走吧”就出发？", url:"https://www.douyin.com/video/7650683559334702312" },
+        { id:"7643311406674334874", cover:"park-happiness.jpg", creator:"@乔伊Joey", kind:"快乐方式", title:"公园不要钱，快乐也不贵", caption:"一片草地、一阵风、坐一会儿。这样的周末对你够不够？", url:"https://www.douyin.com/video/7643311406674334874" },
+        { id:"7631915914090384678", cover:"market-reader.jpg", creator:"@陕视新闻", kind:"兴趣与好奇", title:"卖鸡，也要和李白苏轼打交道", caption:"菜市场摊主在鸡摊旁放了一角书。你会被这种人吸引吗？", url:"https://www.douyin.com/video/7631915914090384678" },
+        { id:"7578038229136444681", cover:"love-lasts.jpg", creator:"@毕英杰Johnathan", kind:"亲密关系", title:"让爱情更长久的，不只是心动", caption:"亲密关系需要沟通、尊重和不断向内看。你更看重哪一种？", url:"https://www.douyin.com/video/7578038229136444681" },
+        { id:"7654778543125673818", cover:"ordinary-weekend.jpg", creator:"@零玖", kind:"普通周末", title:"和喜欢的人，过一个没安排的普通周末", caption:"做饭、聊天、待在一起。你向往热闹，还是这种日常？", url:"https://www.douyin.com/video/7654778543125673818" }
       ];
-
       const videoStreams = {
-        "7643411504674409743": "./assets/taste-videos/quiet-evening.mp4?v=1",
-        "7653500525270670770": "./assets/taste-videos/night-walk.mp4?v=1",
-        "7482985809893707027": "./assets/taste-videos/not-fitting-in.mp4?v=1",
-        "7535852633412603136": "./assets/taste-videos/fluid-friendship.mp4?v=1",
-        "7590413990154264442": "./assets/taste-videos/right-to-fail.mp4?v=1",
-        "7650683559334702312": "./assets/taste-videos/sunrise-with-friends.mp4?v=1",
-        "7643311406674334874": "./assets/taste-videos/park-happiness.mp4?v=1",
-        "7631915914090384678": "./assets/taste-videos/market-reader.mp4?v=1",
-        "7578038229136444681": "./assets/taste-videos/love-lasts.mp4?v=1",
-        "7654778543125673818": "./assets/taste-videos/ordinary-weekend.mp4?v=1"
+        "7643411504674409743":"./assets/taste-videos/quiet-evening.mp4?v=2",
+        "7653500525270670770":"./assets/taste-videos/night-walk.mp4?v=2",
+        "7482985809893707027":"./assets/taste-videos/not-fitting-in.mp4?v=2",
+        "7535852633412603136":"./assets/taste-videos/fluid-friendship.mp4?v=2",
+        "7590413990154264442":"./assets/taste-videos/right-to-fail.mp4?v=2",
+        "7650683559334702312":"./assets/taste-videos/sunrise-with-friends.mp4?v=2",
+        "7643311406674334874":"./assets/taste-videos/park-happiness.mp4?v=2",
+        "7631915914090384678":"./assets/taste-videos/market-reader.mp4?v=2",
+        "7578038229136444681":"./assets/taste-videos/love-lasts.mp4?v=2",
+        "7654778543125673818":"./assets/taste-videos/ordinary-weekend.mp4?v=2"
+      };
+      const people = { momo:"默默", ayuan:"阿原", mina:"Mina" };
+      const insightByReaction = {
+        "这很像我":["你在熟悉的生活里，认出了自己。","这不是对你的定义。它只记录了这一刻，你愿意承认什么。"],
+        "这是我向往的":["你停下来的，也许是还没开始的生活。","向往不等于缺少，它只是让暗号知道你想靠近哪里。"],
+        "我抗拒，但停下了":["让你不舒服的地方，也留下了清楚的痕迹。","不需要马上说服自己。一次停留，已经足够真实。"],
+        "说不清，但我停下了":["有些感受，不需要立刻被说清。","它只记录了这一刻，你在什么地方停了下来。"]
       };
 
-      const people = {
-        momo: { name: "默默，25", avatar: "默", color: "#566e61", bio: "上海 · 刚刚在线", reason: "你们都喜欢低成本、慢节奏的生活，也愿意把有限的热情留给真正重要的人。" },
-        ayuan: { name: "阿原，27", avatar: "原", color: "#384e71", bio: "上海 · 12 分钟前在线", reason: "你们都愿意给周末留一点计划外，也都希望有人能接住一句临时的“走吧”。" },
-        mina: { name: "Mina，24", avatar: "M", color: "#835a68", bio: "上海 · 在线", reason: "你们都重视亲密关系里的沟通和尊重，也愿意认真谈论那些没有标准答案的问题。" }
-      };
-
-      let feedIndex = 0;
+      let feedIndex = 1;
       let soundEnabled = false;
+      let traceTotal = 7;
       let toastTimer;
       const phone = document.querySelector("#phone");
       const views = [...document.querySelectorAll("[data-view]")];
       const tabs = [...document.querySelectorAll(".tab-button")];
-      const cover = document.querySelector("#feedCover");
       const feedVideo = document.querySelector("#feedVideo");
+      const feedCover = document.querySelector("#feedCover");
       const playVideo = document.querySelector("#playVideo");
-      const soundButton = document.querySelector("#soundButton");
-      const likeButton = document.querySelector("#likeButton");
 
-      function icons() { if (window.lucide) window.lucide.createIcons(); }
+      function renderIcons() { if (window.lucide) window.lucide.createIcons(); }
       function showToast(text) {
         const toast = document.querySelector("#toast");
         toast.textContent = text;
@@ -569,26 +457,33 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1700);
       }
+      function openSheet(id) {
+        closeSheets();
+        const sheet = document.querySelector(id);
+        sheet.classList.add("is-open");
+        sheet.setAttribute("aria-hidden","false");
+      }
+      function closeSheets() {
+        document.querySelectorAll(".sheet-layer").forEach((sheet) => {
+          sheet.classList.remove("is-open");
+          sheet.setAttribute("aria-hidden","true");
+        });
+      }
       function showTab(name) {
         if (name !== "discover") stopVideo();
         phone.dataset.tab = name;
-        views.forEach((view) => view.classList.toggle("is-active", view.dataset.view === name));
-        tabs.forEach((tab) => tab.classList.toggle("is-active", tab.dataset.tab === name));
+        views.forEach((view) => view.classList.toggle("is-active",view.dataset.view === name));
+        tabs.forEach((tab) => tab.classList.toggle("is-active",tab.dataset.tab === name));
         document.querySelector("#chatScreen").classList.remove("is-open");
+        if (name === "discover") playCurrentVideo(true);
       }
       function stopVideo() {
         feedVideo.pause();
         feedVideo.removeAttribute("src");
         feedVideo.load();
         feedVideo.classList.remove("is-active");
-        cover.classList.remove("is-hidden");
-        playVideo.classList.remove("is-hidden", "is-loading");
-      }
-      function updateSoundButton() {
-        document.querySelector("#soundOffIcon").hidden = soundEnabled;
-        document.querySelector("#soundOnIcon").hidden = !soundEnabled;
-        document.querySelector("#soundLabel").textContent = soundEnabled ? "有声" : "声音";
-        soundButton.setAttribute("aria-label", soundEnabled ? "关闭声音" : "打开声音");
+        feedCover.classList.remove("is-hidden");
+        playVideo.classList.remove("is-hidden","is-loading");
       }
       async function playCurrentVideo(automatic = false) {
         const item = feed[feedIndex];
@@ -599,12 +494,11 @@
           feedVideo.poster = `./assets/taste-covers/${item.cover}`;
           feedVideo.muted = !soundEnabled;
           feedVideo.classList.add("is-active");
-          cover.classList.add("is-hidden");
+          feedCover.classList.add("is-hidden");
           feedVideo.load();
         }
-        try {
-          await feedVideo.play();
-        } catch (error) {
+        try { await feedVideo.play(); }
+        catch (error) {
           playVideo.classList.remove("is-loading");
           if (!automatic) showToast("视频加载失败，请稍后再试");
         }
@@ -616,83 +510,71 @@
       function toggleSound() {
         soundEnabled = !soundEnabled;
         feedVideo.muted = !soundEnabled;
-        updateSoundButton();
+        const button = document.querySelector("#soundButton");
+        button.setAttribute("aria-label",soundEnabled ? "关闭声音" : "打开声音");
+        document.querySelector("#soundIcon").setAttribute("data-lucide",soundEnabled ? "volume-2" : "volume-x");
+        renderIcons();
         if (feedVideo.paused) playCurrentVideo(false);
       }
       function renderFeed() {
         const item = feed[feedIndex];
         stopVideo();
-        cover.classList.add("is-changing");
+        feedCover.classList.add("is-changing");
         setTimeout(() => {
-          cover.src = `./assets/taste-covers/${item.cover}`;
-          cover.alt = `${item.title}短视频封面`;
+          feedCover.src = `./assets/taste-covers/${item.cover}`;
+          feedCover.alt = `${item.title}短视频封面`;
           document.querySelector("#feedCreator").textContent = item.creator;
           document.querySelector("#feedCreator").href = item.url;
           document.querySelector("#feedKind").textContent = item.kind;
           document.querySelector("#feedTitle").textContent = item.title;
           document.querySelector("#feedCaption").textContent = item.caption;
-          document.querySelector("#feedTags").innerHTML = item.tags.map((tag) => `<span>#${tag}</span>`).join("");
-          document.querySelector("#likeCount").textContent = "喜欢";
-          likeButton.classList.remove("is-liked");
-          cover.classList.remove("is-changing");
+          feedCover.classList.remove("is-changing");
           playCurrentVideo(true);
-        }, 120);
+        },120);
       }
-      function openSheet(sheet) { sheet.classList.add("is-open"); sheet.setAttribute("aria-hidden", "false"); }
-      function closeSheets() { document.querySelectorAll(".sheet-layer").forEach((sheet) => { sheet.classList.remove("is-open"); sheet.setAttribute("aria-hidden", "true"); }); }
-      function setReasonSheet(title, copy, options) {
-        document.querySelector("#reasonTitle").textContent = title;
-        document.querySelector("#reasonCopy").textContent = copy;
-        document.querySelectorAll("#reasonGrid button").forEach((button, index) => { button.textContent = options[index]; });
+      function nextFeed() {
+        feedIndex = (feedIndex + 1) % feed.length;
+        renderFeed();
       }
-      function openPerson(id) {
-        const person = people[id];
-        document.querySelector("#personName").textContent = person.name;
-        document.querySelector("#personBio").textContent = person.bio;
-        document.querySelector("#personReason").textContent = person.reason;
-        const avatar = document.querySelector("#personAvatar");
-        avatar.textContent = person.avatar;
-        avatar.style.setProperty("--avatar", person.color);
-        openSheet(document.querySelector("#personSheet"));
+      function leaveReaction(reaction) {
+        const item = feed[feedIndex];
+        const insight = insightByReaction[reaction];
+        traceTotal += 1;
+        document.querySelector("#traceCount").textContent = `留下 ${traceTotal} 处痕迹`;
+        document.querySelector("#insightKicker").textContent = `你留下了一句暗号 · ${reaction}`;
+        document.querySelector("#insightTitle").textContent = insight[0];
+        document.querySelector("#insightCopy").textContent = insight[1];
+        document.querySelector("#echoCover").src = `./assets/taste-covers/${item.cover}`;
+        document.querySelector("#echoCaption").textContent = item.caption;
+        document.querySelector("#echoYourResponse").textContent = `「${reaction}」`;
+        document.querySelector("#echoOtherResponse").textContent = reaction === "这很像我" ? "「我抗拒，但停下了」" : "「这很像我」";
+        openSheet("#insightSheet");
       }
-      function openChat(id) {
-        const person = people[id] || people.momo;
-        document.querySelector("#chatName").textContent = person.name.split("，")[0];
+      function openChat(id = "momo") {
+        document.querySelector("#chatName").textContent = people[id] || people.momo;
         document.querySelector("#chatScreen").classList.add("is-open");
       }
 
-      tabs.forEach((tab) => tab.addEventListener("click", () => {
-        showTab(tab.dataset.tab);
-        if (tab.dataset.tab === "discover") playCurrentVideo(true);
-      }));
-      playVideo.addEventListener("click", () => playCurrentVideo(false));
-      feedVideo.addEventListener("click", toggleVideo);
-      soundButton.addEventListener("click", toggleSound);
-      feedVideo.addEventListener("playing", () => {
+      tabs.forEach((tab) => tab.addEventListener("click",() => showTab(tab.dataset.tab)));
+      document.querySelector("#playVideo").addEventListener("click",() => playCurrentVideo(false));
+      feedVideo.addEventListener("click",toggleVideo);
+      feedVideo.addEventListener("playing",() => {
         playVideo.classList.remove("is-loading");
         playVideo.classList.add("is-hidden");
       });
-      feedVideo.addEventListener("pause", () => playVideo.classList.remove("is-hidden", "is-loading"));
-      document.querySelector("#nextFeed").addEventListener("click", () => { feedIndex = (feedIndex + 1) % feed.length; renderFeed(); });
-      likeButton.addEventListener("click", () => {
-        likeButton.classList.toggle("is-liked");
-        document.querySelector("#signalText").textContent = likeButton.classList.contains("is-liked") ? "暗号 5/6" : "暗号 4/6";
-        if (likeButton.classList.contains("is-liked")) {
-          setReasonSheet("为什么喜欢？", "这一点会帮助暗号更准确地理解你。", ["这更像我", "这是我向往的", "其实我不同意", "想找人聊聊"]);
-          openSheet(document.querySelector("#reasonSheet"));
-        }
-      });
-      document.querySelector("#talkButton").addEventListener("click", () => {
-        setReasonSheet("想从哪里聊起？", "选一个真实的反应，它会成为更自然的开场。", ["这个表情太真实了", "我也经历过类似的", "想听听你的看法", "这条让我想到……"]);
-        openSheet(document.querySelector("#reasonSheet"));
-      });
-      document.querySelectorAll("[data-close-sheet]").forEach((button) => button.addEventListener("click", closeSheets));
-      document.querySelectorAll("#reasonGrid button").forEach((button) => button.addEventListener("click", () => { closeSheets(); showToast(`已记住：${button.textContent}`); }));
-      document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => openPerson(button.dataset.person)));
-      document.querySelector("#sayHello").addEventListener("click", () => { closeSheets(); showToast("招呼已发出，回应后进入消息"); });
-      document.querySelectorAll("[data-chat]").forEach((button) => button.addEventListener("click", () => openChat(button.dataset.chat)));
-      document.querySelector("#closeChat").addEventListener("click", () => document.querySelector("#chatScreen").classList.remove("is-open"));
-      document.querySelector("#composer").addEventListener("submit", (event) => {
+      feedVideo.addEventListener("pause",() => playVideo.classList.remove("is-hidden","is-loading"));
+      document.querySelector("#soundButton").addEventListener("click",toggleSound);
+      document.querySelector("#nextFeed").addEventListener("click",nextFeed);
+      document.querySelector("#pauseAction").addEventListener("click",() => openSheet("#reactionSheet"));
+      document.querySelectorAll("[data-reaction]").forEach((button) => button.addEventListener("click",() => leaveReaction(button.dataset.reaction)));
+      document.querySelector("#keepSignal").addEventListener("click",() => { closeSheets(); showToast("暗号已留下，回应会出现在回声里"); });
+      document.querySelector("#catchEcho").addEventListener("click",() => openSheet("#questionSheet"));
+      document.querySelectorAll("[data-answer]").forEach((button) => button.addEventListener("click",() => openSheet("#revealSheet")));
+      document.querySelector("#startChat").addEventListener("click",() => { closeSheets(); showTab("messages"); openChat("momo"); });
+      document.querySelectorAll("[data-close-sheet]").forEach((button) => button.addEventListener("click",closeSheets));
+      document.querySelectorAll("[data-chat]").forEach((button) => button.addEventListener("click",() => openChat(button.dataset.chat)));
+      document.querySelector("#closeChat").addEventListener("click",() => document.querySelector("#chatScreen").classList.remove("is-open"));
+      document.querySelector("#composer").addEventListener("submit",(event) => {
         event.preventDefault();
         const input = document.querySelector("#messageInput");
         if (!input.value.trim()) return;
@@ -701,20 +583,28 @@
         bubble.textContent = input.value.trim();
         document.querySelector("#chatMessages").appendChild(bubble);
         input.value = "";
+        document.querySelector("#chatMessages").scrollTop = document.querySelector("#chatMessages").scrollHeight;
       });
-      document.querySelectorAll("[data-feed-index]").forEach((button) => button.addEventListener("click", () => { feedIndex = Number(button.dataset.feedIndex); renderFeed(); showTab("discover"); }));
-      document.querySelector("#editIntent").addEventListener("click", () => showToast("这里进入寻找条件编辑"));
-      document.querySelector("#editProfile").addEventListener("click", () => showToast("这里进入个人资料编辑"));
+      document.querySelectorAll("[data-feed-index]").forEach((button) => button.addEventListener("click",() => {
+        feedIndex = Number(button.dataset.feedIndex);
+        renderFeed();
+        showTab("discover");
+      }));
+      document.querySelector("#acceptGuess").addEventListener("click",() => showToast("已记下：有一点"));
+      document.querySelector("#rejectGuess").addEventListener("click",() => {
+        document.querySelector("#uncertainLabel").textContent = "这个猜测已被收回";
+        document.querySelector("#uncertainCopy").textContent = "你没有被归类。下一次停留会从这里重新开始。";
+        document.querySelector("#uncertainActions").hidden = true;
+      });
 
       let touchY = null;
-      document.querySelector(".discover").addEventListener("touchstart", (event) => { touchY = event.touches[0].clientY; }, { passive: true });
-      document.querySelector(".discover").addEventListener("touchend", (event) => {
-        if (touchY !== null && touchY - event.changedTouches[0].clientY > 52) { feedIndex = (feedIndex + 1) % feed.length; renderFeed(); }
+      document.querySelector(".discover").addEventListener("touchstart",(event) => { touchY = event.touches[0].clientY; },{passive:true});
+      document.querySelector(".discover").addEventListener("touchend",(event) => {
+        if (touchY !== null && touchY - event.changedTouches[0].clientY > 52) nextFeed();
         touchY = null;
-      }, { passive: true });
+      },{passive:true});
 
-      icons();
-      updateSoundButton();
+      renderIcons();
       playCurrentVideo(true);
     </script>
   </body>
