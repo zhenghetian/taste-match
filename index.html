@@ -159,16 +159,25 @@
         box-shadow: 0 10px 25px rgba(82,107,132,.2);
       }
 
-      .screen { min-height: 100%; background: var(--paper); }
-      .screen-head { padding: max(24px, env(safe-area-inset-top)) 18px 18px; }
-      .screen-head small { display: block; margin-bottom: 7px; color: var(--accent); font-size: 10px; font-weight: 850; }
-      .screen-head h1 { margin: 0; font-size: 31px; line-height: 1.05; }
-      .screen-head p { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+      .screen { min-height: 100%; background: #edf1f2; }
+      .screen-head {
+        display: flex;
+        min-height: 86px;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        padding: max(22px, env(safe-area-inset-top)) 18px 17px;
+        border-bottom: 1px solid var(--line);
+        background: var(--paper);
+      }
+      .screen-head h1 { margin: 0; font-size: 27px; line-height: 1.05; }
+      .screen-head p { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
+      .screen-head-action { display: grid; width: 44px; height: 44px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: transparent; color: var(--ink); }
       .section-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 18px 9px; }
       .section-head h2 { margin: 0; font-size: 14px; }
       .section-head span { color: var(--muted); font-size: 10px; }
 
-      .echo-lead { padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
+      .echo-lead { margin-top: 10px; padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
       .echo-meta { display: flex; align-items: center; justify-content: space-between; color: var(--accent); font-size: 10px; font-weight: 800; }
       .echo-meta span:last-child { color: var(--muted); font-weight: 600; }
       .echo-media { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; margin: 14px 0 16px; }
@@ -185,7 +194,7 @@
       .waiting small { color: var(--muted); font-size: 9px; }
       .waiting p { margin: 7px 0 0; font-size: 13px; line-height: 1.5; }
 
-      .conversation-list { border-top: 1px solid var(--line); background: white; }
+      .conversation-list { margin-top: 10px; border-top: 1px solid var(--line); background: white; }
       .conversation-row {
         display: grid;
         width: 100%;
@@ -214,15 +223,16 @@
       .row-main p { overflow: hidden; margin: 5px 0 0; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
       .conversation-row.is-unread .row-main p { color: var(--ink); font-weight: 650; }
       .conversation-row time { align-self: start; padding-top: 4px; color: #999da1; font-size: 9px; }
-      .message-origin { padding: 17px 18px; border-bottom: 1px solid var(--line); background: var(--band); }
-      .message-origin small { color: var(--accent); font-size: 9px; font-weight: 800; }
-      .message-origin p { margin: 7px 0 0; font-size: 12px; line-height: 1.5; }
-
-      .profile-summary { padding: 22px 18px 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
+      .profile-account { padding: 18px; border-bottom: 1px solid var(--line); background: white; }
+      .profile-account .account-person .avatar { width: 48px; height: 48px; }
+      .profile-account .account-person strong { font-size: 16px; }
+      .profile-summary { margin-top: 10px; padding: 22px 18px 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
       .profile-summary small { color: var(--muted); font-size: 9px; font-weight: 800; }
       .profile-summary h2 { margin: 12px 0 10px; font-family: "Songti SC","STSong",serif; font-size: 28px; font-weight: 500; line-height: 1.28; }
       .profile-summary p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
-      .profile-section { padding: 21px 18px 23px; border-bottom: 1px solid var(--line); }
+      .profile-summary-action { display: flex; min-height: 44px; align-items: center; gap: 7px; margin-top: 17px; padding: 0; background: transparent; color: var(--accent); font-size: 11px; font-weight: 800; }
+      .profile-summary-action svg { width: 16px; height: 16px; }
+      .profile-section { margin-top: 10px; padding: 21px 18px 23px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
       .profile-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
       .profile-section-head h2 { margin: 0; font-size: 14px; }
       .profile-section-head span { color: var(--muted); font-size: 9px; }
@@ -234,11 +244,24 @@
       .taste-grid span { position: absolute; right: 7px; bottom: 7px; left: 7px; z-index: 2; color: white; font-size: 9px; font-weight: 750; text-align: left; text-shadow: 0 1px 5px #000; }
       .taste-grid button::after { position: absolute; inset: 45% 0 0; background: linear-gradient(transparent,rgba(0,0,0,.62)); content: ""; }
       .taste-grid .empty-state { grid-column: 1/-1; padding: 24px 12px; }
-      .uncertain { margin: -21px -18px -23px; padding: 21px 18px 23px; background: #e5ebef; }
+      .uncertain { padding: 4px 0 0; }
       .uncertain small { color: var(--accent); font-size: 9px; font-weight: 800; }
       .uncertain p { margin: 11px 0 14px; font-family: "Songti SC","STSong",serif; font-size: 18px; line-height: 1.5; }
       .uncertain-actions { display: flex; gap: 8px; }
       .uncertain-actions button { min-height: 35px; padding: 0 11px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.68); color: var(--ink); font-size: 10px; }
+
+      .settings-account { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; padding: 0 2px 16px; border-bottom: 1px solid var(--line); }
+      .settings-account .avatar { width: 42px; height: 42px; }
+      .settings-account strong { display: block; font-size: 13px; }
+      .settings-account span { color: var(--muted); font-size: 10px; }
+      .settings-list { overflow: hidden; border-top: 1px solid var(--line); }
+      .settings-row { display: grid; width: 100%; min-height: 58px; grid-template-columns: 24px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 0 2px; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; }
+      .settings-row svg { width: 18px; height: 18px; color: var(--accent); }
+      .settings-row strong { display: block; font-size: 12px; }
+      .settings-row span, .settings-row b { color: var(--muted); font-size: 9px; font-weight: 600; }
+      .settings-row > b { max-width: 122px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .settings-row.is-danger, .settings-row.is-danger svg { color: #873f4d; }
+      .settings-row.is-danger strong { color: #873f4d; }
 
       .tab-bar {
         position: absolute;
@@ -267,6 +290,8 @@
         right: 0;
         bottom: 0;
         left: 0;
+        max-height: calc(100% - max(16px, env(safe-area-inset-top)));
+        overflow-y: auto;
         padding: 9px 18px calc(22px + var(--safe-bottom));
         border-radius: 19px 19px 0 0;
         background: #f8f8f5;
@@ -440,7 +465,7 @@
 
         <section class="view" data-view="echo" aria-label="相遇">
           <div class="screen">
-            <header class="screen-head"><small id="echoCountText">还没有新的相遇</small><h1>相遇</h1><p>不是附近的人，是在同一处停下的人。</p></header>
+            <header class="screen-head"><div><h1>相遇</h1><p id="echoCountText">还没有新的相遇</p></div></header>
             <div id="echoEmpty" class="empty-state"><i><span data-lucide="sparkles"></span></i><h2>还没有遇见</h2><p>继续刷一些内容并留下真实感受。<br />有人接住你的暗号时，你们会在这里相遇。</p></div>
             <article id="echoLead" class="echo-lead" hidden>
               <div class="echo-meta"><span>一次意外重合</span><span id="echoTime">刚刚</span></div>
@@ -454,8 +479,7 @@
 
         <section class="view" data-view="messages" aria-label="对话">
           <div class="screen">
-            <header class="screen-head"><small>已经发生的关系</small><h1>对话</h1><p>从一处共同停留开始，慢慢认识。</p></header>
-            <div id="messageOrigin" class="message-origin" hidden><small>最新的一次相遇</small><p id="messageOriginCopy"></p></div>
+            <header class="screen-head"><div><h1>对话</h1><p id="conversationCountText">还没有开始的对话</p></div></header>
             <div id="conversationEmpty" class="empty-state"><i><span data-lucide="message-circle"></span></i><h2>还没有对话</h2><p>双方回答同一个问题后，<br />对话才会从那句话开始。</p></div>
             <div id="conversationList" class="conversation-list"></div>
           </div>
@@ -463,15 +487,11 @@
 
         <section class="view" data-view="profile" aria-label="我的">
           <div class="screen">
-            <header class="screen-head"><small>不是结论，仍在变化</small><h1>我的痕迹</h1><p>别人暂时可以从这些地方认出你。</p></header>
-            <section class="account-band"><div class="account-line"><div class="account-person"><span id="accountAvatar" class="avatar">我</span><div><strong id="accountName">新朋友</strong><span id="accountCity">上海</span></div></div><div class="account-actions"><button id="editProfileButton" class="icon-action" type="button" aria-label="编辑资料"><i data-lucide="pencil"></i></button><button id="logoutButton" class="icon-action" type="button" aria-label="退出登录"><i data-lucide="log-out"></i></button></div></div></section>
-            <section class="invite-band"><small>邀请一个接得住的人</small><div class="invite-code"><strong id="myInviteCode">—</strong><button id="copyInvite" type="button">复制邀请码</button></div></section>
-            <section class="notification-band"><div><strong>相遇通知</strong><span id="notificationStatus">有人接住暗号时在当前设备提醒</span></div><button id="enableNotifications" type="button">开启</button></section>
-            <section class="notification-band"><div><strong>已拉黑的人</strong><span id="blockedCount">目前没有拉黑关系</span></div><button id="manageBlocks" type="button">管理</button></section>
-            <section class="profile-summary"><small id="profileClarity">暗号刚刚开始 · 8%</small><h2 id="profileInsight">再多停下几次，<br />暗号才会慢慢显形。</h2><p id="profileInsightCopy">这里只根据你真实留下的感受变化，不会用注册资料替你下结论。</p></section>
+            <header class="screen-head"><div><h1>我的</h1><p>留下来的，慢慢组成了你。</p></div><button id="openSettings" class="screen-head-action" type="button" aria-label="打开设置"><i data-lucide="settings"></i></button></header>
+            <section class="profile-account"><div class="account-person"><span id="accountAvatar" class="avatar">我</span><div><strong id="accountName">新朋友</strong><span id="accountCity">上海</span></div></div></section>
+            <section class="profile-summary"><small id="profileClarity">暗号刚刚开始 · 8%</small><h2 id="profileInsight">再多停下几次，<br />暗号才会慢慢显形。</h2><p id="profileInsightCopy">这里只根据你真实留下的感受变化，不会用注册资料替你下结论。</p><button id="openReflection" class="profile-summary-action" type="button"><span>校准这次猜测</span><i data-lucide="arrow-right"></i></button></section>
             <section class="profile-section"><div class="profile-section-head"><h2>反复出现的主题</h2><span id="topicPeriod">还在形成</span></div><div id="recurringTopics" class="recurring-topics"><span>等待第一次停留</span></div></section>
             <section class="profile-section"><div class="profile-section-head"><h2>你想靠近的生活</h2><span id="desiredCount">0 处</span></div><div id="tasteGrid" class="taste-grid"><div class="empty-state"><p>选择「这是我向往的」后，会出现在这里。</p></div></div></section>
-            <section class="profile-section"><div id="uncertain" class="uncertain"><small id="uncertainLabel">一处仍然说不清</small><p id="uncertainCopy">你会在亲密关系的内容前停留，却很少选择「这很像我」。</p><div id="uncertainActions" class="uncertain-actions"><button id="acceptGuess" type="button">有一点</button><button id="rejectGuess" type="button">不是这样</button></div></div></section>
           </div>
         </section>
 
@@ -500,6 +520,8 @@
         <div id="reportSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">提交举报</span><h2>发生了什么？</h2><p>对方不会知道是谁提交了举报。请选择最接近的原因。</p><div class="sheet-options"><button data-report-reason="骚扰或辱骂" type="button"><span>骚扰或辱骂</span><i data-lucide="arrow-right"></i></button><button data-report-reason="色情或不适内容" type="button"><span>色情或不适内容</span><i data-lucide="arrow-right"></i></button><button data-report-reason="诈骗或广告" type="button"><span>诈骗或广告</span><i data-lucide="arrow-right"></i></button><button data-report-reason="冒充他人" type="button"><span>冒充他人</span><i data-lucide="arrow-right"></i></button><button data-report-reason="其他" type="button"><span>其他</span><i data-lucide="arrow-right"></i></button></div></section></div>
         <div id="blockSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">确认拉黑</span><h2>不再遇见 <span id="blockUserName">Ta</span>？</h2><p>这段回声和对话会从你的列表中消失，对方也不能继续给你发送消息。</p><button id="confirmBlock" class="danger-button" type="button">确认拉黑</button></section></div>
         <div id="blocksSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">关系设置</span><h2>已拉黑的人</h2><p>解除后，过去发生过的回声和对话会重新出现。</p><div id="blockedList" class="blocked-list"><div class="empty-state"><p>目前没有拉黑任何人。</p></div></div></section></div>
+        <div id="reflectionSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">只是一种猜测</span><h2>这像你吗？</h2><div id="uncertain" class="uncertain"><small id="uncertainLabel">一处仍然说不清</small><p id="uncertainCopy">你会在亲密关系的内容前停留，却很少选择「这很像我」。</p><div id="uncertainActions" class="uncertain-actions"><button id="acceptGuess" type="button">有一点</button><button id="rejectGuess" type="button">不是这样</button></div></div></section></div>
+        <div id="settingsSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">账户与安全</span><h2>设置</h2><div class="settings-account"><span id="settingsAvatar" class="avatar">我</span><div><strong id="settingsName">新朋友</strong><span id="settingsCity">上海</span></div></div><div class="settings-list"><button id="editProfileButton" class="settings-row" type="button"><i data-lucide="pencil"></i><span><strong>编辑资料</strong><span>昵称、城市与个人介绍</span></span><i data-lucide="chevron-right"></i></button><button id="copyInvite" class="settings-row" type="button"><i data-lucide="ticket"></i><span><strong>邀请朋友</strong><span>复制你的专属邀请码</span></span><b id="myInviteCode">—</b></button><button id="enableNotifications" class="settings-row" type="button"><i data-lucide="bell"></i><span><strong>相遇通知</strong><span id="notificationStatus">有人接住暗号时提醒</span></span><b id="notificationAction">开启</b></button><button id="manageBlocks" class="settings-row" type="button"><i data-lucide="shield"></i><span><strong>已拉黑的人</strong><span id="blockedCount">目前没有拉黑关系</span></span><i data-lucide="chevron-right"></i></button><button id="logoutButton" class="settings-row is-danger" type="button"><i data-lucide="log-out"></i><span><strong>退出登录</strong></span><i data-lucide="chevron-right"></i></button></div></section></div>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
     </main>
@@ -690,6 +712,9 @@
         document.querySelector("#accountAvatar").textContent = state.user.avatar;
         document.querySelector("#accountName").textContent = state.user.nickname;
         document.querySelector("#accountCity").textContent = `${state.user.city} · ${state.user.phone || "微信登录"}`;
+        document.querySelector("#settingsAvatar").textContent = state.user.avatar;
+        document.querySelector("#settingsName").textContent = state.user.nickname;
+        document.querySelector("#settingsCity").textContent = `${state.user.city} · ${state.user.phone || "微信登录"}`;
         document.querySelector("#myInviteCode").textContent = state.invite?.code || "—";
       }
       function renderTasteProfile() {
@@ -841,8 +866,7 @@
         badge.textContent = String(conversations.length);
         state.conversations = conversations;
         document.querySelector("#conversationEmpty").hidden = conversations.length > 0;
-        document.querySelector("#messageOrigin").hidden = conversations.length === 0;
-        if (conversations.length) document.querySelector("#messageOriginCopy").textContent = `你和${conversations[0].other.nickname}没有给出相同答案，但都愿意认真回答。`;
+        document.querySelector("#conversationCountText").textContent = conversations.length ? `${conversations.length} 段已经开始的关系` : "还没有开始的对话";
         list.replaceChildren(...conversations.map((echo) => {
           const button = document.createElement("button");
           button.className = "conversation-row";
@@ -1042,7 +1066,7 @@
         if (!("Notification" in window)) { document.querySelector("#notificationStatus").textContent = "当前浏览器不支持系统通知"; document.querySelector("#enableNotifications").disabled = true; return; }
         const allowed = Notification.permission === "granted";
         document.querySelector("#notificationStatus").textContent = allowed ? "已开启当前设备提醒" : "有人接住暗号时在当前设备提醒";
-        document.querySelector("#enableNotifications").textContent = allowed ? "已开启" : "开启";
+        document.querySelector("#notificationAction").textContent = allowed ? "已开启" : "开启";
         document.querySelector("#enableNotifications").disabled = allowed;
       }
 
@@ -1079,6 +1103,8 @@
       document.querySelectorAll("[data-report-reason]").forEach((button)=>button.addEventListener("click",()=>submitReport(button.dataset.reportReason,button)));
       document.querySelector("#confirmBlock").addEventListener("click",(event)=>blockCurrentUser(event.currentTarget));
       document.querySelector("#manageBlocks").addEventListener("click",async()=>{ try { await refreshBlocks(); openSheet("#blocksSheet"); } catch(error) { showToast(error.message); } });
+      document.querySelector("#openSettings").addEventListener("click",()=>openSheet("#settingsSheet"));
+      document.querySelector("#openReflection").addEventListener("click",()=>openSheet("#reflectionSheet"));
       document.querySelector("#composer").addEventListener("submit",async (event) => {
         event.preventDefault();
         const input = document.querySelector("#messageInput");
@@ -1109,7 +1135,7 @@
           if (state.editingProfile) { state.editingProfile=false; showToast("资料已更新"); }
         } catch (error) { formMessage("#profileMessage",error.message,true); }
       });
-      document.querySelector("#editProfileButton").addEventListener("click",() => showProfileForm(true));
+      document.querySelector("#editProfileButton").addEventListener("click",() => { closeSheets(); showProfileForm(true); });
       document.querySelector("#profileCancel").addEventListener("click",() => { state.editingProfile=false; document.querySelector("#profileGate").hidden=true; });
       document.querySelector("#logoutButton").addEventListener("click",async () => { try { await apiFetch("/api/auth/logout",{method:"POST"}); } catch {} localStorage.removeItem("anhao_token"); location.reload(); });
       document.querySelector("#copyInvite").addEventListener("click",async () => { const code=state.invite?.code; if(!code)return; await navigator.clipboard.writeText(code); showToast("邀请码已复制"); });
