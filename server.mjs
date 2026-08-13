@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { CONTENT_LIBRARY, CONTENT_BY_ID, QUESTION_BANK } from "./content-library.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || join(ROOT, "data");
@@ -164,25 +165,22 @@ db.exec(`
 
 function seed() {
   db.prepare(`INSERT OR IGNORE INTO invites(code, max_uses, used_count, active, created_at) VALUES(?, 100, 0, 1, ?)`).run(MASTER_INVITE, now());
-  const demoId = "usr_demo_momo";
-  db.prepare(`INSERT OR IGNORE INTO users(id, phone, nickname, city, bio, birth_year, gender, avatar, profile_completed, is_demo, created_at, updated_at)
-    VALUES(?, '13900000000', '默默', '上海', '喜欢慢慢走路，也愿意认真回答没有标准答案的问题。', 2001, '女', '默', 1, 1, ?, ?)`
-  ).run(demoId, now(), now());
-  db.prepare(`INSERT OR IGNORE INTO invites(code, owner_user_id, max_uses, used_count, active, created_at) VALUES('MOMO2026', ?, 20, 0, 1, ?)`).run(demoId, now());
-  const seedSignals = [
-    ["7653500525270670770", "@自信阳光", "晚饭后，一个人慢慢走回生活里", "night-walk.jpg", "这很像我"],
-    ["7482985809893707027", "@中国新闻周刊", "合群，真的有那么重要吗？", "not-fitting-in.jpg", "我抗拒，但停下了"],
-    ["7535852633412603136", "@煎妮", "朋友是流动的，你能接受被动降级吗？", "fluid-friendship.jpg", "这很像我"],
-    ["7654778543125673818", "@零玖", "和喜欢的人，过一个没安排的普通周末", "ordinary-weekend.jpg", "这是我向往的"]
-  ];
+  const demoUsers = {
+    momo:["usr_demo_momo","13900000000","默默","上海","喜欢慢慢走路，也愿意认真回答没有标准答案的问题。",2001,"女","默"],
+    mina:["usr_demo_mina","13900000001","Mina","杭州","关系访谈、书和认真吃晚饭。比起秒回，更在意有没有认真回。",2000,"女","M"],
+    ayuan:["usr_demo_ayuan","13900000002","阿原","上海","球场、训练细节和周末随便走走。",1999,"男","原"],
+    linjian:["usr_demo_linjian","13900000003","林间","北京","对城市、技术和人的选择都保持一点好奇。",1998,"不公开","林"]
+  };
+  const insertUser = db.prepare(`INSERT OR IGNORE INTO users(id,phone,nickname,city,bio,birth_year,gender,avatar,profile_completed,is_demo,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,1,1,?,?)`);
+  for (const user of Object.values(demoUsers)) insertUser.run(...user,now(),now());
+  db.prepare(`INSERT OR IGNORE INTO invites(code, owner_user_id, max_uses, used_count, active, created_at) VALUES('MOMO2026', ?, 20, 0, 1, ?)`).run(demoUsers.momo[0], now());
   const insert = db.prepare(`INSERT OR IGNORE INTO signals(id,user_id,content_id,creator,title,cover,reaction,created_at) VALUES(?,?,?,?,?,?,?,?)`);
-  for (const [contentId, creator, title, cover, reaction] of seedSignals) {
-    insert.run(`sig_demo_${contentId}`, demoId, contentId, creator, title, cover, reaction, now());
+  for (const item of CONTENT_LIBRARY) {
+    const demoId = demoUsers[item.demoUser]?.[0] || demoUsers.momo[0];
+    insert.run(`sig_demo_${item.id}`, demoId, item.id, item.creator, item.title, item.cover, item.demoReaction, now());
   }
 }
 seed();
-
-const QUESTIONS = ["如果很重要的朋友慢慢疏远，你会怎么做？"];
 
 function json(res, status, payload, headers = {}) {
   const body = JSON.stringify(payload);
@@ -367,12 +365,13 @@ function createEchoFor(signal) {
   `).get(signal.content_id, signal.user_id, signal.user_id, signal.user_id, signal.id, signal.id);
   if (!candidate) return null;
   const echoId = id("ech");
-  const question = QUESTIONS[Math.abs(signal.content_id.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0)) % QUESTIONS.length];
+  const questionItem = QUESTION_BANK[Math.abs(signal.content_id.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0)) % QUESTION_BANK.length];
+  const question = questionItem.question;
   db.prepare(`INSERT INTO echoes(id,user_a,user_b,signal_a,signal_b,content_id,question,created_at) VALUES(?,?,?,?,?,?,?,?)`)
     .run(echoId, signal.user_id, candidate.user_id, signal.id, candidate.id, signal.content_id, question, now());
   const candidateUser = db.prepare(`SELECT * FROM users WHERE id=?`).get(candidate.user_id);
   if (candidateUser?.is_demo) {
-    const demoAnswer = question.includes("朋友") ? "我会主动问一次发生了什么" : "我会留出时间，看看当下最想做什么";
+    const demoAnswer = questionItem.demoAnswer;
     db.prepare(`INSERT OR IGNORE INTO echo_answers(echo_id,user_id,answer,created_at) VALUES(?,?,?,?)`).run(echoId, candidate.user_id, demoAnswer, now());
   }
   notify(signal.user_id, "echo", "一条回声抵达了", "有人在和你相同的地方停了下来。", { echoId });
@@ -560,11 +559,21 @@ async function api(req, res, url) {
     const body = await readJson(req);
     const allowed = ["这很像我","这是我向往的","我抗拒，但停下了","说不清，但我停下了"];
     if (!body.contentId || !allowed.includes(body.reaction)) return fail(res, 400, "INVALID_SIGNAL", "停留数据不完整");
-    const signal = { id:id("sig"), user_id:user.id, content_id:String(body.contentId), creator:String(body.creator || "").slice(0,40), title:String(body.title || "").slice(0,100), cover:String(body.cover || "").slice(0,100), reaction:body.reaction, created_at:now() };
+    const content = CONTENT_BY_ID.get(String(body.contentId));
+    if (!content) return fail(res,400,"CONTENT_NOT_FOUND","这条内容已经不在内容池中");
+    const existing = db.prepare(`SELECT * FROM signals WHERE user_id=? AND content_id=? ORDER BY created_at DESC LIMIT 1`).get(user.id,content.id);
+    if (existing) {
+      db.prepare(`UPDATE signals SET reaction=?,created_at=? WHERE id=?`).run(body.reaction,now(),existing.id);
+      const echo = db.prepare(`SELECT * FROM echoes WHERE signal_a=? OR signal_b=? ORDER BY created_at DESC LIMIT 1`).get(existing.id,existing.id);
+      const count = db.prepare(`SELECT COUNT(DISTINCT content_id) AS count FROM signals WHERE user_id=?`).get(user.id).count;
+      track(user.id,"signal_created",{contentId:content.id,reaction:body.reaction,updated:true,echoCreated:Boolean(echo)});
+      return json(res,200,{signal:{id:existing.id,reaction:body.reaction,createdAt:now()},traceCount:count,echo:echo ? echoRow(echo,user.id) : null,updated:true});
+    }
+    const signal = { id:id("sig"), user_id:user.id, content_id:content.id, creator:content.creator, title:content.title, cover:content.cover, reaction:body.reaction, created_at:now() };
     db.prepare(`INSERT INTO signals(id,user_id,content_id,creator,title,cover,reaction,created_at) VALUES(?,?,?,?,?,?,?,?)`)
       .run(signal.id, signal.user_id, signal.content_id, signal.creator, signal.title, signal.cover, signal.reaction, signal.created_at);
     const echo = createEchoFor(signal);
-    const count = db.prepare(`SELECT COUNT(*) AS count FROM signals WHERE user_id=?`).get(user.id).count;
+    const count = db.prepare(`SELECT COUNT(DISTINCT content_id) AS count FROM signals WHERE user_id=?`).get(user.id).count;
     track(user.id,"signal_created",{contentId:signal.content_id,reaction:signal.reaction,echoCreated:Boolean(echo)});
     return json(res, 201, { signal:{ id:signal.id, reaction:signal.reaction, createdAt:signal.created_at }, traceCount:count, echo:echo ? echoRow(echo,user.id) : null });
   }

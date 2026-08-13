@@ -230,6 +230,7 @@
       .taste-grid img { width: 100%; height: 100%; object-fit: cover; }
       .taste-grid span { position: absolute; right: 7px; bottom: 7px; left: 7px; z-index: 2; color: white; font-size: 9px; font-weight: 750; text-align: left; text-shadow: 0 1px 5px #000; }
       .taste-grid button::after { position: absolute; inset: 45% 0 0; background: linear-gradient(transparent,rgba(0,0,0,.62)); content: ""; }
+      .taste-grid .empty-state { grid-column: 1/-1; padding: 24px 12px; }
       .uncertain { margin: -21px -18px -23px; padding: 21px 18px 23px; background: #e5ebef; }
       .uncertain small { color: var(--accent); font-size: 9px; font-weight: 800; }
       .uncertain p { margin: 11px 0 14px; font-family: "Songti SC","STSong",serif; font-size: 18px; line-height: 1.5; }
@@ -464,9 +465,9 @@
             <section class="invite-band"><small>邀请一个接得住的人</small><div class="invite-code"><strong id="myInviteCode">—</strong><button id="copyInvite" type="button">复制邀请码</button></div></section>
             <section class="notification-band"><div><strong>回声通知</strong><span id="notificationStatus">有新回声时在当前设备提醒</span></div><button id="enableNotifications" type="button">开启</button></section>
             <section class="notification-band"><div><strong>已拉黑的人</strong><span id="blockedCount">目前没有拉黑关系</span></div><button id="manageBlocks" type="button">管理</button></section>
-            <section class="profile-summary"><small>暗号正在变清晰 · 37%</small><h2>你似乎不怕独处，<br />更怕无意义的热闹。</h2><p>这是一个暂时的猜测。它可以被你否认，也可能被下一次停留改写。</p></section>
-            <section class="profile-section"><div class="profile-section-head"><h2>反复出现的主题</h2><span>过去 7 天</span></div><div class="recurring-topics"><span>独处</span><span>普通生活</span><span>认真沟通</span><span>计划之外</span></div></section>
-            <section class="profile-section"><div class="profile-section-head"><h2>你想靠近的生活</h2><span>2 处</span></div><div class="taste-grid"><button data-feed-index="9" type="button"><img src="./assets/taste-covers/ordinary-weekend.jpg" alt="没有安排的周末" /><span>没有安排的周末</span></button><button data-feed-index="5" type="button"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="临时起意的出发" /><span>临时起意的出发</span></button></div></section>
+            <section class="profile-summary"><small id="profileClarity">暗号刚刚开始 · 8%</small><h2 id="profileInsight">再多停下几次，<br />暗号才会慢慢显形。</h2><p id="profileInsightCopy">这里只根据你真实留下的感受变化，不会用注册资料替你下结论。</p></section>
+            <section class="profile-section"><div class="profile-section-head"><h2>反复出现的主题</h2><span id="topicPeriod">还在形成</span></div><div id="recurringTopics" class="recurring-topics"><span>等待第一次停留</span></div></section>
+            <section class="profile-section"><div class="profile-section-head"><h2>你想靠近的生活</h2><span id="desiredCount">0 处</span></div><div id="tasteGrid" class="taste-grid"><div class="empty-state"><p>选择「这是我向往的」后，会出现在这里。</p></div></div></section>
             <section class="profile-section"><div id="uncertain" class="uncertain"><small id="uncertainLabel">一处仍然说不清</small><p id="uncertainCopy">你会在亲密关系的内容前停留，却很少选择「这很像我」。</p><div id="uncertainActions" class="uncertain-actions"><button id="acceptGuess" type="button">有一点</button><button id="rejectGuess" type="button">不是这样</button></div></div></section>
           </div>
         </section>
@@ -501,35 +502,15 @@
     </main>
 
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script>
+    <script type="module">
+      import { CONTENT_LIBRARY, QUESTION_BANK } from "./content-library.mjs";
+
       window.__appErrors = [];
       window.addEventListener("error", (event) => window.__appErrors.push(event.message));
       window.addEventListener("unhandledrejection", (event) => window.__appErrors.push(String(event.reason)));
 
-      const feed = [
-        { id:"7643411504674409743", cover:"quiet-evening.jpg", creator:"@Judy德国冷浪漫", kind:"生活节奏", title:"认真把东西用完，也认真吃饭", caption:"独居、极简消费、做饭和读书。这样的下班夜晚，像你吗？", url:"https://www.douyin.com/video/7643411504674409743" },
-        { id:"7653500525270670770", cover:"night-walk.jpg", creator:"@自信阳光", kind:"独处方式", title:"晚饭后，一个人慢慢走回生活里", caption:"散步、看人跳舞、逛超市。你会如何消化一天的情绪？", url:"https://www.douyin.com/video/7653500525270670770" },
-        { id:"7482985809893707027", cover:"not-fitting-in.jpg", creator:"@中国新闻周刊", kind:"关系态度", title:"合群，真的有那么重要吗？", caption:"把有限的热情留给真正重要的人和事。你认同吗？", url:"https://www.douyin.com/video/7482985809893707027" },
-        { id:"7535852633412603136", cover:"fluid-friendship.jpg", creator:"@煎妮", kind:"友情观点", title:"朋友是流动的，你能接受被动降级吗？", caption:"有些关系不是争吵结束，而是慢慢离开。你会追问、挽留，还是接受？", url:"https://www.douyin.com/video/7535852633412603136" },
-        { id:"7590413990154264442", cover:"right-to-fail.jpg", creator:"@流年冉冉", kind:"人生选择", title:"“搞砸”人生，是自由的一部分吗？", caption:"按自己的选择承担后果，还是尽量走稳妥的路？", url:"https://www.douyin.com/video/7590413990154264442" },
-        { id:"7650683559334702312", cover:"sunrise-with-friends.jpg", creator:"@我是蓝蓝哇", kind:"社交节奏", title:"临时起意，和搭子出发去看日出", caption:"你更喜欢提前计划，还是一句“走吧”就出发？", url:"https://www.douyin.com/video/7650683559334702312" },
-        { id:"7643311406674334874", cover:"park-happiness.jpg", creator:"@乔伊Joey", kind:"快乐方式", title:"公园不要钱，快乐也不贵", caption:"一片草地、一阵风、坐一会儿。这样的周末对你够不够？", url:"https://www.douyin.com/video/7643311406674334874" },
-        { id:"7631915914090384678", cover:"market-reader.jpg", creator:"@陕视新闻", kind:"兴趣与好奇", title:"卖鸡，也要和李白苏轼打交道", caption:"菜市场摊主在鸡摊旁放了一角书。你会被这种人吸引吗？", url:"https://www.douyin.com/video/7631915914090384678" },
-        { id:"7578038229136444681", cover:"love-lasts.jpg", creator:"@毕英杰Johnathan", kind:"亲密关系", title:"让爱情更长久的，不只是心动", caption:"亲密关系需要沟通、尊重和不断向内看。你更看重哪一种？", url:"https://www.douyin.com/video/7578038229136444681" },
-        { id:"7654778543125673818", cover:"ordinary-weekend.jpg", creator:"@零玖", kind:"普通周末", title:"和喜欢的人，过一个没安排的普通周末", caption:"做饭、聊天、待在一起。你向往热闹，还是这种日常？", url:"https://www.douyin.com/video/7654778543125673818" }
-      ];
-      const videoStreams = {
-        "7643411504674409743":"./assets/taste-videos/quiet-evening.mp4?v=2",
-        "7653500525270670770":"./assets/taste-videos/night-walk.mp4?v=2",
-        "7482985809893707027":"./assets/taste-videos/not-fitting-in.mp4?v=2",
-        "7535852633412603136":"./assets/taste-videos/fluid-friendship.mp4?v=2",
-        "7590413990154264442":"./assets/taste-videos/right-to-fail.mp4?v=2",
-        "7650683559334702312":"./assets/taste-videos/sunrise-with-friends.mp4?v=2",
-        "7643311406674334874":"./assets/taste-videos/park-happiness.mp4?v=2",
-        "7631915914090384678":"./assets/taste-videos/market-reader.mp4?v=2",
-        "7578038229136444681":"./assets/taste-videos/love-lasts.mp4?v=2",
-        "7654778543125673818":"./assets/taste-videos/ordinary-weekend.mp4?v=2"
-      };
+      const feed = CONTENT_LIBRARY;
+      const videoStreams = Object.fromEntries(feed.map((item)=>[item.id,`./assets/taste-videos/${item.video}?v=3`]));
       const insightByReaction = {
         "这很像我":["你在熟悉的生活里，认出了自己。","这不是对你的定义。它只记录了这一刻，你愿意承认什么。"],
         "这是我向往的":["你停下来的，也许是还没开始的生活。","向往不等于缺少，它只是让暗号知道你想靠近哪里。"],
@@ -546,6 +527,7 @@
         echoes: [],
         conversations: [],
         blocks: [],
+        signals: [],
         currentEchoId: null,
         currentChatId: null,
         currentSafetyUserId: null,
@@ -555,7 +537,7 @@
         playedContent: new Set(),
         viewedContent: new Set()
       };
-      let feedIndex = 1;
+      let feedIndex = 0;
       let soundEnabled = false;
       let codeRequested = false;
       let toastTimer;
@@ -702,6 +684,50 @@
         document.querySelector("#accountCity").textContent = `${state.user.city} · ${state.user.phone || "微信登录"}`;
         document.querySelector("#myInviteCode").textContent = state.invite?.code || "—";
       }
+      function renderTasteProfile() {
+        const signals = state.signals;
+        const clarity = Math.min(92,8 + signals.length*8);
+        document.querySelector("#profileClarity").textContent = `暗号${signals.length<3 ? "刚刚开始" : "正在变清晰"} · ${clarity}%`;
+        const tagCounts = new Map();
+        for (const signal of signals) {
+          const item = feed.find((content)=>content.id===signal.contentId);
+          for (const tag of item?.tags || []) tagCounts.set(tag,(tagCounts.get(tag)||0)+1);
+        }
+        const topTags = [...tagCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([tag])=>tag);
+        const insight = document.querySelector("#profileInsight");
+        const copy = document.querySelector("#profileInsightCopy");
+        if (signals.length<3) {
+          insight.innerHTML = "再多停下几次，<br />暗号才会慢慢显形。";
+          copy.textContent = "这里只根据你真实留下的感受变化，不会用注册资料替你下结论。";
+        } else {
+          const first=topTags[0] || "真实生活";
+          const second=topTags[1] || "人的选择";
+          insight.textContent = `你反复回到「${first}」，也会被「${second}」牵住。`;
+          const resistant=signals.filter((signal)=>signal.reaction==="我抗拒，但停下了").length;
+          copy.textContent = resistant>=Math.ceil(signals.length/2) ? "让你不舒服的内容，似乎比明确认同更能留下清楚的痕迹。" : "这是一个暂时的猜测，它会被下一次停留继续改写。";
+        }
+        document.querySelector("#topicPeriod").textContent = signals.length ? `来自 ${signals.length} 处停留` : "还在形成";
+        const topics = document.querySelector("#recurringTopics");
+        topics.replaceChildren(...(topTags.length ? topTags : ["等待第一次停留"]).map((tag)=>{const span=document.createElement("span");span.textContent=tag;return span;}));
+
+        const desired = signals.filter((signal)=>signal.reaction==="这是我向往的").map((signal)=>feed.find((item)=>item.id===signal.contentId)).filter(Boolean).slice(0,4);
+        document.querySelector("#desiredCount").textContent = `${desired.length} 处`;
+        const grid = document.querySelector("#tasteGrid");
+        if (!desired.length) {
+          const empty=document.createElement("div");empty.className="empty-state";
+          const text=document.createElement("p");text.textContent="选择「这是我向往的」后，会出现在这里。";
+          empty.append(text);grid.replaceChildren(empty);
+        } else {
+          grid.replaceChildren(...desired.map((item)=>{
+            const button=document.createElement("button");button.type="button";
+            const image=document.createElement("img");image.src=`./assets/taste-covers/${item.cover}`;image.alt=item.title;
+            const label=document.createElement("span");label.textContent=item.title;
+            button.append(image,label);
+            button.addEventListener("click",()=>{feedIndex=feed.findIndex((content)=>content.id===item.id);renderFeed();showTab("discover");});
+            return button;
+          }));
+        }
+      }
       function renderBlocks() {
         const list=document.querySelector("#blockedList");
         document.querySelector("#blockedCount").textContent=state.blocks.length ? `${state.blocks.length} 人，可随时解除` : "目前没有拉黑关系";
@@ -762,7 +788,9 @@
       }
       async function refreshSignals() {
         const { signals } = await apiFetch("/api/signals");
+        state.signals = signals;
         document.querySelector("#traceCount").textContent = `留下 ${signals.length} 处痕迹`;
+        renderTasteProfile();
         return signals;
       }
       function latestEcho() { return state.echoes[0] || null; }
@@ -782,6 +810,8 @@
         document.querySelector("#echoYourResponse").textContent = `「${echo.yourReaction}」`;
         document.querySelector("#echoOtherResponse").textContent = `「${echo.otherReaction}」`;
         document.querySelector("#questionText").textContent = echo.question;
+        const questionItem = QUESTION_BANK.find((item)=>item.question===echo.question) || QUESTION_BANK[0];
+        document.querySelectorAll("[data-answer]").forEach((button,index)=>{ button.querySelector("span").textContent=questionItem.options[index]; });
         const catchButton = document.querySelector("#catchEcho span");
         catchButton.textContent = echo.revealed ? "去和 Ta 对话" : echo.answered ? "等待 Ta 的回答" : "接住这句暗号";
         const waiting = state.echoes.filter((item) => item.answered && !item.revealed).length;
@@ -839,6 +869,7 @@
           document.querySelector("#insightTitle").textContent = insight[0];
           document.querySelector("#insightCopy").textContent = result.echo ? "这一刻已经遇到一处回声。它会出现在「回声」里。" : insight[1];
           if (result.echo) { state.echoes.unshift(result.echo); renderEchoes(); }
+          await refreshSignals();
           openSheet("#insightSheet");
         } catch (error) { showToast(error.message); }
         finally { button.disabled = false; }

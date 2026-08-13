@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CONTENT_LIBRARY, QUESTION_BANK } from "../content-library.mjs";
 
 const PORT = 4197;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -37,6 +38,17 @@ test.before(async () => {
 test.after(() => {
   server?.kill("SIGTERM");
   rmSync(dataDir,{recursive:true,force:true});
+});
+
+test("content library has complete playable assets and varied prompts", () => {
+  assert.equal(CONTENT_LIBRARY.length,24);
+  assert.equal(new Set(CONTENT_LIBRARY.map((item)=>item.id)).size,CONTENT_LIBRARY.length);
+  assert.ok(new Set(CONTENT_LIBRARY.map((item)=>item.kind)).size>=12);
+  assert.ok(QUESTION_BANK.length>=8);
+  for (const item of CONTENT_LIBRARY) {
+    assert.ok(existsSync(new URL(`../assets/taste-videos/${item.video}`,import.meta.url)),`missing video ${item.video}`);
+    assert.ok(existsSync(new URL(`../assets/taste-covers/${item.cover}`,import.meta.url)),`missing cover ${item.cover}`);
+  }
 });
 
 test("closed beta flow persists identity, signals, echoes, answers and chat", async () => {
@@ -73,6 +85,11 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   const signal = await request("/api/signals",{token:login.token,method:"POST",body:{contentId:"7653500525270670770",creator:"@自信阳光",title:"晚饭后，一个人慢慢走回生活里",cover:"night-walk.jpg",reaction:"我抗拒，但停下了"}});
   assert.equal(signal.traceCount,1);
   assert.ok(signal.echo?.id);
+
+  const repeatedSignal = await request("/api/signals",{token:login.token,method:"POST",body:{contentId:"7653500525270670770",reaction:"我抗拒，但停下了"}});
+  assert.equal(repeatedSignal.traceCount,1);
+  assert.equal(repeatedSignal.echo.id,signal.echo.id);
+  assert.equal(repeatedSignal.updated,true);
 
   const echoes = await request("/api/echoes",{token:login.token});
   assert.equal(echoes.echoes.length,1);
