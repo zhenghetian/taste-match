@@ -9,14 +9,19 @@ import { CONTENT_LIBRARY, CONTENT_BY_ID, QUESTION_BANK } from "./content-library
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || join(ROOT, "data");
 const PORT = Number(process.env.PORT || 4173);
-const HOST = process.env.HOST || "127.0.0.1";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const HOST = process.env.HOST || (IS_PRODUCTION ? "0.0.0.0" : "127.0.0.1");
 const DEV_OTP = process.env.DEV_OTP_CODE || "246810";
+const BETA_TEST_CODE = String(process.env.BETA_TEST_CODE || "").trim();
 const MASTER_INVITE = process.env.MASTER_INVITE_CODE || "ANHAO2026";
 const ADMIN_KEY = process.env.ADMIN_KEY || (IS_PRODUCTION ? "" : "anhao-admin");
 const SESSION_DAYS = 30;
 const clients = new Map();
 const analyticsWindows = new Map();
+
+if (BETA_TEST_CODE && !/^\d{6}$/.test(BETA_TEST_CODE)) {
+  throw new Error("BETA_TEST_CODE must be exactly 6 digits");
+}
 
 mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, "anhao.db"));
@@ -389,7 +394,8 @@ async function api(req, res, url) {
   if (method === "GET" && path === "/api/auth/providers") return json(res, 200, {
     phone: true,
     wechat: Boolean(process.env.WECHAT_APP_ID && process.env.WECHAT_APP_SECRET && process.env.PUBLIC_URL),
-    devMode: !IS_PRODUCTION
+    devMode: !IS_PRODUCTION,
+    betaTestMode: Boolean(BETA_TEST_CODE)
   });
 
   if (method === "GET" && path === "/api/admin/analytics") {
@@ -432,16 +438,19 @@ async function api(req, res, url) {
   if (method === "POST" && path === "/api/auth/send-code") {
     const { phone } = await readJson(req);
     if (!/^1\d{10}$/.test(phone || "")) return fail(res, 400, "INVALID_PHONE", "请输入正确的 11 位手机号");
-    const code = IS_PRODUCTION ? String(randomInt(100000, 999999)) : DEV_OTP;
+    if (IS_PRODUCTION && !BETA_TEST_CODE && !process.env.SMS_WEBHOOK_URL) {
+      return fail(res, 503, "SMS_NOT_CONFIGURED", "正式短信服务尚未配置");
+    }
+    const delivery = BETA_TEST_CODE ? "beta" : (IS_PRODUCTION ? "sms" : "development");
+    const code = BETA_TEST_CODE || (IS_PRODUCTION ? String(randomInt(100000, 999999)) : DEV_OTP);
     db.prepare(`INSERT INTO otp_codes(phone,code_hash,expires_at,attempts,created_at) VALUES(?,?,?,0,?)
       ON CONFLICT(phone) DO UPDATE SET code_hash=excluded.code_hash,expires_at=excluded.expires_at,attempts=0,created_at=excluded.created_at`)
       .run(phone, hash(code), addMinutes(10), now());
-    if (IS_PRODUCTION && !process.env.SMS_WEBHOOK_URL) return fail(res, 503, "SMS_NOT_CONFIGURED", "正式短信服务尚未配置");
-    if (IS_PRODUCTION) {
+    if (delivery === "sms") {
       const response = await fetch(process.env.SMS_WEBHOOK_URL, { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ phone, code }) });
       if (!response.ok) return fail(res, 502, "SMS_FAILED", "验证码发送失败");
     }
-    return json(res, 200, { sent: true, expiresIn: 600, ...(IS_PRODUCTION ? {} : { devCode: code }) });
+    return json(res, 200, { sent: true, expiresIn: 600, delivery, ...(delivery === "development" ? { devCode: code } : {}) });
   }
 
   if (method === "POST" && path === "/api/auth/verify") {

@@ -31,7 +31,7 @@ async function request(path, { token, method="GET", body, headers={} } = {}) {
 }
 
 test.before(async () => {
-  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,DEV_OTP_CODE:"246810",ADMIN_KEY:"test-admin"}, stdio:["ignore","pipe","pipe"] });
+  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,NODE_ENV:"production",BETA_TEST_CODE:"246810",SMS_WEBHOOK_URL:"",ADMIN_KEY:"test-admin"}, stdio:["ignore","pipe","pipe"] });
   await waitForServer();
 });
 
@@ -52,6 +52,10 @@ test("content library has complete playable assets and varied prompts", () => {
 });
 
 test("closed beta flow persists identity, signals, echoes, answers and chat", async () => {
+  const providers = await request("/api/auth/providers");
+  assert.equal(providers.betaTestMode,true);
+  assert.equal(providers.devMode,false);
+
   const lockedPhone = "13600136000";
   await request("/api/auth/send-code",{method:"POST",body:{phone:lockedPhone}});
   for (let attempt=0; attempt<5; attempt+=1) {
@@ -63,7 +67,8 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
 
   const phone = "13800138000";
   const code = await request("/api/auth/send-code",{method:"POST",body:{phone}});
-  assert.equal(code.devCode,"246810");
+  assert.equal(code.delivery,"beta");
+  assert.equal("devCode" in code,false);
 
   const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"246810",inviteCode:"ANHAO2026"}});
   assert.ok(login.token);

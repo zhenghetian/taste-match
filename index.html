@@ -1022,7 +1022,7 @@
           document.querySelector("#codeField").hidden = false;
           document.querySelector("#authSubmit").textContent = "登录并进入";
           document.querySelector("#codeInput").focus();
-          formMessage("#authMessage","验证码已发送，10 分钟内有效");
+          formMessage("#authMessage",result.delivery === "beta" ? "请输入测试群公布的统一验证码，10 分钟内有效" : "验证码已发送，10 分钟内有效");
           if (result.devCode) { document.querySelector("#devCode").hidden = false; document.querySelector("#devCode").textContent = `开发环境验证码：${result.devCode}`; }
         } catch (error) { formMessage("#authMessage",error.message,true); }
         finally { submit.disabled = false; }
