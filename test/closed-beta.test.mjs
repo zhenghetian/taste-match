@@ -79,6 +79,10 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   const updatedProfile = await request("/api/me",{token:login.token,method:"PATCH",body:{nickname:"小河",city:"苏州",birthYear:1998,gender:"不公开",bio:"喜欢散步和没有安排的周末"}});
   assert.equal(updatedProfile.user.city,"苏州");
 
+  await request("/api/auth/send-code",{method:"POST",body:{phone}});
+  const returningLogin = await request("/api/auth/verify",{method:"POST",body:{phone,code:"246810",inviteCode:""}});
+  assert.equal(returningLogin.user.id,login.user.id);
+
   const reviewedProfile = await fetch(`${BASE}/api/me`,{method:"PATCH",headers:{"content-type":"application/json",authorization:`Bearer ${login.token}`},body:JSON.stringify({nickname:"小河",city:"苏州",bio:"加我微信 13800138001"})});
   assert.equal(reviewedProfile.status,422);
 
