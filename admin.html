@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>暗号内测数据</title>
+    <style>
+      :root { font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; color:#1d2226; background:#f5f6f4; --accent:#526b84; --line:#dfe2e1; --muted:#737a80; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; }
+      button,input { font:inherit; letter-spacing:0; }
+      button { border:0; cursor:pointer; }
+      [hidden] { display:none !important; }
+      .shell { width:min(1120px,calc(100% - 32px)); margin:auto; padding:28px 0 60px; }
+      .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; padding-bottom:22px; border-bottom:1px solid var(--line); }
+      .brand strong { display:block; font-size:18px; }
+      .brand span { color:var(--muted); font-size:11px; }
+      .tools { display:flex; align-items:center; gap:8px; }
+      .range { display:flex; padding:3px; border:1px solid var(--line); border-radius:7px; background:white; }
+      .range button,.refresh { min-height:34px; padding:0 11px; border-radius:5px; background:transparent; color:var(--muted); font-size:11px; font-weight:750; }
+      .range button.active { background:#e3e8eb; color:var(--accent); }
+      .refresh { border:1px solid var(--line); background:white; color:#1d2226; }
+      .section-head { display:flex; align-items:end; justify-content:space-between; margin:30px 0 12px; }
+      .section-head h1,.section-head h2 { margin:0; font-size:16px; }
+      .section-head p { margin:4px 0 0; color:var(--muted); font-size:10px; }
+      .section-head span { color:var(--muted); font-size:10px; }
+      .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid var(--line); background:white; }
+      .metric { min-height:112px; padding:18px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+      .metric:nth-child(4n) { border-right:0; }
+      .metric small { display:block; color:var(--muted); font-size:10px; }
+      .metric strong { display:block; margin:13px 0 4px; font-size:27px; }
+      .metric span { color:var(--accent); font-size:9px; }
+      .panel { border:1px solid var(--line); background:white; }
+      .funnel-row { display:grid; grid-template-columns:110px 1fr 70px; align-items:center; gap:14px; min-height:54px; padding:0 16px; border-bottom:1px solid var(--line); font-size:11px; }
+      .funnel-row:last-child { border-bottom:0; }
+      .bar { height:8px; overflow:hidden; border-radius:999px; background:#edf0f1; }
+      .bar i { display:block; height:100%; border-radius:inherit; background:var(--accent); }
+      .funnel-row b { text-align:right; }
+      .columns { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr); gap:18px; }
+      table { width:100%; border-collapse:collapse; font-size:11px; }
+      th,td { height:43px; padding:0 14px; border-bottom:1px solid var(--line); text-align:left; }
+      th { color:var(--muted); font-size:9px; }
+      tr:last-child td { border-bottom:0; }
+      td:last-child,th:last-child { text-align:right; }
+      .reports { display:grid; }
+      .report { display:grid; grid-template-columns:1fr auto; gap:12px; padding:15px; border-bottom:1px solid var(--line); }
+      .report:last-child { border-bottom:0; }
+      .report strong { display:block; font-size:11px; }
+      .report p { margin:5px 0 0; color:var(--muted); font-size:10px; }
+      .report-actions { display:flex; align-items:center; gap:6px; }
+      .report-actions button { min-height:31px; padding:0 9px; border-radius:5px; background:#e5eaed; color:var(--accent); font-size:9px; font-weight:800; }
+      .report-actions button:last-child { background:#f1eeee; color:#80505a; }
+      .empty { padding:34px 18px; color:var(--muted); font-size:11px; text-align:center; }
+      .gate { position:fixed; z-index:10; inset:0; display:grid; place-items:center; padding:24px; background:#f5f6f4; }
+      .login { width:min(360px,100%); }
+      .login small { color:var(--accent); font-size:10px; font-weight:800; }
+      .login h1 { margin:10px 0 8px; font-size:28px; }
+      .login p { margin:0 0 22px; color:var(--muted); font-size:11px; line-height:1.6; }
+      .login form { display:grid; grid-template-columns:1fr 86px; gap:8px; }
+      .login input { min-width:0; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:6px; background:white; }
+      .login button { border-radius:6px; background:var(--accent); color:white; font-size:11px; font-weight:800; }
+      .message { min-height:18px; margin-top:9px; color:#915161; font-size:10px; }
+      @media (max-width:760px) { .shell{width:min(100% - 20px,1120px);padding-top:16px}.topbar{align-items:flex-start;flex-direction:column}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric:nth-child(2n){border-right:0}.columns{grid-template-columns:1fr}.funnel-row{grid-template-columns:86px 1fr 58px}.report{grid-template-columns:1fr}.report-actions{justify-content:flex-start} }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar"><div class="brand"><strong>暗号 · 内测数据</strong><span>真实行为漏斗与社区安全状态</span></div><div class="tools"><div class="range"><button data-days="7" class="active" type="button">7 天</button><button data-days="30" type="button">30 天</button></div><button id="refresh" class="refresh" type="button">刷新</button></div></header>
+      <section><div class="section-head"><div><h1>核心状态</h1><p>累计数据，新增用户按所选时间范围计算</p></div><span id="updatedAt">尚未刷新</span></div><div id="metrics" class="metrics"></div></section>
+      <section><div class="section-head"><div><h2>关键漏斗</h2><p>从注册到发生真实对话</p></div></div><div id="funnel" class="panel"></div></section>
+      <div class="columns">
+        <section><div class="section-head"><div><h2>行为事件</h2><p>前端浏览行为与后端真实动作</p></div></div><div class="panel"><table><thead><tr><th>事件</th><th>次数</th></tr></thead><tbody id="events"></tbody></table></div></section>
+        <section><div class="section-head"><div><h2>待处理举报</h2><p>处理动作会实时写回状态</p></div><span id="reportCount"></span></div><div id="reports" class="panel reports"></div></section>
+      </div>
+    </main>
+    <div id="gate" class="gate"><div class="login"><small>仅限内测管理者</small><h1>查看暗号的数据</h1><p>输入部署时设置的管理密钥。本地开发默认密钥为 anhao-admin。</p><form id="loginForm"><input id="adminKey" type="password" autocomplete="current-password" placeholder="管理密钥" required /><button type="submit">进入</button></form><div id="message" class="message"></div></div></div>
+    <script>
+      let days=7;
+      let adminKey=sessionStorage.getItem("anhao_admin_key") || "";
+      const labels={app_open:"打开应用",tab_view:"切换页面",video_impression:"看到内容",video_play:"播放内容",reaction_sheet_open:"打开感受选择",registration_completed:"完成注册",login_completed:"完成登录",profile_completed:"完成资料",signal_created:"留下感受",echo_created:"生成回声",answer_submitted:"提交回答",echo_revealed:"双方解锁",chat_open:"打开聊天",message_sent:"发送消息",report_created:"提交举报",user_blocked:"拉黑用户",notification_prompt:"请求通知"};
+      const number=(value)=>new Intl.NumberFormat("zh-CN").format(value || 0);
+      async function call(path,options={}) {
+        const response=await fetch(path,{...options,headers:{"content-type":"application/json","x-admin-key":adminKey,...(options.headers||{})}});
+        const payload=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(payload.error?.message||"请求失败");
+        return payload;
+      }
+      function metric(label,value,note) {
+        const item=document.createElement("div");item.className="metric";
+        const small=document.createElement("small");small.textContent=label;
+        const strong=document.createElement("strong");strong.textContent=number(value);
+        const span=document.createElement("span");span.textContent=note;
+        item.append(small,strong,span);return item;
+      }
+      function render(data) {
+        const t=data.totals;
+        document.querySelector("#metrics").replaceChildren(
+          metric("注册用户",t.users,`${data.days} 天新增 ${number(t.newUsers)}`),metric("留下过感受",t.signalUsers,`共 ${number(t.signals)} 处停留`),metric("进入过回声",t.echoUsers,`共 ${number(t.echoes)} 次相遇`),metric("发送过消息",t.chatters,`共 ${number(t.messages)} 条消息`),
+          metric("资料完成",t.profiles,`${t.users ? Math.round(t.profiles/t.users*100) : 0}% 完成率`),metric("完成共同回答",t.answeredUsers,`${number(t.revealedEchoes)} 次双方解锁`),metric("待处理举报",t.pendingReports,`${number(t.activeBlocks)} 个拉黑关系`),metric("审核拦截",t.moderatedContent,"包含待审与禁止内容")
+        );
+        const steps=[["注册",t.users],["完善资料",t.profiles],["留下感受",t.signalUsers],["进入回声",t.echoUsers],["回答问题",t.answeredUsers],["真实聊天",t.chatters]];
+        const base=Math.max(1,t.users);const funnel=document.querySelector("#funnel");funnel.replaceChildren(...steps.map(([label,value])=>{const row=document.createElement("div");row.className="funnel-row";const name=document.createElement("span");name.textContent=label;const bar=document.createElement("span");bar.className="bar";const fill=document.createElement("i");fill.style.width=`${Math.min(100,value/base*100)}%`;bar.append(fill);const count=document.createElement("b");count.textContent=`${number(value)} · ${Math.round(value/base*100)}%`;row.append(name,bar,count);return row;}));
+        const events=document.querySelector("#events");events.replaceChildren(...data.events.map((event)=>{const row=document.createElement("tr");const name=document.createElement("td");name.textContent=labels[event.eventName]||event.eventName;const count=document.createElement("td");count.textContent=number(event.count);row.append(name,count);return row;}));
+        const pending=data.reports.filter((report)=>report.status==="pending");document.querySelector("#reportCount").textContent=`${pending.length} 条`;
+        const reports=document.querySelector("#reports");if(!pending.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="当前没有待处理举报";reports.replaceChildren(empty);}else reports.replaceChildren(...pending.map((report)=>{const item=document.createElement("div");item.className="report";const copy=document.createElement("div");const title=document.createElement("strong");title.textContent=`${report.reportedName} · ${report.reason}`;const detail=document.createElement("p");detail.textContent=report.detail||new Date(report.createdAt).toLocaleString("zh-CN");copy.append(title,detail);const actions=document.createElement("div");actions.className="report-actions";for(const [label,status] of [["已处理","resolved"],["忽略","dismissed"]]){const button=document.createElement("button");button.type="button";button.textContent=label;button.addEventListener("click",async()=>{button.disabled=true;await call(`/api/admin/reports/${report.id}/status`,{method:"POST",body:JSON.stringify({status})});await load();});actions.append(button);}item.append(copy,actions);return item;}));
+        document.querySelector("#updatedAt").textContent=`更新于 ${new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}`;
+      }
+      async function load(){try{render(await call(`/api/admin/analytics?days=${days}`));document.querySelector("#gate").hidden=true;document.querySelector("#message").textContent="";}catch(error){document.querySelector("#gate").hidden=false;document.querySelector("#message").textContent=error.message;}}
+      document.querySelector("#loginForm").addEventListener("submit",async(event)=>{event.preventDefault();adminKey=document.querySelector("#adminKey").value;sessionStorage.setItem("anhao_admin_key",adminKey);await load();});
+      document.querySelectorAll("[data-days]").forEach((button)=>button.addEventListener("click",()=>{days=Number(button.dataset.days);document.querySelectorAll("[data-days]").forEach((item)=>item.classList.toggle("active",item===button));load();}));
+      document.querySelector("#refresh").addEventListener("click",load);
+      if(adminKey)load();
+    </script>
+  </body>
+</html>

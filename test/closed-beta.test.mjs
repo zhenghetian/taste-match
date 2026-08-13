@@ -18,10 +18,10 @@ async function waitForServer() {
   throw new Error("test server did not start");
 }
 
-async function request(path, { token, method="GET", body } = {}) {
+async function request(path, { token, method="GET", body, headers={} } = {}) {
   const response = await fetch(`${BASE}${path}`, {
     method,
-    headers: { "content-type":"application/json", ...(token ? { authorization:`Bearer ${token}` } : {}) },
+    headers: { "content-type":"application/json", ...(token ? { authorization:`Bearer ${token}` } : {}), ...headers },
     body: body ? JSON.stringify(body) : undefined
   });
   const payload = await response.json();
@@ -30,7 +30,7 @@ async function request(path, { token, method="GET", body } = {}) {
 }
 
 test.before(async () => {
-  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,DEV_OTP_CODE:"246810"}, stdio:["ignore","pipe","pipe"] });
+  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,DEV_OTP_CODE:"246810",ADMIN_KEY:"test-admin"}, stdio:["ignore","pipe","pipe"] });
   await waitForServer();
 });
 
@@ -67,6 +67,9 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   const updatedProfile = await request("/api/me",{token:login.token,method:"PATCH",body:{nickname:"小河",city:"苏州",birthYear:1998,gender:"不公开",bio:"喜欢散步和没有安排的周末"}});
   assert.equal(updatedProfile.user.city,"苏州");
 
+  const reviewedProfile = await fetch(`${BASE}/api/me`,{method:"PATCH",headers:{"content-type":"application/json",authorization:`Bearer ${login.token}`},body:JSON.stringify({nickname:"小河",city:"苏州",bio:"加我微信 13800138001"})});
+  assert.equal(reviewedProfile.status,422);
+
   const signal = await request("/api/signals",{token:login.token,method:"POST",body:{contentId:"7653500525270670770",creator:"@自信阳光",title:"晚饭后，一个人慢慢走回生活里",cover:"night-walk.jpg",reaction:"我抗拒，但停下了"}});
   assert.equal(signal.traceCount,1);
   assert.ok(signal.echo?.id);
@@ -89,10 +92,30 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   const sent = await request(`/api/echoes/${signal.echo.id}/messages`,{token:login.token,method:"POST",body:{body:"我也会担心问出口以后，关系就真的变了。"}});
   assert.equal(sent.message.senderName,"小河");
 
+  const reviewedMessage = await fetch(`${BASE}/api/echoes/${signal.echo.id}/messages`,{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${login.token}`},body:JSON.stringify({body:"加我微信 13800138001"})});
+  assert.equal(reviewedMessage.status,422);
+
   const messages = await request(`/api/echoes/${signal.echo.id}/messages`,{token:login.token});
   assert.equal(messages.messages.length,1);
   assert.equal(messages.messages[0].body,"我也会担心问出口以后，关系就真的变了。");
 
   const persistedSignals = await request("/api/signals",{token:login.token});
   assert.equal(persistedSignals.signals[0].reaction,"我抗拒，但停下了");
+
+  const report = await request("/api/users/usr_demo_momo/report",{token:login.token,method:"POST",body:{echoId:signal.echo.id,reason:"其他"}});
+  assert.equal(report.report.status,"pending");
+  await request("/api/users/usr_demo_momo/block",{token:login.token,method:"POST"});
+  const blocks = await request("/api/blocks",{token:login.token});
+  assert.equal(blocks.blocks[0].id,"usr_demo_momo");
+  const hiddenEchoes = await request("/api/echoes",{token:login.token});
+  assert.equal(hiddenEchoes.echoes.length,0);
+  const blockedMessage = await fetch(`${BASE}/api/echoes/${signal.echo.id}/messages`,{headers:{authorization:`Bearer ${login.token}`}});
+  assert.equal(blockedMessage.status,403);
+
+  const analytics = await request("/api/admin/analytics?days=7",{headers:{"x-admin-key":"test-admin"}});
+  assert.equal(analytics.totals.users,1);
+  assert.equal(analytics.totals.pendingReports,1);
+  assert.equal(analytics.totals.activeBlocks,1);
+  assert.ok(analytics.totals.moderatedContent>=2);
+  await request(`/api/admin/reports/${report.report.id}/status`,{method:"POST",headers:{"x-admin-key":"test-admin"},body:{status:"resolved"}});
 });

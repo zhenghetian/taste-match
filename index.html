@@ -279,6 +279,10 @@
       .sheet-options { display: grid; gap: 8px; }
       .sheet-options button { display: flex; min-height: 45px; align-items: center; justify-content: space-between; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 750; text-align: left; }
       .primary-button { width: 100%; min-height: 48px; border-radius: 7px; background: var(--accent); color: white; font-weight: 850; }
+      .danger-button { width: 100%; min-height: 48px; border-radius: 7px; background: #873f4d; color: white; font-weight: 850; }
+      .safety-actions { display: grid; gap: 8px; }
+      .safety-actions button { display: flex; min-height: 47px; align-items: center; gap: 10px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 800; text-align: left; }
+      .safety-actions button:last-child { color: #873f4d; }
       .revealed-person { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
       .revealed-person strong { display: block; margin-bottom: 4px; }
       .revealed-person span { color: var(--muted); font-size: 10px; }
@@ -356,6 +360,13 @@
       .notification-band strong { display: block; font-size: 12px; }
       .notification-band span { color: var(--muted); font-size: 9px; }
       .notification-band button { flex: 0 0 auto; padding: 8px 10px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 850; }
+      .blocked-list { display: grid; max-height: 48vh; overflow-y: auto; border-top: 1px solid var(--line); }
+      .blocked-row { display: flex; min-height: 58px; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+      .blocked-row .avatar { flex: 0 0 auto; width: 36px; height: 36px; }
+      .blocked-row div { min-width: 0; flex: 1; }
+      .blocked-row strong { display: block; font-size: 11px; }
+      .blocked-row span { color: var(--muted); font-size: 9px; }
+      .blocked-row button { min-height: 31px; padding: 0 9px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 800; }
 
       @media (max-height: 700px) {
         .feed-video, .feed-cover, .feed-shade { height: 54%; }
@@ -452,6 +463,7 @@
             <section class="account-band"><div class="account-line"><div class="account-person"><span id="accountAvatar" class="avatar">我</span><div><strong id="accountName">新朋友</strong><span id="accountCity">上海</span></div></div><div class="account-actions"><button id="editProfileButton" class="icon-action" type="button" aria-label="编辑资料"><i data-lucide="pencil"></i></button><button id="logoutButton" class="icon-action" type="button" aria-label="退出登录"><i data-lucide="log-out"></i></button></div></div></section>
             <section class="invite-band"><small>邀请一个接得住的人</small><div class="invite-code"><strong id="myInviteCode">—</strong><button id="copyInvite" type="button">复制邀请码</button></div></section>
             <section class="notification-band"><div><strong>回声通知</strong><span id="notificationStatus">有新回声时在当前设备提醒</span></div><button id="enableNotifications" type="button">开启</button></section>
+            <section class="notification-band"><div><strong>已拉黑的人</strong><span id="blockedCount">目前没有拉黑关系</span></div><button id="manageBlocks" type="button">管理</button></section>
             <section class="profile-summary"><small>暗号正在变清晰 · 37%</small><h2>你似乎不怕独处，<br />更怕无意义的热闹。</h2><p>这是一个暂时的猜测。它可以被你否认，也可能被下一次停留改写。</p></section>
             <section class="profile-section"><div class="profile-section-head"><h2>反复出现的主题</h2><span>过去 7 天</span></div><div class="recurring-topics"><span>独处</span><span>普通生活</span><span>认真沟通</span><span>计划之外</span></div></section>
             <section class="profile-section"><div class="profile-section-head"><h2>你想靠近的生活</h2><span>2 处</span></div><div class="taste-grid"><button data-feed-index="9" type="button"><img src="./assets/taste-covers/ordinary-weekend.jpg" alt="没有安排的周末" /><span>没有安排的周末</span></button><button data-feed-index="5" type="button"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="临时起意的出发" /><span>临时起意的出发</span></button></div></section>
@@ -475,11 +487,15 @@
         <div id="revealSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">这句暗号被接住了</span><h2 class="serif">你们没有给出相同答案，<br />但都愿意认真回答。</h2><div class="revealed-person"><span id="revealAvatar" class="avatar">默</span><div><strong id="revealName">默默</strong><span id="revealMeta">上海 · 刚刚也完成了回答</span></div></div><button id="startChat" class="primary-button" type="button">开始对话</button></section></div>
 
         <section id="chatScreen" class="chat-screen" aria-label="聊天">
-          <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">默默</strong><small>一条回声已经被接住</small></div><span></span></header>
+          <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">默默</strong><small>一条回声已经被接住</small></div><button id="openSafety" type="button" aria-label="对话安全设置"><i data-lucide="ellipsis"></i></button></header>
           <div class="chat-context"><img id="chatCover" src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停留的内容" /><p id="chatContextCopy">你们在同一条视频前停下，却给出了不同答案。</p></div>
           <div id="chatMessages" class="messages"><div class="chat-note">从一句没有标准答案的话开始</div></div>
           <form id="composer" class="composer"><input id="messageInput" type="text" placeholder="接着说点具体的" autocomplete="off" aria-label="消息" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
         </section>
+        <div id="safetySheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">保护这次相遇</span><h2 id="safetyTitle">与 Ta 的对话</h2><p>举报会交给审核处理；拉黑后你们将不能再匹配或聊天。</p><div class="safety-actions"><button id="reportUser" type="button"><i data-lucide="flag"></i><span>举报这个人</span></button><button id="blockUser" type="button"><i data-lucide="ban"></i><span>拉黑这个人</span></button></div></section></div>
+        <div id="reportSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">提交举报</span><h2>发生了什么？</h2><p>对方不会知道是谁提交了举报。请选择最接近的原因。</p><div class="sheet-options"><button data-report-reason="骚扰或辱骂" type="button"><span>骚扰或辱骂</span><i data-lucide="arrow-right"></i></button><button data-report-reason="色情或不适内容" type="button"><span>色情或不适内容</span><i data-lucide="arrow-right"></i></button><button data-report-reason="诈骗或广告" type="button"><span>诈骗或广告</span><i data-lucide="arrow-right"></i></button><button data-report-reason="冒充他人" type="button"><span>冒充他人</span><i data-lucide="arrow-right"></i></button><button data-report-reason="其他" type="button"><span>其他</span><i data-lucide="arrow-right"></i></button></div></section></div>
+        <div id="blockSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">确认拉黑</span><h2>不再遇见 <span id="blockUserName">Ta</span>？</h2><p>这段回声和对话会从你的列表中消失，对方也不能继续给你发送消息。</p><button id="confirmBlock" class="danger-button" type="button">确认拉黑</button></section></div>
+        <div id="blocksSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">关系设置</span><h2>已拉黑的人</h2><p>解除后，过去发生过的回声和对话会重新出现。</p><div id="blockedList" class="blocked-list"><div class="empty-state"><p>目前没有拉黑任何人。</p></div></div></section></div>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
     </main>
@@ -521,16 +537,23 @@
         "说不清，但我停下了":["有些感受，不需要立刻被说清。","它只记录了这一刻，你在什么地方停了下来。"]
       };
 
+      const analyticsSessionId = sessionStorage.getItem("anhao_session_id") || (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`);
+      sessionStorage.setItem("anhao_session_id",analyticsSessionId);
       const state = {
         token: localStorage.getItem("anhao_token") || "",
         user: null,
         invite: null,
         echoes: [],
         conversations: [],
+        blocks: [],
         currentEchoId: null,
         currentChatId: null,
+        currentSafetyUserId: null,
         eventSource: null,
-        editingProfile: false
+        editingProfile: false,
+        appOpenTracked: false,
+        playedContent: new Set(),
+        viewedContent: new Set()
       };
       let feedIndex = 1;
       let soundEnabled = false;
@@ -570,6 +593,20 @@
         }
         return payload;
       }
+      function trackEvent(eventName, properties = {}) {
+        if (!state.token) return;
+        fetch("/api/analytics/track",{
+          method:"POST",
+          keepalive:true,
+          headers:{"content-type":"application/json",authorization:`Bearer ${state.token}`},
+          body:JSON.stringify({eventName,properties,sessionId:analyticsSessionId})
+        }).catch(() => {});
+      }
+      function trackImpression(item) {
+        if (state.viewedContent.has(item.id)) return;
+        state.viewedContent.add(item.id);
+        trackEvent("video_impression",{contentId:item.id,position:feedIndex});
+      }
       function openSheet(id) {
         closeSheets();
         const sheet = document.querySelector(id);
@@ -591,6 +628,7 @@
         if (name === "discover") playCurrentVideo(true);
         if (name === "echo") refreshEchoes();
         if (name === "messages") refreshConversations();
+        trackEvent("tab_view",{tab:name});
       }
       function stopVideo() {
         feedVideo.pause();
@@ -613,7 +651,10 @@
           feedCover.classList.add("is-hidden");
           feedVideo.load();
         }
-        try { await feedVideo.play(); }
+        try {
+          await feedVideo.play();
+          if (!state.playedContent.has(item.id)) { state.playedContent.add(item.id); trackEvent("video_play",{contentId:item.id,automatic}); }
+        }
         catch (error) { playVideo.classList.remove("is-loading"); if (!automatic) showToast("视频加载失败，请稍后再试"); }
       }
       function toggleVideo() {
@@ -642,6 +683,7 @@
           document.querySelector("#feedTitle").textContent = item.title;
           document.querySelector("#feedCaption").textContent = item.caption;
           feedCover.classList.remove("is-changing");
+          trackImpression(item);
           playCurrentVideo(true);
         },120);
       }
@@ -659,6 +701,48 @@
         document.querySelector("#accountName").textContent = state.user.nickname;
         document.querySelector("#accountCity").textContent = `${state.user.city} · ${state.user.phone || "微信登录"}`;
         document.querySelector("#myInviteCode").textContent = state.invite?.code || "—";
+      }
+      function renderBlocks() {
+        const list=document.querySelector("#blockedList");
+        document.querySelector("#blockedCount").textContent=state.blocks.length ? `${state.blocks.length} 人，可随时解除` : "目前没有拉黑关系";
+        if (!state.blocks.length) {
+          const empty=document.createElement("div");
+          empty.className="empty-state";
+          const copy=document.createElement("p");
+          copy.textContent="目前没有拉黑任何人。";
+          empty.append(copy);
+          list.replaceChildren(empty);
+          return;
+        }
+        list.replaceChildren(...state.blocks.map((user)=>{
+          const row=document.createElement("div");
+          row.className="blocked-row";
+          const avatar=document.createElement("span");
+          avatar.className="avatar";
+          avatar.textContent=user.avatar;
+          const copy=document.createElement("div");
+          const name=document.createElement("strong");
+          name.textContent=user.nickname;
+          const city=document.createElement("span");
+          city.textContent=user.city || "未知城市";
+          copy.append(name,city);
+          const button=document.createElement("button");
+          button.type="button";
+          button.textContent="解除";
+          button.addEventListener("click",async()=>{
+            button.disabled=true;
+            try { await apiFetch(`/api/users/${user.id}/block`,{method:"DELETE"}); await Promise.all([refreshBlocks(),refreshEchoes()]); showToast("已解除拉黑"); }
+            catch(error){ showToast(error.message); }
+            finally{ button.disabled=false; }
+          });
+          row.append(avatar,copy,button);
+          return row;
+        }));
+      }
+      async function refreshBlocks() {
+        const result=await apiFetch("/api/blocks");
+        state.blocks=result.blocks;
+        renderBlocks();
       }
       function showProfileForm(editing = false) {
         state.editingProfile = editing;
@@ -795,12 +879,14 @@
         const echo = state.echoes.find((item) => item.id === echoId);
         if (!echo || !echo.revealed) return;
         state.currentChatId = echoId;
+        state.currentSafetyUserId = echo.other.id;
         document.querySelector("#chatName").textContent = echo.other.nickname;
         document.querySelector("#chatCover").src = `./assets/taste-covers/${echo.content.cover}`;
         document.querySelector("#chatContextCopy").textContent = `你们都在「${echo.content.title}」前停下，却给出了不同答案。`;
         const { messages } = await apiFetch(`/api/echoes/${echoId}/messages`);
         renderMessages(messages);
         document.querySelector("#chatScreen").classList.add("is-open");
+        trackEvent("chat_open",{echoId});
       }
       function appendMessage(message) {
         if (state.currentChatId !== message.echoId || document.querySelector(`[data-message-id="${message.id}"]`)) return;
@@ -810,6 +896,31 @@
         bubble.textContent = message.body;
         document.querySelector("#chatMessages").appendChild(bubble);
         document.querySelector("#chatMessages").scrollTop = document.querySelector("#chatMessages").scrollHeight;
+      }
+      async function submitReport(reason, button) {
+        if (!state.currentSafetyUserId || !state.currentChatId) return;
+        button.disabled = true;
+        try {
+          await apiFetch(`/api/users/${state.currentSafetyUserId}/report`,{method:"POST",body:JSON.stringify({reason,echoId:state.currentChatId})});
+          closeSheets();
+          showToast("举报已提交，我们会尽快处理");
+        } catch (error) { showToast(error.message); }
+        finally { button.disabled = false; }
+      }
+      async function blockCurrentUser(button) {
+        if (!state.currentSafetyUserId) return;
+        button.disabled = true;
+        try {
+          await apiFetch(`/api/users/${state.currentSafetyUserId}/block`,{method:"POST"});
+          closeSheets();
+          document.querySelector("#chatScreen").classList.remove("is-open");
+          state.currentChatId = null;
+          state.currentSafetyUserId = null;
+          await Promise.all([refreshEchoes(),refreshBlocks()]);
+          showTab("messages");
+          showToast("已拉黑，不会再相互遇见");
+        } catch (error) { showToast(error.message); }
+        finally { button.disabled = false; }
       }
       function connectEvents() {
         state.eventSource?.close();
@@ -834,8 +945,10 @@
         }
         document.querySelector("#profileGate").hidden = true;
         renderUser();
-        await Promise.all([refreshSignals(),refreshEchoes()]);
+        await Promise.all([refreshSignals(),refreshEchoes(),refreshBlocks()]);
         connectEvents();
+        if (!state.appOpenTracked) { state.appOpenTracked=true; trackEvent("app_open",{entry:"authenticated"}); }
+        trackImpression(feed[feedIndex]);
         playCurrentVideo(true);
         updateNotificationStatus();
       }
@@ -901,7 +1014,7 @@
       feedVideo.addEventListener("pause",() => playVideo.classList.remove("is-hidden","is-loading"));
       document.querySelector("#soundButton").addEventListener("click",toggleSound);
       document.querySelector("#nextFeed").addEventListener("click",nextFeed);
-      document.querySelector("#pauseAction").addEventListener("click",() => openSheet("#reactionSheet"));
+      document.querySelector("#pauseAction").addEventListener("click",() => { trackEvent("reaction_sheet_open",{contentId:feed[feedIndex].id}); openSheet("#reactionSheet"); });
       document.querySelectorAll("[data-reaction]").forEach((button) => button.addEventListener("click",() => leaveReaction(button.dataset.reaction,button)));
       document.querySelector("#keepSignal").addEventListener("click",() => { closeSheets(); showToast("暗号已留下，回应会出现在回声里"); });
       document.querySelector("#catchEcho").addEventListener("click",() => {
@@ -914,7 +1027,19 @@
       document.querySelectorAll("[data-answer]").forEach((button) => button.addEventListener("click",() => answerEcho(button.textContent.trim(),button)));
       document.querySelector("#startChat").addEventListener("click",() => { const id=state.currentEchoId; closeSheets(); showTab("messages"); openChat(id); });
       document.querySelectorAll("[data-close-sheet]").forEach((button) => button.addEventListener("click",closeSheets));
-      document.querySelector("#closeChat").addEventListener("click",() => { document.querySelector("#chatScreen").classList.remove("is-open"); state.currentChatId=null; });
+      document.querySelector("#closeChat").addEventListener("click",() => { document.querySelector("#chatScreen").classList.remove("is-open"); state.currentChatId=null; state.currentSafetyUserId=null; });
+      document.querySelector("#openSafety").addEventListener("click",() => {
+        const echo=state.echoes.find((item)=>item.id===state.currentChatId);
+        if (!echo) return;
+        document.querySelector("#safetyTitle").textContent=`与 ${echo.other.nickname} 的对话`;
+        document.querySelector("#blockUserName").textContent=echo.other.nickname;
+        openSheet("#safetySheet");
+      });
+      document.querySelector("#reportUser").addEventListener("click",() => openSheet("#reportSheet"));
+      document.querySelector("#blockUser").addEventListener("click",() => openSheet("#blockSheet"));
+      document.querySelectorAll("[data-report-reason]").forEach((button)=>button.addEventListener("click",()=>submitReport(button.dataset.reportReason,button)));
+      document.querySelector("#confirmBlock").addEventListener("click",(event)=>blockCurrentUser(event.currentTarget));
+      document.querySelector("#manageBlocks").addEventListener("click",async()=>{ try { await refreshBlocks(); openSheet("#blocksSheet"); } catch(error) { showToast(error.message); } });
       document.querySelector("#composer").addEventListener("submit",async (event) => {
         event.preventDefault();
         const input = document.querySelector("#messageInput");
@@ -949,7 +1074,7 @@
       document.querySelector("#profileCancel").addEventListener("click",() => { state.editingProfile=false; document.querySelector("#profileGate").hidden=true; });
       document.querySelector("#logoutButton").addEventListener("click",async () => { try { await apiFetch("/api/auth/logout",{method:"POST"}); } catch {} localStorage.removeItem("anhao_token"); location.reload(); });
       document.querySelector("#copyInvite").addEventListener("click",async () => { const code=state.invite?.code; if(!code)return; await navigator.clipboard.writeText(code); showToast("邀请码已复制"); });
-      document.querySelector("#enableNotifications").addEventListener("click",async () => { if("Notification" in window) await Notification.requestPermission(); updateNotificationStatus(); });
+      document.querySelector("#enableNotifications").addEventListener("click",async () => { trackEvent("notification_prompt"); if("Notification" in window) await Notification.requestPermission(); updateNotificationStatus(); });
 
       let touchY = null;
       document.querySelector(".discover").addEventListener("touchstart",(event) => { touchY=event.touches[0].clientY; },{passive:true});

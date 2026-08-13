@@ -12,8 +12,10 @@ const HOST = process.env.HOST || "127.0.0.1";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const DEV_OTP = process.env.DEV_OTP_CODE || "246810";
 const MASTER_INVITE = process.env.MASTER_INVITE_CODE || "ANHAO2026";
+const ADMIN_KEY = process.env.ADMIN_KEY || (IS_PRODUCTION ? "" : "anhao-admin");
 const SESSION_DAYS = 30;
 const clients = new Map();
+const analyticsWindows = new Map();
 
 mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, "anhao.db"));
@@ -114,10 +116,50 @@ db.exec(`
     read_at TEXT,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS reports (
+    id TEXT PRIMARY KEY,
+    reporter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reported_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    echo_id TEXT REFERENCES echoes(id) ON DELETE SET NULL,
+    reason TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS blocks (
+    blocker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (blocker_id, blocked_id)
+  );
+  CREATE TABLE IF NOT EXISTS moderation_records (
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    surface TEXT NOT NULL,
+    reference_id TEXT,
+    content TEXT NOT NULL,
+    decision TEXT NOT NULL,
+    reasons TEXT NOT NULL DEFAULT '[]',
+    provider TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS analytics_events (
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    event_name TEXT NOT NULL,
+    properties TEXT NOT NULL DEFAULT '{}',
+    session_id TEXT,
+    created_at TEXT NOT NULL
+  );
   CREATE INDEX IF NOT EXISTS idx_signals_content ON signals(content_id, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_echoes_users ON echoes(user_a, user_b, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_messages_echo ON messages(echo_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id, blocker_id);
+  CREATE INDEX IF NOT EXISTS idx_moderation_decision ON moderation_records(decision, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_analytics_name ON analytics_events(event_name, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_id, created_at DESC);
 `);
 
 function seed() {
@@ -191,6 +233,82 @@ function validInvite(code) {
   return db.prepare(`SELECT * FROM invites WHERE code=? AND active=1 AND used_count<max_uses`).get(code.trim().toUpperCase()) || null;
 }
 
+function track(userId, eventName, properties = {}, sessionId = null) {
+  const safeName = String(eventName || "").trim().slice(0,50);
+  if (!safeName) return;
+  db.prepare(`INSERT INTO analytics_events(id,user_id,event_name,properties,session_id,created_at) VALUES(?,?,?,?,?,?)`)
+    .run(id("evt"), userId || null, safeName, JSON.stringify(properties || {}).slice(0,4000), sessionId ? String(sessionId).slice(0,80) : null, now());
+}
+
+function analyticsAllowed(userId) {
+  const current = Date.now();
+  const window = analyticsWindows.get(userId);
+  if (!window || current-window.startedAt>=60_000) { analyticsWindows.set(userId,{startedAt:current,count:1}); return true; }
+  if (window.count>=120) return false;
+  window.count+=1;
+  return true;
+}
+
+function blockedBetween(userA, userB) {
+  return Boolean(db.prepare(`SELECT 1 FROM blocks WHERE (blocker_id=? AND blocked_id=?) OR (blocker_id=? AND blocked_id=?) LIMIT 1`).get(userA,userB,userB,userA));
+}
+
+const BLOCKED_CONTENT = [
+  { pattern:/未成年.{0,8}(约炮|性交易|裸照)|儿童色情/i, reason:"未成年人性内容" },
+  { pattern:/裸聊|出售裸照|约炮|毒品交易|买卖毒品/i, reason:"色情或违禁交易" },
+  { pattern:/杀了你|弄死你|砍死你|人肉你/i, reason:"暴力威胁" }
+];
+const REVIEW_CONTENT = [
+  { pattern:/\b1[3-9]\d{9}\b|加.{0,3}(微信|vx|v信)|微信号/i, reason:"站外联系方式" },
+  { pattern:/刷单|博彩|赌博|返利群|先转账|代充返现/i, reason:"疑似诈骗或赌博推广" },
+  { pattern:/裸照|成人视频|性服务/i, reason:"疑似色情内容" }
+];
+
+function builtinModeration(text) {
+  for (const rule of BLOCKED_CONTENT) if (rule.pattern.test(text)) return { decision:"block", reasons:[rule.reason] };
+  for (const rule of REVIEW_CONTENT) if (rule.pattern.test(text)) return { decision:"review", reasons:[rule.reason] };
+  return { decision:"allow", reasons:[] };
+}
+
+async function moderateText({ userId, surface, referenceId = null, text }) {
+  const content = String(text || "").trim();
+  let result = builtinModeration(content);
+  let provider = "builtin";
+  if (process.env.MODERATION_WEBHOOK_URL) {
+    try {
+      const response = await fetch(process.env.MODERATION_WEBHOOK_URL, {
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        signal:AbortSignal.timeout(3000),
+        body:JSON.stringify({ userId, surface, text:content })
+      });
+      const payload = await response.json();
+      if (response.ok && ["allow","review","block"].includes(payload.decision)) {
+        result = { decision:payload.decision, reasons:Array.isArray(payload.reasons) ? payload.reasons.slice(0,5) : [] };
+        provider = "webhook";
+      }
+    } catch (error) {
+      console.warn("moderation webhook failed, using builtin rules", error.message);
+    }
+  }
+  db.prepare(`INSERT INTO moderation_records(id,user_id,surface,reference_id,content,decision,reasons,provider,created_at) VALUES(?,?,?,?,?,?,?,?,?)`)
+    .run(id("mod"), userId || null, surface, referenceId, content.slice(0,1000), result.decision, JSON.stringify(result.reasons), provider, now());
+  if (result.decision !== "allow") {
+    const error = new Error(result.decision === "review" ? "这段内容需要审核，请换一种表达" : "这段内容不符合社区安全规则");
+    error.status = 422;
+    error.code = result.decision === "review" ? "CONTENT_UNDER_REVIEW" : "CONTENT_BLOCKED";
+    throw error;
+  }
+  return result;
+}
+
+function requireAdmin(req, res) {
+  if (!ADMIN_KEY) { fail(res,503,"ADMIN_NOT_CONFIGURED","请先配置管理密钥"); return false; }
+  const supplied = req.headers["x-admin-key"] || "";
+  if (supplied !== ADMIN_KEY) { fail(res,401,"ADMIN_AUTH_REQUIRED","管理密钥不正确"); return false; }
+  return true;
+}
+
 function emit(userId, type, payload) {
   const entries = clients.get(userId);
   if (!entries) return;
@@ -237,11 +355,16 @@ function createEchoFor(signal) {
     SELECT s.* FROM signals s
     WHERE s.content_id=? AND s.user_id<>?
       AND NOT EXISTS (
+        SELECT 1 FROM blocks b
+        WHERE (b.blocker_id=? AND b.blocked_id=s.user_id)
+           OR (b.blocker_id=s.user_id AND b.blocked_id=?)
+      )
+      AND NOT EXISTS (
         SELECT 1 FROM echoes e
         WHERE (e.signal_a=s.id AND e.signal_b=?) OR (e.signal_a=? AND e.signal_b=s.id)
       )
     ORDER BY s.created_at DESC LIMIT 1
-  `).get(signal.content_id, signal.user_id, signal.id, signal.id);
+  `).get(signal.content_id, signal.user_id, signal.user_id, signal.user_id, signal.id, signal.id);
   if (!candidate) return null;
   const echoId = id("ech");
   const question = QUESTIONS[Math.abs(signal.content_id.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0)) % QUESTIONS.length];
@@ -254,6 +377,8 @@ function createEchoFor(signal) {
   }
   notify(signal.user_id, "echo", "一条回声抵达了", "有人在和你相同的地方停了下来。", { echoId });
   notify(candidate.user_id, "echo", "一条回声抵达了", "有人在和你相同的地方停了下来。", { echoId });
+  track(signal.user_id,"echo_created",{ echoId, contentId:signal.content_id });
+  track(candidate.user_id,"echo_created",{ echoId, contentId:signal.content_id });
   return db.prepare(`SELECT * FROM echoes WHERE id=?`).get(echoId);
 }
 
@@ -267,6 +392,43 @@ async function api(req, res, url) {
     wechat: Boolean(process.env.WECHAT_APP_ID && process.env.WECHAT_APP_SECRET && process.env.PUBLIC_URL),
     devMode: !IS_PRODUCTION
   });
+
+  if (method === "GET" && path === "/api/admin/analytics") {
+    if (!requireAdmin(req,res)) return;
+    const days = Math.min(90,Math.max(1,Number(url.searchParams.get("days")) || 7));
+    const since = new Date(Date.now() - (days-1) * 86_400_000).toISOString().slice(0,10);
+    const value = (sql,...params) => db.prepare(sql).get(...params).value;
+    const totals = {
+      users:value(`SELECT COUNT(*) AS value FROM users WHERE is_demo=0`),
+      newUsers:value(`SELECT COUNT(*) AS value FROM users WHERE is_demo=0 AND date(created_at)>=date(?)`,since),
+      profiles:value(`SELECT COUNT(*) AS value FROM users WHERE is_demo=0 AND profile_completed=1`),
+      signalUsers:value(`SELECT COUNT(DISTINCT user_id) AS value FROM signals WHERE user_id NOT IN (SELECT id FROM users WHERE is_demo=1)`),
+      signals:value(`SELECT COUNT(*) AS value FROM signals WHERE user_id NOT IN (SELECT id FROM users WHERE is_demo=1)`),
+      echoUsers:value(`SELECT COUNT(DISTINCT user_id) AS value FROM (SELECT user_a AS user_id FROM echoes UNION ALL SELECT user_b FROM echoes) WHERE user_id NOT IN (SELECT id FROM users WHERE is_demo=1)`),
+      echoes:value(`SELECT COUNT(*) AS value FROM echoes`),
+      answeredUsers:value(`SELECT COUNT(DISTINCT user_id) AS value FROM echo_answers WHERE user_id NOT IN (SELECT id FROM users WHERE is_demo=1)`),
+      revealedEchoes:value(`SELECT COUNT(*) AS value FROM echoes e WHERE (SELECT COUNT(*) FROM echo_answers a WHERE a.echo_id=e.id)>=2`),
+      chatters:value(`SELECT COUNT(DISTINCT sender_id) AS value FROM messages WHERE sender_id NOT IN (SELECT id FROM users WHERE is_demo=1)`),
+      messages:value(`SELECT COUNT(*) AS value FROM messages`),
+      pendingReports:value(`SELECT COUNT(*) AS value FROM reports WHERE status='pending'`),
+      activeBlocks:value(`SELECT COUNT(*) AS value FROM blocks`),
+      moderatedContent:value(`SELECT COUNT(*) AS value FROM moderation_records WHERE decision<>'allow'`)
+    };
+    const daily = db.prepare(`SELECT date(created_at) AS date,event_name AS eventName,COUNT(*) AS count FROM analytics_events WHERE date(created_at)>=date(?) GROUP BY date(created_at),event_name ORDER BY date(created_at)`).all(since);
+    const events = db.prepare(`SELECT event_name AS eventName,COUNT(*) AS count FROM analytics_events WHERE date(created_at)>=date(?) GROUP BY event_name ORDER BY count DESC`).all(since);
+    const reports = db.prepare(`SELECT r.id,r.reason,r.detail,r.status,r.created_at AS createdAt,u.nickname AS reportedName FROM reports r JOIN users u ON u.id=r.reported_user_id ORDER BY r.created_at DESC LIMIT 20`).all();
+    return json(res,200,{ days,totals,daily,events,reports });
+  }
+
+  const reportStatusMatch = path.match(/^\/api\/admin\/reports\/([^/]+)\/status$/);
+  if (method === "POST" && reportStatusMatch) {
+    if (!requireAdmin(req,res)) return;
+    const { status } = await readJson(req);
+    if (!["resolved","dismissed","pending"].includes(status)) return fail(res,400,"INVALID_REPORT_STATUS","举报状态不正确");
+    const result = db.prepare(`UPDATE reports SET status=? WHERE id=?`).run(status,reportStatusMatch[1]);
+    if (!result.changes) return fail(res,404,"REPORT_NOT_FOUND","没有找到这条举报");
+    return json(res,200,{ok:true});
+  }
 
   if (method === "POST" && path === "/api/auth/send-code") {
     const { phone } = await readJson(req);
@@ -293,6 +455,7 @@ async function api(req, res, url) {
       return fail(res, 400, "INVALID_CODE", "验证码错误或已过期");
     }
     let user = db.prepare(`SELECT * FROM users WHERE phone=?`).get(phone);
+    const isNewUser = !user;
     if (!user) {
       const invite = validInvite(suppliedInvite);
       if (!invite) return fail(res, 400, "INVALID_INVITE", "邀请码无效或已达到使用上限");
@@ -305,6 +468,7 @@ async function api(req, res, url) {
       user = db.prepare(`SELECT * FROM users WHERE id=?`).get(userId);
     }
     db.prepare(`DELETE FROM otp_codes WHERE phone=?`).run(phone);
+    track(user.id,isNewUser ? "registration_completed" : "login_completed",{provider:"phone"});
     return json(res, 200, { token: issueSession(user.id), user: publicUser(user) });
   }
 
@@ -336,6 +500,7 @@ async function api(req, res, url) {
       infoUrl.search = new URLSearchParams({ access_token:access.access_token, openid:access.openid, lang:"zh_CN" });
       const info = await fetch(infoUrl).then((r) => r.json());
       const userId = id("usr");
+      await moderateText({userId:null,surface:"wechat_profile",referenceId:userId,text:info.nickname || "微信用户"});
       db.prepare(`INSERT INTO users(id,wechat_openid,nickname,city,avatar,invited_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)`)
         .run(userId, access.openid, info.nickname || "微信用户", info.city || "上海", (info.nickname || "我").slice(0,1), invite.owner_user_id || null, now(), now());
       db.prepare(`UPDATE invites SET used_count=used_count+1 WHERE code=?`).run(invite.code);
@@ -344,6 +509,7 @@ async function api(req, res, url) {
     }
     db.prepare(`DELETE FROM oauth_states WHERE state=?`).run(stateRow.state);
     const raw = issueSession(user.id);
+    track(user.id,"login_completed",{provider:"wechat"});
     res.writeHead(302, { location: `/?wechat_session=${encodeURIComponent(raw)}` }); return res.end();
   }
 
@@ -362,6 +528,15 @@ async function api(req, res, url) {
   if (method === "POST" && path === "/api/auth/logout") {
     db.prepare(`DELETE FROM sessions WHERE token_hash=?`).run(hash(bearer(req))); return json(res, 200, { ok:true });
   }
+  if (method === "POST" && path === "/api/analytics/track") {
+    const body = await readJson(req);
+    const allowedEvents = ["app_open","tab_view","video_impression","video_play","reaction_sheet_open","chat_open","notification_prompt"];
+    if (!allowedEvents.includes(body.eventName)) return fail(res,400,"INVALID_EVENT","埋点事件不在允许列表中");
+    if (!analyticsAllowed(user.id)) return fail(res,429,"TOO_MANY_EVENTS","埋点请求过于频繁");
+    const properties = body.properties && typeof body.properties === "object" && !Array.isArray(body.properties) ? body.properties : {};
+    track(user.id,body.eventName,properties,body.sessionId);
+    return json(res,202,{accepted:true});
+  }
   if (method === "GET" && path === "/api/me") {
     const invite = db.prepare(`SELECT code,max_uses,used_count FROM invites WHERE owner_user_id=? AND active=1 ORDER BY created_at DESC LIMIT 1`).get(user.id);
     return json(res, 200, { user:publicUser(user), invite });
@@ -374,8 +549,10 @@ async function api(req, res, url) {
     const birthYear = Number(body.birthYear) || null;
     const gender = ["男","女","其他","不公开"].includes(body.gender) ? body.gender : "";
     if (nickname.length < 2 || !city) return fail(res, 400, "INVALID_PROFILE", "请填写昵称和城市");
+    await moderateText({userId:user.id,surface:"profile",referenceId:user.id,text:`${nickname}\n${bio}`});
     db.prepare(`UPDATE users SET nickname=?,city=?,bio=?,birth_year=?,gender=?,avatar=?,profile_completed=1,updated_at=? WHERE id=?`)
       .run(nickname, city, bio, birthYear, gender, nickname.slice(0,1), now(), user.id);
+    track(user.id,"profile_completed",{city,editing:Boolean(user.profile_completed)});
     return json(res, 200, { user:publicUser(db.prepare(`SELECT * FROM users WHERE id=?`).get(user.id)) });
   }
 
@@ -388,6 +565,7 @@ async function api(req, res, url) {
       .run(signal.id, signal.user_id, signal.content_id, signal.creator, signal.title, signal.cover, signal.reaction, signal.created_at);
     const echo = createEchoFor(signal);
     const count = db.prepare(`SELECT COUNT(*) AS count FROM signals WHERE user_id=?`).get(user.id).count;
+    track(user.id,"signal_created",{contentId:signal.content_id,reaction:signal.reaction,echoCreated:Boolean(echo)});
     return json(res, 201, { signal:{ id:signal.id, reaction:signal.reaction, createdAt:signal.created_at }, traceCount:count, echo:echo ? echoRow(echo,user.id) : null });
   }
   if (method === "GET" && path === "/api/signals") {
@@ -396,13 +574,17 @@ async function api(req, res, url) {
   }
 
   if (method === "GET" && path === "/api/echoes") {
-    const rows = db.prepare(`SELECT * FROM echoes WHERE user_a=? OR user_b=? ORDER BY created_at DESC`).all(user.id,user.id);
+    const rows = db.prepare(`SELECT * FROM echoes e WHERE (user_a=? OR user_b=?) AND NOT EXISTS (
+      SELECT 1 FROM blocks b WHERE (b.blocker_id=e.user_a AND b.blocked_id=e.user_b) OR (b.blocker_id=e.user_b AND b.blocked_id=e.user_a)
+    ) ORDER BY created_at DESC`).all(user.id,user.id);
     return json(res, 200, { echoes:rows.map((row) => echoRow(row,user.id)) });
   }
   const echoMatch = path.match(/^\/api\/echoes\/([^/]+)$/);
   if (method === "GET" && echoMatch) {
     const row = db.prepare(`SELECT * FROM echoes WHERE id=? AND (user_a=? OR user_b=?)`).get(echoMatch[1],user.id,user.id);
     if (!row) return fail(res,404,"ECHO_NOT_FOUND","没有找到这条回声");
+    const otherId = row.user_a===user.id ? row.user_b : row.user_a;
+    if (blockedBetween(user.id,otherId)) return fail(res,403,"USER_BLOCKED","这段关系已被拉黑");
     return json(res,200,{ echo:echoRow(row,user.id) });
   }
   const answerMatch = path.match(/^\/api\/echoes\/([^/]+)\/answer$/);
@@ -411,12 +593,16 @@ async function api(req, res, url) {
     if (!row) return fail(res,404,"ECHO_NOT_FOUND","没有找到这条回声");
     const { answer } = await readJson(req);
     if (!String(answer || "").trim()) return fail(res,400,"ANSWER_REQUIRED","请选择或填写一个答案");
+    const otherId = row.user_a===user.id ? row.user_b : row.user_a;
+    if (blockedBetween(user.id,otherId)) return fail(res,403,"USER_BLOCKED","这段关系已被拉黑");
+    await moderateText({userId:user.id,surface:"echo_answer",referenceId:row.id,text:answer});
     db.prepare(`INSERT INTO echo_answers(echo_id,user_id,answer,created_at) VALUES(?,?,?,?) ON CONFLICT(echo_id,user_id) DO UPDATE SET answer=excluded.answer,created_at=excluded.created_at`)
       .run(row.id,user.id,String(answer).trim().slice(0,200),now());
-    const otherId = row.user_a===user.id ? row.user_b : row.user_a;
     notify(otherId,"answer","对方回答了同一个问题","你们的这次相遇向前走了一步。",{ echoId:row.id });
     const updated = echoRow(row,user.id);
     if (updated.revealed) notify(user.id,"reveal","这句暗号被接住了","现在可以看见对方，并开始对话。",{ echoId:row.id });
+    track(user.id,"answer_submitted",{echoId:row.id,revealed:updated.revealed});
+    if (updated.revealed) track(user.id,"echo_revealed",{echoId:row.id});
     return json(res,200,{ echo:updated });
   }
 
@@ -424,6 +610,8 @@ async function api(req, res, url) {
   if (messagesMatch) {
     const row = db.prepare(`SELECT * FROM echoes WHERE id=? AND (user_a=? OR user_b=?)`).get(messagesMatch[1],user.id,user.id);
     if (!row) return fail(res,404,"ECHO_NOT_FOUND","没有找到这条回声");
+    const otherId = row.user_a===user.id ? row.user_b : row.user_a;
+    if (blockedBetween(user.id,otherId)) return fail(res,403,"USER_BLOCKED","这段关系已被拉黑");
     const state = echoRow(row,user.id);
     if (!state.revealed) return fail(res,403,"ECHO_LOCKED","双方回答后才能开始对话");
     if (method === "GET") {
@@ -434,20 +622,66 @@ async function api(req, res, url) {
       const { body } = await readJson(req);
       const text = String(body || "").trim().slice(0,500);
       if (!text) return fail(res,400,"MESSAGE_REQUIRED","消息不能为空");
+      await moderateText({userId:user.id,surface:"message",referenceId:row.id,text});
       const message = { id:id("msg"), echoId:row.id, senderId:user.id, senderName:user.nickname, body:text, createdAt:now() };
       db.prepare(`INSERT INTO messages(id,echo_id,sender_id,body,created_at) VALUES(?,?,?,?,?)`).run(message.id,row.id,user.id,text,message.createdAt);
-      const otherId = row.user_a===user.id ? row.user_b : row.user_a;
       emit(user.id,"message",message); emit(otherId,"message",message);
       notify(otherId,"message",`${user.nickname} 发来一条消息`,text,{ echoId:row.id });
+      track(user.id,"message_sent",{echoId:row.id});
       return json(res,201,{ message });
     }
   }
 
   if (method === "GET" && path === "/api/conversations") {
-    const rows = db.prepare(`SELECT * FROM echoes WHERE user_a=? OR user_b=? ORDER BY created_at DESC`).all(user.id,user.id)
+    const rows = db.prepare(`SELECT * FROM echoes e WHERE (user_a=? OR user_b=?) AND NOT EXISTS (
+      SELECT 1 FROM blocks b WHERE (b.blocker_id=e.user_a AND b.blocked_id=e.user_b) OR (b.blocker_id=e.user_b AND b.blocked_id=e.user_a)
+    ) ORDER BY created_at DESC`).all(user.id,user.id)
       .map((row) => echoRow(row,user.id)).filter((row) => row.revealed);
     return json(res,200,{ conversations:rows });
   }
+
+  const reportMatch = path.match(/^\/api\/users\/([^/]+)\/report$/);
+  if (method === "POST" && reportMatch) {
+    const reportedId = reportMatch[1];
+    if (reportedId === user.id) return fail(res,400,"CANNOT_REPORT_SELF","不能举报自己");
+    const target = db.prepare(`SELECT * FROM users WHERE id=?`).get(reportedId);
+    if (!target) return fail(res,404,"USER_NOT_FOUND","没有找到这个用户");
+    const body = await readJson(req);
+    const reasons = ["骚扰或辱骂","色情或不适内容","诈骗或广告","冒充他人","其他"];
+    if (!reasons.includes(body.reason)) return fail(res,400,"INVALID_REPORT_REASON","请选择举报原因");
+    const relationship = db.prepare(`SELECT id FROM echoes WHERE id=? AND ((user_a=? AND user_b=?) OR (user_a=? AND user_b=?))`).get(body.echoId,user.id,reportedId,reportedId,user.id);
+    if (!relationship) return fail(res,403,"REPORT_NOT_ALLOWED","只能举报与你发生过回声的人");
+    const existing = db.prepare(`SELECT id,status FROM reports WHERE reporter_id=? AND reported_user_id=? AND echo_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`).get(user.id,reportedId,relationship.id);
+    if (existing) return json(res,200,{report:existing});
+    const reportId = id("rpt");
+    db.prepare(`INSERT INTO reports(id,reporter_id,reported_user_id,echo_id,reason,detail,status,created_at) VALUES(?,?,?,?,?,?,'pending',?)`)
+      .run(reportId,user.id,reportedId,relationship.id,body.reason,String(body.detail || "").trim().slice(0,300),now());
+    track(user.id,"report_created",{reason:body.reason,reportedUserId:reportedId});
+    return json(res,201,{report:{id:reportId,status:"pending"}});
+  }
+
+  const blockMatch = path.match(/^\/api\/users\/([^/]+)\/block$/);
+  if (blockMatch && method === "POST") {
+    const blockedId = blockMatch[1];
+    if (blockedId === user.id) return fail(res,400,"CANNOT_BLOCK_SELF","不能拉黑自己");
+    const target = db.prepare(`SELECT * FROM users WHERE id=?`).get(blockedId);
+    if (!target) return fail(res,404,"USER_NOT_FOUND","没有找到这个用户");
+    const relationship = db.prepare(`SELECT 1 FROM echoes WHERE (user_a=? AND user_b=?) OR (user_a=? AND user_b=?) LIMIT 1`).get(user.id,blockedId,blockedId,user.id);
+    if (!relationship) return fail(res,403,"BLOCK_NOT_ALLOWED","只能拉黑与你发生过回声的人");
+    db.prepare(`INSERT OR IGNORE INTO blocks(blocker_id,blocked_id,created_at) VALUES(?,?,?)`).run(user.id,blockedId,now());
+    track(user.id,"user_blocked",{blockedUserId:blockedId});
+    return json(res,201,{blocked:true});
+  }
+  if (blockMatch && method === "DELETE") {
+    db.prepare(`DELETE FROM blocks WHERE blocker_id=? AND blocked_id=?`).run(user.id,blockMatch[1]);
+    track(user.id,"user_unblocked",{blockedUserId:blockMatch[1]});
+    return json(res,200,{blocked:false});
+  }
+  if (method === "GET" && path === "/api/blocks") {
+    const rows = db.prepare(`SELECT u.* ,b.created_at AS blocked_at FROM blocks b JOIN users u ON u.id=b.blocked_id WHERE b.blocker_id=? ORDER BY b.created_at DESC`).all(user.id);
+    return json(res,200,{blocks:rows.map((row)=>({...publicUser(row),blockedAt:row.blocked_at}))});
+  }
+
   if (method === "GET" && path === "/api/notifications") {
     const rows = db.prepare(`SELECT id,type,title,body,data,read_at AS readAt,created_at AS createdAt FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50`).all(user.id)
       .map((row) => ({...row,data:JSON.parse(row.data)}));
@@ -478,8 +712,8 @@ export function createServer() {
       if (url.pathname.startsWith("/api/")) await api(req,res,url);
       else staticFile(req,res,url);
     } catch (error) {
-      console.error(error);
-      if (!res.headersSent) fail(res,error.status || 500,"SERVER_ERROR",error.status ? error.message : "服务器暂时出了点问题");
+      if (!error.status || error.status>=500) console.error(error);
+      if (!res.headersSent) fail(res,error.status || 500,error.code || "SERVER_ERROR",error.status ? error.message : "服务器暂时出了点问题");
       else res.end();
     }
   });
