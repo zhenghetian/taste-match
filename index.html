@@ -7,6 +7,9 @@
     <meta name="robots" content="noindex,nofollow" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <title>暗号 - 遇见接得住的人</title>
+    <script>
+      if (location.protocol === "file:") location.replace("http://127.0.0.1:4173/");
+    </script>
     <style>
       :root {
         color-scheme: light;
@@ -562,10 +565,15 @@
         element.classList.toggle("is-error", error);
       }
       async function apiFetch(path, options = {}) {
-        const response = await fetch(path, {
-          ...options,
-          headers: { "content-type":"application/json", ...(state.token ? { authorization:`Bearer ${state.token}` } : {}), ...(options.headers || {}) }
-        });
+        let response;
+        try {
+          response = await fetch(path, {
+            ...options,
+            headers: { "content-type":"application/json", ...(state.token ? { authorization:`Bearer ${state.token}` } : {}), ...(options.headers || {}) }
+          });
+        } catch {
+          throw new Error("无法连接暗号服务，请确认本地服务已经启动");
+        }
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           const error = new Error(payload.error?.message || "请求失败，请稍后再试");
