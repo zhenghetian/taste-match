@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#fafaf7" />
     <meta name="robots" content="noindex,nofollow" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <title>暗号 - 遇见接得住的人</title>
     <style>
       :root {
@@ -303,6 +304,59 @@
       .toast { position: absolute; z-index: 60; right: 50%; bottom: calc(82px + var(--safe-bottom)); max-width: calc(100% - 34px); padding: 9px 13px; border-radius: 999px; background: rgba(29,34,38,.92); color: white; opacity: 0; pointer-events: none; font-size: 11px; white-space: nowrap; transform: translateX(50%) translateY(8px); transition: 160ms ease; }
       .toast.is-visible { opacity: 1; transform: translateX(50%) translateY(0); }
 
+      .gate { position: absolute; z-index: 100; inset: 0; overflow-y: auto; background: var(--paper); }
+      .gate-inner { min-height: 100%; display: flex; flex-direction: column; padding: max(38px,env(safe-area-inset-top)) 24px calc(30px + var(--safe-bottom)); }
+      .gate-brand { margin-bottom: auto; padding: 18px 0 46px; }
+      .gate-brand span { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); font-size: 10px; font-weight: 850; }
+      .gate-brand span::before { width: 20px; height: 1px; background: var(--accent); content: ""; }
+      .gate-brand h1 { margin: 18px 0 12px; font-size: 39px; line-height: 1; }
+      .gate-brand p { max-width: 290px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+      .auth-form, .profile-form { display: grid; gap: 14px; }
+      .field { display: grid; gap: 7px; }
+      .field label { color: #555d64; font-size: 10px; font-weight: 800; }
+      .field input, .field select, .field textarea { width: 100%; min-height: 48px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font: inherit; font-size: 14px; }
+      .field textarea { min-height: 82px; padding-top: 12px; resize: none; }
+      .field select { appearance: none; }
+      .code-row { display: grid; grid-template-columns: 1fr 104px; gap: 8px; }
+      .secondary-button { min-height: 48px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 800; }
+      .secondary-button:disabled, .primary-button:disabled { opacity: .45; cursor: not-allowed; }
+      .wechat-button { display: flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 7px; background: #f0f5f1; color: #23452c; font-weight: 800; }
+      .form-divider { display: flex; align-items: center; gap: 12px; color: #a0a4a7; font-size: 9px; }
+      .form-divider::before, .form-divider::after { flex: 1; height: 1px; background: var(--line); content: ""; }
+      .form-message { min-height: 18px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+      .form-message.is-error { color: #9b3e4d; }
+      .dev-code { padding: 9px 11px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 10px; }
+      .onboarding-head { margin-bottom: 28px; }
+      .onboarding-head small { color: var(--accent); font-size: 10px; font-weight: 850; }
+      .onboarding-head h1 { margin: 10px 0 8px; font-size: 30px; }
+      .onboarding-head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+      .gate-loader { display: grid; min-height: 100%; place-items: center; padding: 30px; color: var(--muted); font-size: 12px; }
+      .gate-loader::before { width: 24px; height: 24px; margin: 0 auto 12px; border: 2px solid var(--accent-soft); border-top-color: var(--accent); border-radius: 50%; animation: spin 700ms linear infinite; content: ""; }
+      @keyframes spin { to { transform: rotate(1turn); } }
+      .empty-state { padding: 44px 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; text-align: center; }
+      .empty-state i { display: grid; width: 46px; height: 46px; place-items: center; margin: 0 auto 14px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+      .empty-state h2 { margin: 0 0 7px; font-size: 17px; }
+      .empty-state p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      .account-band { padding: 17px 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
+      .account-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .account-person { display: flex; align-items: center; gap: 11px; }
+      .account-person .avatar { width: 44px; height: 44px; }
+      .account-person strong { display: block; font-size: 14px; }
+      .account-person span { color: var(--muted); font-size: 10px; }
+      .account-actions { display: flex; gap: 7px; }
+      .icon-action { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--ink); }
+      .profile-actions { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 8px; }
+      .invite-band { padding: 18px; border-bottom: 1px solid var(--line); background: var(--band); }
+      .invite-band small { color: var(--accent); font-size: 9px; font-weight: 850; }
+      .invite-code { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+      .invite-code strong { font-size: 20px; letter-spacing: .08em; }
+      .invite-code button { padding: 7px 9px; border-radius: 6px; background: white; color: var(--ink); font-size: 9px; font-weight: 800; }
+      .notification-band { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: white; }
+      .notification-band div { min-width: 0; }
+      .notification-band strong { display: block; font-size: 12px; }
+      .notification-band span { color: var(--muted); font-size: 9px; }
+      .notification-band button { flex: 0 0 auto; padding: 8px 10px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 9px; font-weight: 850; }
+
       @media (max-height: 700px) {
         .feed-video, .feed-cover, .feed-shade { height: 54%; }
         .next-feed { top: calc(54% - 52px); }
@@ -323,6 +377,36 @@
   <body>
     <main class="stage">
       <section id="phone" class="phone" data-tab="discover">
+        <section id="bootGate" class="gate"><div class="gate-loader">正在接通暗号</div></section>
+        <section id="authGate" class="gate" hidden>
+          <div class="gate-inner">
+            <div class="gate-brand"><span>限量闭测</span><h1>暗号</h1><p>先留下真实的停留，再遇见接得住这句话的人。</p></div>
+            <form id="authForm" class="auth-form">
+              <div class="field"><label for="inviteInput">邀请码</label><input id="inviteInput" name="invite" autocomplete="one-time-code" placeholder="例如 ANHAO2026" required /></div>
+              <div class="field"><label for="phoneInput">手机号</label><input id="phoneInput" name="phone" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="11 位手机号" required /></div>
+              <div id="codeField" class="field" hidden><label for="codeInput">验证码</label><div class="code-row"><input id="codeInput" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 位验证码" /><button id="resendCode" class="secondary-button" type="button">重新获取</button></div></div>
+              <div id="devCode" class="dev-code" hidden></div>
+              <p id="authMessage" class="form-message">首次进入需要邀请码，登录后会为你生成新的邀请码。</p>
+              <button id="authSubmit" class="primary-button" type="submit">获取验证码</button>
+              <div class="form-divider">或</div>
+              <button id="wechatLogin" class="wechat-button" type="button"><i data-lucide="message-circle"></i><span>微信登录</span></button>
+            </form>
+          </div>
+        </section>
+        <section id="profileGate" class="gate" hidden>
+          <div class="gate-inner">
+            <header class="onboarding-head"><small id="profileKicker">第一次见面</small><h1 id="profileTitle">先留下一个称呼</h1><p id="profileCopy">这些信息只用于生成更合适的相遇，之后都可以修改。</p></header>
+            <form id="profileForm" class="profile-form">
+              <div class="field"><label for="nicknameInput">昵称</label><input id="nicknameInput" maxlength="20" placeholder="别人怎样称呼你" required /></div>
+              <div class="field"><label for="cityInput">所在城市</label><input id="cityInput" maxlength="20" value="上海" placeholder="例如 上海" required /></div>
+              <div class="field"><label for="birthYearInput">出生年份</label><input id="birthYearInput" type="number" min="1950" max="2010" placeholder="例如 1998" /></div>
+              <div class="field"><label for="genderInput">性别</label><select id="genderInput"><option value="不公开">不公开</option><option value="女">女</option><option value="男">男</option><option value="其他">其他</option></select></div>
+              <div class="field"><label for="bioInput">一句话介绍</label><textarea id="bioInput" maxlength="120" placeholder="最近在意怎样的生活？"></textarea></div>
+              <p id="profileMessage" class="form-message"></p>
+              <div class="profile-actions"><button id="profileCancel" class="secondary-button" type="button" hidden>取消</button><button id="profileSubmit" class="primary-button" type="submit">进入暗号</button></div>
+            </form>
+          </div>
+        </section>
         <section class="view discover is-active" data-view="discover" aria-label="发现">
           <video id="feedVideo" class="feed-video" playsinline webkit-playsinline preload="metadata" autoplay muted loop disablepictureinpicture aria-label="当前短视频"></video>
           <img id="feedCover" class="feed-cover" src="./assets/taste-covers/night-walk.jpg" alt="夜晚独自散步视频封面" />
@@ -341,33 +425,33 @@
 
         <section class="view" data-view="echo" aria-label="回声">
           <div class="screen">
-            <header class="screen-head"><small>今天有 1 次新的相遇</small><h1>回声</h1><p>不是推荐名单，是一处意外重合。</p></header>
-            <article class="echo-lead">
-              <div class="echo-meta"><span>一条新的回声</span><span>9 分钟前</span></div>
+            <header class="screen-head"><small id="echoCountText">还没有新的相遇</small><h1>回声</h1><p>不是推荐名单，是一处意外重合。</p></header>
+            <div id="echoEmpty" class="empty-state"><i><span data-lucide="waves"></span></i><h2>回声还在路上</h2><p>继续刷一些内容并留下真实感受。<br />有人在同一处停下时，它会抵达这里。</p></div>
+            <article id="echoLead" class="echo-lead" hidden>
+              <div class="echo-meta"><span>一条新的回声</span><span id="echoTime">刚刚</span></div>
               <div class="echo-media"><img id="echoCover" src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停下的视频" /><div><h2>有人在同一处停下</h2><p id="echoCaption">朋友不是突然离开，而是在一些没有察觉的时刻慢慢走远。</p></div></div>
               <div class="responses"><div class="response you"><b>你留下</b><span id="echoYourResponse">「我抗拒，但停下了」</span></div><div class="response"><b>另一个人</b><span id="echoOtherResponse">「这很像我」</span></div></div>
               <button id="catchEcho" class="echo-open" type="button"><span>接住这句暗号</span><i data-lucide="arrow-right"></i></button>
             </article>
-            <div class="section-head"><h2>还在路上</h2><span>1</span></div>
-            <div class="waiting"><small>另一条回声还在路上</small><p>你们都向往没安排的普通周末，但 Ta 还没有回答那个问题。</p></div>
+            <div id="waitingSection" hidden><div class="section-head"><h2>还在路上</h2><span id="waitingCount">0</span></div><div class="waiting"><small>有些回声需要一点时间</small><p>对方还没有回答那个问题。你不需要在这里等待。</p></div></div>
           </div>
         </section>
 
         <section class="view" data-view="messages" aria-label="对话">
           <div class="screen">
             <header class="screen-head"><small>已经发生的关系</small><h1>对话</h1><p>从一处共同停留开始，慢慢认识。</p></header>
-            <div class="message-origin"><small>最新的一次相遇</small><p>你和默默没有给出相同答案，但都愿意认真回答。</p></div>
-            <div class="conversation-list">
-              <button class="conversation-row is-unread" data-chat="momo" type="button"><span class="avatar" style="--avatar:#60758a">默</span><span class="row-main"><strong>默默</strong><p>我觉得关系慢慢变淡，比吵一架更难接受。</p></span><time>刚刚</time></button>
-              <button class="conversation-row" data-chat="ayuan" type="button"><span class="avatar" style="--avatar:#526879">原</span><span class="row-main"><strong>阿原</strong><p>下次可以临时约一次日出</p></span><time>昨天</time></button>
-              <button class="conversation-row" data-chat="mina" type="button"><span class="avatar" style="--avatar:#766978">M</span><span class="row-main"><strong>Mina</strong><p>你说的“沟通不是说服”很有共鸣</p></span><time>周六</time></button>
-            </div>
+            <div id="messageOrigin" class="message-origin" hidden><small>最新的一次相遇</small><p id="messageOriginCopy"></p></div>
+            <div id="conversationEmpty" class="empty-state"><i><span data-lucide="message-circle"></span></i><h2>还没有对话</h2><p>双方回答同一个问题后，<br />对话才会从那句话开始。</p></div>
+            <div id="conversationList" class="conversation-list"></div>
           </div>
         </section>
 
         <section class="view" data-view="profile" aria-label="我的">
           <div class="screen">
             <header class="screen-head"><small>不是结论，仍在变化</small><h1>我的痕迹</h1><p>别人暂时可以从这些地方认出你。</p></header>
+            <section class="account-band"><div class="account-line"><div class="account-person"><span id="accountAvatar" class="avatar">我</span><div><strong id="accountName">新朋友</strong><span id="accountCity">上海</span></div></div><div class="account-actions"><button id="editProfileButton" class="icon-action" type="button" aria-label="编辑资料"><i data-lucide="pencil"></i></button><button id="logoutButton" class="icon-action" type="button" aria-label="退出登录"><i data-lucide="log-out"></i></button></div></div></section>
+            <section class="invite-band"><small>邀请一个接得住的人</small><div class="invite-code"><strong id="myInviteCode">—</strong><button id="copyInvite" type="button">复制邀请码</button></div></section>
+            <section class="notification-band"><div><strong>回声通知</strong><span id="notificationStatus">有新回声时在当前设备提醒</span></div><button id="enableNotifications" type="button">开启</button></section>
             <section class="profile-summary"><small>暗号正在变清晰 · 37%</small><h2>你似乎不怕独处，<br />更怕无意义的热闹。</h2><p>这是一个暂时的猜测。它可以被你否认，也可能被下一次停留改写。</p></section>
             <section class="profile-section"><div class="profile-section-head"><h2>反复出现的主题</h2><span>过去 7 天</span></div><div class="recurring-topics"><span>独处</span><span>普通生活</span><span>认真沟通</span><span>计划之外</span></div></section>
             <section class="profile-section"><div class="profile-section-head"><h2>你想靠近的生活</h2><span>2 处</span></div><div class="taste-grid"><button data-feed-index="9" type="button"><img src="./assets/taste-covers/ordinary-weekend.jpg" alt="没有安排的周末" /><span>没有安排的周末</span></button><button data-feed-index="5" type="button"><img src="./assets/taste-covers/sunrise-with-friends.jpg" alt="临时起意的出发" /><span>临时起意的出发</span></button></div></section>
@@ -377,8 +461,8 @@
 
         <nav class="tab-bar" aria-label="主导航">
           <button class="tab-button is-active" data-tab="discover" type="button"><i data-lucide="play"></i><span>发现</span></button>
-          <button class="tab-button" data-tab="echo" type="button"><i data-lucide="waves"></i><span>回声</span><b class="badge">1</b></button>
-          <button class="tab-button" data-tab="messages" type="button"><i data-lucide="message-circle"></i><span>对话</span><b class="badge">1</b></button>
+          <button class="tab-button" data-tab="echo" type="button"><i data-lucide="waves"></i><span>回声</span><b id="echoBadge" class="badge" hidden>0</b></button>
+          <button class="tab-button" data-tab="messages" type="button"><i data-lucide="message-circle"></i><span>对话</span><b id="messageBadge" class="badge" hidden>0</b></button>
           <button class="tab-button" data-tab="profile" type="button"><i data-lucide="user-circle"></i><span>我的</span></button>
         </nav>
 
@@ -386,14 +470,14 @@
 
         <div id="insightSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span id="insightKicker" class="sheet-kicker">你留下了一句暗号</span><h2 id="insightTitle" class="serif">有些感受，不需要立刻被说清。</h2><p id="insightCopy">它只记录了这一刻，你在什么地方停了下来。</p><button id="keepSignal" class="primary-button" type="button">收下</button></section></div>
 
-        <div id="questionSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">在见到 Ta 之前</span><h2>如果很重要的朋友慢慢疏远，你会怎么做？</h2><p>你们回答的是同一个问题，但不需要给出相同答案。</p><div class="sheet-options"><button data-answer type="button"><span>我会主动问一次发生了什么</span><i data-lucide="arrow-right"></i></button><button data-answer type="button"><span>我会尊重距离，等对方开口</span><i data-lucide="arrow-right"></i></button><button data-answer type="button"><span>我可能嘴上接受，心里放不下</span><i data-lucide="arrow-right"></i></button></div></section></div>
+        <div id="questionSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">在见到 Ta 之前</span><h2 id="questionText">如果很重要的朋友慢慢疏远，你会怎么做？</h2><p>你们回答的是同一个问题，但不需要给出相同答案。</p><div class="sheet-options"><button data-answer type="button"><span>我会主动问一次发生了什么</span><i data-lucide="arrow-right"></i></button><button data-answer type="button"><span>我会尊重距离，等对方开口</span><i data-lucide="arrow-right"></i></button><button data-answer type="button"><span>我可能嘴上接受，心里放不下</span><i data-lucide="arrow-right"></i></button></div></section></div>
 
-        <div id="revealSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">这句暗号被接住了</span><h2 class="serif">你们没有给出相同答案，<br />但都愿意认真回答。</h2><div class="revealed-person"><span class="avatar">默</span><div><strong>默默，25</strong><span>上海 · 刚刚也完成了回答</span></div></div><button id="startChat" class="primary-button" type="button">开始对话</button></section></div>
+        <div id="revealSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">这句暗号被接住了</span><h2 class="serif">你们没有给出相同答案，<br />但都愿意认真回答。</h2><div class="revealed-person"><span id="revealAvatar" class="avatar">默</span><div><strong id="revealName">默默</strong><span id="revealMeta">上海 · 刚刚也完成了回答</span></div></div><button id="startChat" class="primary-button" type="button">开始对话</button></section></div>
 
         <section id="chatScreen" class="chat-screen" aria-label="聊天">
           <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">默默</strong><small>一条回声已经被接住</small></div><span></span></header>
-          <div class="chat-context"><img src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停留的内容" /><p>你们在同一条视频前停下，却给出了不同答案。</p></div>
-          <div id="chatMessages" class="messages"><div class="chat-note">从一句没有标准答案的话开始</div><div class="bubble">我觉得关系慢慢变淡，比吵一架更难接受。</div><div class="bubble mine">我反而会假装没看见，可能是怕问出不想听的答案。</div></div>
+          <div class="chat-context"><img id="chatCover" src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停留的内容" /><p id="chatContextCopy">你们在同一条视频前停下，却给出了不同答案。</p></div>
+          <div id="chatMessages" class="messages"><div class="chat-note">从一句没有标准答案的话开始</div></div>
           <form id="composer" class="composer"><input id="messageInput" type="text" placeholder="接着说点具体的" autocomplete="off" aria-label="消息" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
         </section>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -430,7 +514,6 @@
         "7578038229136444681":"./assets/taste-videos/love-lasts.mp4?v=2",
         "7654778543125673818":"./assets/taste-videos/ordinary-weekend.mp4?v=2"
       };
-      const people = { momo:"默默", ayuan:"阿原", mina:"Mina" };
       const insightByReaction = {
         "这很像我":["你在熟悉的生活里，认出了自己。","这不是对你的定义。它只记录了这一刻，你愿意承认什么。"],
         "这是我向往的":["你停下来的，也许是还没开始的生活。","向往不等于缺少，它只是让暗号知道你想靠近哪里。"],
@@ -438,9 +521,20 @@
         "说不清，但我停下了":["有些感受，不需要立刻被说清。","它只记录了这一刻，你在什么地方停了下来。"]
       };
 
+      const state = {
+        token: localStorage.getItem("anhao_token") || "",
+        user: null,
+        invite: null,
+        echoes: [],
+        conversations: [],
+        currentEchoId: null,
+        currentChatId: null,
+        eventSource: null,
+        editingProfile: false
+      };
       let feedIndex = 1;
       let soundEnabled = false;
-      let traceTotal = 7;
+      let codeRequested = false;
       let toastTimer;
       const phone = document.querySelector("#phone");
       const views = [...document.querySelectorAll("[data-view]")];
@@ -455,7 +549,26 @@
         toast.textContent = text;
         toast.classList.add("is-visible");
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1700);
+        toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1900);
+      }
+      function formMessage(id, text, error = false) {
+        const element = document.querySelector(id);
+        element.textContent = text;
+        element.classList.toggle("is-error", error);
+      }
+      async function apiFetch(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: { "content-type":"application/json", ...(state.token ? { authorization:`Bearer ${state.token}` } : {}), ...(options.headers || {}) }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const error = new Error(payload.error?.message || "请求失败，请稍后再试");
+          error.code = payload.error?.code;
+          error.status = response.status;
+          throw error;
+        }
+        return payload;
       }
       function openSheet(id) {
         closeSheets();
@@ -476,6 +589,8 @@
         tabs.forEach((tab) => tab.classList.toggle("is-active",tab.dataset.tab === name));
         document.querySelector("#chatScreen").classList.remove("is-open");
         if (name === "discover") playCurrentVideo(true);
+        if (name === "echo") refreshEchoes();
+        if (name === "messages") refreshConversations();
       }
       function stopVideo() {
         feedVideo.pause();
@@ -486,6 +601,7 @@
         playVideo.classList.remove("is-hidden","is-loading");
       }
       async function playCurrentVideo(automatic = false) {
+        if (!state.user) return;
         const item = feed[feedIndex];
         if (feedVideo.getAttribute("src") && !feedVideo.paused) return;
         playVideo.classList.add("is-loading");
@@ -498,10 +614,7 @@
           feedVideo.load();
         }
         try { await feedVideo.play(); }
-        catch (error) {
-          playVideo.classList.remove("is-loading");
-          if (!automatic) showToast("视频加载失败，请稍后再试");
-        }
+        catch (error) { playVideo.classList.remove("is-loading"); if (!automatic) showToast("视频加载失败，请稍后再试"); }
       }
       function toggleVideo() {
         if (feedVideo.getAttribute("src") && !feedVideo.paused) feedVideo.pause();
@@ -532,80 +645,318 @@
           playCurrentVideo(true);
         },120);
       }
-      function nextFeed() {
-        feedIndex = (feedIndex + 1) % feed.length;
-        renderFeed();
+      function nextFeed() { feedIndex = (feedIndex + 1) % feed.length; renderFeed(); }
+
+      function relativeTime(value) {
+        const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000));
+        if (minutes < 1) return "刚刚";
+        if (minutes < 60) return `${minutes} 分钟前`;
+        if (minutes < 1440) return `${Math.floor(minutes/60)} 小时前`;
+        return `${Math.floor(minutes/1440)} 天前`;
       }
-      function leaveReaction(reaction) {
+      function renderUser() {
+        document.querySelector("#accountAvatar").textContent = state.user.avatar;
+        document.querySelector("#accountName").textContent = state.user.nickname;
+        document.querySelector("#accountCity").textContent = `${state.user.city} · ${state.user.phone || "微信登录"}`;
+        document.querySelector("#myInviteCode").textContent = state.invite?.code || "—";
+      }
+      function showProfileForm(editing = false) {
+        state.editingProfile = editing;
+        const user = state.user || {};
+        document.querySelector("#profileKicker").textContent = editing ? "关于你" : "第一次见面";
+        document.querySelector("#profileTitle").textContent = editing ? "更新资料和城市" : "先留下一个称呼";
+        document.querySelector("#profileCopy").textContent = editing ? "改动会保存到你的账号，并用于之后的相遇。" : "这些信息只用于生成更合适的相遇，之后都可以修改。";
+        document.querySelector("#nicknameInput").value = user.nickname === "新朋友" ? "" : (user.nickname || "");
+        document.querySelector("#cityInput").value = user.city || "上海";
+        document.querySelector("#birthYearInput").value = user.birthYear || "";
+        document.querySelector("#genderInput").value = user.gender || "不公开";
+        document.querySelector("#bioInput").value = user.bio || "";
+        document.querySelector("#profileCancel").hidden = !editing;
+        document.querySelector("#profileSubmit").textContent = editing ? "保存修改" : "进入暗号";
+        document.querySelector("#profileMessage").textContent = "";
+        document.querySelector("#profileGate").hidden = false;
+      }
+      async function refreshSignals() {
+        const { signals } = await apiFetch("/api/signals");
+        document.querySelector("#traceCount").textContent = `留下 ${signals.length} 处痕迹`;
+        return signals;
+      }
+      function latestEcho() { return state.echoes[0] || null; }
+      function renderEchoes() {
+        const echo = latestEcho();
+        const badge = document.querySelector("#echoBadge");
+        badge.hidden = state.echoes.length === 0;
+        badge.textContent = String(state.echoes.length);
+        state.currentEchoId = echo?.id || null;
+        document.querySelector("#echoCountText").textContent = echo ? `今天有 ${state.echoes.length} 次新的相遇` : "还没有新的相遇";
+        document.querySelector("#echoEmpty").hidden = Boolean(echo);
+        document.querySelector("#echoLead").hidden = !echo;
+        if (!echo) return;
+        document.querySelector("#echoTime").textContent = relativeTime(echo.createdAt);
+        document.querySelector("#echoCover").src = `./assets/taste-covers/${echo.content.cover}`;
+        document.querySelector("#echoCaption").textContent = echo.content.title;
+        document.querySelector("#echoYourResponse").textContent = `「${echo.yourReaction}」`;
+        document.querySelector("#echoOtherResponse").textContent = `「${echo.otherReaction}」`;
+        document.querySelector("#questionText").textContent = echo.question;
+        const catchButton = document.querySelector("#catchEcho span");
+        catchButton.textContent = echo.revealed ? "去和 Ta 对话" : echo.answered ? "等待 Ta 的回答" : "接住这句暗号";
+        const waiting = state.echoes.filter((item) => item.answered && !item.revealed).length;
+        document.querySelector("#waitingSection").hidden = waiting === 0;
+        document.querySelector("#waitingCount").textContent = String(waiting);
+      }
+      async function refreshEchoes() {
+        if (!state.token) return;
+        const { echoes } = await apiFetch("/api/echoes");
+        state.echoes = echoes;
+        renderEchoes();
+        renderConversations();
+      }
+      function renderConversations() {
+        const list = document.querySelector("#conversationList");
+        const conversations = state.echoes.filter((echo) => echo.revealed);
+        const badge = document.querySelector("#messageBadge");
+        badge.hidden = conversations.length === 0;
+        badge.textContent = String(conversations.length);
+        state.conversations = conversations;
+        document.querySelector("#conversationEmpty").hidden = conversations.length > 0;
+        document.querySelector("#messageOrigin").hidden = conversations.length === 0;
+        if (conversations.length) document.querySelector("#messageOriginCopy").textContent = `你和${conversations[0].other.nickname}没有给出相同答案，但都愿意认真回答。`;
+        list.replaceChildren(...conversations.map((echo) => {
+          const button = document.createElement("button");
+          button.className = "conversation-row";
+          button.type = "button";
+          const avatar = document.createElement("span");
+          avatar.className = "avatar";
+          avatar.textContent = echo.other.avatar;
+          const main = document.createElement("span");
+          main.className = "row-main";
+          const name = document.createElement("strong");
+          name.textContent = echo.other.nickname;
+          const preview = document.createElement("p");
+          preview.textContent = echo.messageCount ? `已有 ${echo.messageCount} 条消息` : "从共同回答开始说点什么";
+          main.append(name,preview);
+          const time = document.createElement("time");
+          time.textContent = relativeTime(echo.createdAt);
+          button.append(avatar,main,time);
+          button.addEventListener("click",() => openChat(echo.id));
+          return button;
+        }));
+      }
+      async function refreshConversations() { await refreshEchoes(); }
+
+      async function leaveReaction(reaction, button) {
         const item = feed[feedIndex];
-        const insight = insightByReaction[reaction];
-        traceTotal += 1;
-        document.querySelector("#traceCount").textContent = `留下 ${traceTotal} 处痕迹`;
-        document.querySelector("#insightKicker").textContent = `你留下了一句暗号 · ${reaction}`;
-        document.querySelector("#insightTitle").textContent = insight[0];
-        document.querySelector("#insightCopy").textContent = insight[1];
-        document.querySelector("#echoCover").src = `./assets/taste-covers/${item.cover}`;
-        document.querySelector("#echoCaption").textContent = item.caption;
-        document.querySelector("#echoYourResponse").textContent = `「${reaction}」`;
-        document.querySelector("#echoOtherResponse").textContent = reaction === "这很像我" ? "「我抗拒，但停下了」" : "「这很像我」";
-        openSheet("#insightSheet");
+        button.disabled = true;
+        try {
+          const result = await apiFetch("/api/signals", { method:"POST", body:JSON.stringify({ contentId:item.id, creator:item.creator, title:item.title, cover:item.cover, reaction }) });
+          const insight = insightByReaction[reaction];
+          document.querySelector("#traceCount").textContent = `留下 ${result.traceCount} 处痕迹`;
+          document.querySelector("#insightKicker").textContent = `你留下了一句暗号 · ${reaction}`;
+          document.querySelector("#insightTitle").textContent = insight[0];
+          document.querySelector("#insightCopy").textContent = result.echo ? "这一刻已经遇到一处回声。它会出现在「回声」里。" : insight[1];
+          if (result.echo) { state.echoes.unshift(result.echo); renderEchoes(); }
+          openSheet("#insightSheet");
+        } catch (error) { showToast(error.message); }
+        finally { button.disabled = false; }
       }
-      function openChat(id = "momo") {
-        document.querySelector("#chatName").textContent = people[id] || people.momo;
+      async function answerEcho(answer, button) {
+        const echo = latestEcho();
+        if (!echo) return;
+        button.disabled = true;
+        try {
+          const result = await apiFetch(`/api/echoes/${echo.id}/answer`, { method:"POST", body:JSON.stringify({ answer }) });
+          state.echoes[0] = result.echo;
+          renderEchoes(); renderConversations();
+          if (result.echo.revealed) {
+            document.querySelector("#revealAvatar").textContent = result.echo.other.avatar;
+            document.querySelector("#revealName").textContent = result.echo.other.nickname;
+            document.querySelector("#revealMeta").textContent = `${result.echo.other.city} · 刚刚也完成了回答`;
+            openSheet("#revealSheet");
+          } else { closeSheets(); showToast("回答已送出，等 Ta 接住这句话"); }
+        } catch (error) { showToast(error.message); }
+        finally { button.disabled = false; }
+      }
+      function renderMessages(messages) {
+        const container = document.querySelector("#chatMessages");
+        const note = document.createElement("div");
+        note.className = "chat-note";
+        note.textContent = "从一句没有标准答案的话开始";
+        const bubbles = messages.map((message) => {
+          const bubble = document.createElement("div");
+          bubble.dataset.messageId = message.id;
+          bubble.className = `bubble ${message.senderId===state.user.id ? "mine" : ""}`;
+          bubble.textContent = message.body;
+          return bubble;
+        });
+        container.replaceChildren(note,...bubbles);
+        container.scrollTop = container.scrollHeight;
+      }
+      async function openChat(echoId) {
+        const echo = state.echoes.find((item) => item.id === echoId);
+        if (!echo || !echo.revealed) return;
+        state.currentChatId = echoId;
+        document.querySelector("#chatName").textContent = echo.other.nickname;
+        document.querySelector("#chatCover").src = `./assets/taste-covers/${echo.content.cover}`;
+        document.querySelector("#chatContextCopy").textContent = `你们都在「${echo.content.title}」前停下，却给出了不同答案。`;
+        const { messages } = await apiFetch(`/api/echoes/${echoId}/messages`);
+        renderMessages(messages);
         document.querySelector("#chatScreen").classList.add("is-open");
+      }
+      function appendMessage(message) {
+        if (state.currentChatId !== message.echoId || document.querySelector(`[data-message-id="${message.id}"]`)) return;
+        const bubble = document.createElement("div");
+        bubble.dataset.messageId = message.id;
+        bubble.className = `bubble ${message.senderId===state.user.id ? "mine" : ""}`;
+        bubble.textContent = message.body;
+        document.querySelector("#chatMessages").appendChild(bubble);
+        document.querySelector("#chatMessages").scrollTop = document.querySelector("#chatMessages").scrollHeight;
+      }
+      function connectEvents() {
+        state.eventSource?.close();
+        state.eventSource = new EventSource(`/api/events?token=${encodeURIComponent(state.token)}`);
+        state.eventSource.addEventListener("notification",(event) => {
+          const item = JSON.parse(event.data);
+          showToast(item.title);
+          refreshEchoes();
+          if (document.hidden && Notification.permission === "granted") navigator.serviceWorker?.ready.then((registration) => registration.showNotification(item.title,{body:item.body,tag:item.id}));
+        });
+        state.eventSource.addEventListener("message",(event) => appendMessage(JSON.parse(event.data)));
+      }
+
+      async function enterApp(payload) {
+        state.user = payload.user;
+        state.invite = payload.invite || state.invite;
+        document.querySelector("#bootGate").hidden = true;
+        document.querySelector("#authGate").hidden = true;
+        if (!state.user.profileCompleted) {
+          showProfileForm(false);
+          return;
+        }
+        document.querySelector("#profileGate").hidden = true;
+        renderUser();
+        await Promise.all([refreshSignals(),refreshEchoes()]);
+        connectEvents();
+        playCurrentVideo(true);
+        updateNotificationStatus();
+      }
+      async function bootstrap() {
+        const params = new URLSearchParams(location.search);
+        const wechatSession = params.get("wechat_session");
+        if (wechatSession) {
+          state.token = wechatSession;
+          localStorage.setItem("anhao_token",wechatSession);
+          history.replaceState({},"",location.pathname);
+        }
+        renderIcons();
+        if (!state.token) {
+          document.querySelector("#bootGate").hidden = true;
+          document.querySelector("#authGate").hidden = false;
+          return;
+        }
+        try { await enterApp(await apiFetch("/api/me")); }
+        catch {
+          state.token = ""; localStorage.removeItem("anhao_token");
+          document.querySelector("#bootGate").hidden = true;
+          document.querySelector("#authGate").hidden = false;
+        }
+      }
+      async function sendCode() {
+        const phoneValue = document.querySelector("#phoneInput").value.trim();
+        const submit = document.querySelector("#authSubmit");
+        submit.disabled = true;
+        try {
+          const result = await apiFetch("/api/auth/send-code",{ method:"POST", body:JSON.stringify({phone:phoneValue}) });
+          codeRequested = true;
+          document.querySelector("#codeField").hidden = false;
+          document.querySelector("#authSubmit").textContent = "登录并进入";
+          document.querySelector("#codeInput").focus();
+          formMessage("#authMessage","验证码已发送，10 分钟内有效");
+          if (result.devCode) { document.querySelector("#devCode").hidden = false; document.querySelector("#devCode").textContent = `开发环境验证码：${result.devCode}`; }
+        } catch (error) { formMessage("#authMessage",error.message,true); }
+        finally { submit.disabled = false; }
+      }
+      async function verifyCode() {
+        const submit = document.querySelector("#authSubmit");
+        submit.disabled = true;
+        try {
+          const result = await apiFetch("/api/auth/verify",{method:"POST",body:JSON.stringify({phone:document.querySelector("#phoneInput").value.trim(),code:document.querySelector("#codeInput").value.trim(),inviteCode:document.querySelector("#inviteInput").value.trim()})});
+          state.token = result.token;
+          localStorage.setItem("anhao_token",result.token);
+          await enterApp(await apiFetch("/api/me"));
+        } catch (error) { formMessage("#authMessage",error.message,true); }
+        finally { submit.disabled = false; }
+      }
+      function updateNotificationStatus() {
+        if (!("Notification" in window)) { document.querySelector("#notificationStatus").textContent = "当前浏览器不支持系统通知"; document.querySelector("#enableNotifications").disabled = true; return; }
+        const allowed = Notification.permission === "granted";
+        document.querySelector("#notificationStatus").textContent = allowed ? "已开启当前设备提醒" : "有新回声时在当前设备提醒";
+        document.querySelector("#enableNotifications").textContent = allowed ? "已开启" : "开启";
+        document.querySelector("#enableNotifications").disabled = allowed;
       }
 
       tabs.forEach((tab) => tab.addEventListener("click",() => showTab(tab.dataset.tab)));
-      document.querySelector("#playVideo").addEventListener("click",() => playCurrentVideo(false));
+      playVideo.addEventListener("click",() => playCurrentVideo(false));
       feedVideo.addEventListener("click",toggleVideo);
-      feedVideo.addEventListener("playing",() => {
-        playVideo.classList.remove("is-loading");
-        playVideo.classList.add("is-hidden");
-      });
+      feedVideo.addEventListener("playing",() => { playVideo.classList.remove("is-loading"); playVideo.classList.add("is-hidden"); });
       feedVideo.addEventListener("pause",() => playVideo.classList.remove("is-hidden","is-loading"));
       document.querySelector("#soundButton").addEventListener("click",toggleSound);
       document.querySelector("#nextFeed").addEventListener("click",nextFeed);
       document.querySelector("#pauseAction").addEventListener("click",() => openSheet("#reactionSheet"));
-      document.querySelectorAll("[data-reaction]").forEach((button) => button.addEventListener("click",() => leaveReaction(button.dataset.reaction)));
+      document.querySelectorAll("[data-reaction]").forEach((button) => button.addEventListener("click",() => leaveReaction(button.dataset.reaction,button)));
       document.querySelector("#keepSignal").addEventListener("click",() => { closeSheets(); showToast("暗号已留下，回应会出现在回声里"); });
-      document.querySelector("#catchEcho").addEventListener("click",() => openSheet("#questionSheet"));
-      document.querySelectorAll("[data-answer]").forEach((button) => button.addEventListener("click",() => openSheet("#revealSheet")));
-      document.querySelector("#startChat").addEventListener("click",() => { closeSheets(); showTab("messages"); openChat("momo"); });
+      document.querySelector("#catchEcho").addEventListener("click",() => {
+        const echo = latestEcho();
+        if (!echo) return;
+        if (echo.revealed) { showTab("messages"); openChat(echo.id); }
+        else if (echo.answered) showToast("已经回答，等 Ta 接住这句话");
+        else openSheet("#questionSheet");
+      });
+      document.querySelectorAll("[data-answer]").forEach((button) => button.addEventListener("click",() => answerEcho(button.textContent.trim(),button)));
+      document.querySelector("#startChat").addEventListener("click",() => { const id=state.currentEchoId; closeSheets(); showTab("messages"); openChat(id); });
       document.querySelectorAll("[data-close-sheet]").forEach((button) => button.addEventListener("click",closeSheets));
-      document.querySelectorAll("[data-chat]").forEach((button) => button.addEventListener("click",() => openChat(button.dataset.chat)));
-      document.querySelector("#closeChat").addEventListener("click",() => document.querySelector("#chatScreen").classList.remove("is-open"));
-      document.querySelector("#composer").addEventListener("submit",(event) => {
+      document.querySelector("#closeChat").addEventListener("click",() => { document.querySelector("#chatScreen").classList.remove("is-open"); state.currentChatId=null; });
+      document.querySelector("#composer").addEventListener("submit",async (event) => {
         event.preventDefault();
         const input = document.querySelector("#messageInput");
-        if (!input.value.trim()) return;
-        const bubble = document.createElement("div");
-        bubble.className = "bubble mine";
-        bubble.textContent = input.value.trim();
-        document.querySelector("#chatMessages").appendChild(bubble);
+        const body = input.value.trim();
+        if (!body || !state.currentChatId) return;
         input.value = "";
-        document.querySelector("#chatMessages").scrollTop = document.querySelector("#chatMessages").scrollHeight;
+        try { const result=await apiFetch(`/api/echoes/${state.currentChatId}/messages`,{method:"POST",body:JSON.stringify({body})}); appendMessage(result.message); await refreshEchoes(); }
+        catch (error) { input.value=body; showToast(error.message); }
       });
-      document.querySelectorAll("[data-feed-index]").forEach((button) => button.addEventListener("click",() => {
-        feedIndex = Number(button.dataset.feedIndex);
-        renderFeed();
-        showTab("discover");
-      }));
+      document.querySelectorAll("[data-feed-index]").forEach((button) => button.addEventListener("click",() => { feedIndex=Number(button.dataset.feedIndex); renderFeed(); showTab("discover"); }));
       document.querySelector("#acceptGuess").addEventListener("click",() => showToast("已记下：有一点"));
-      document.querySelector("#rejectGuess").addEventListener("click",() => {
-        document.querySelector("#uncertainLabel").textContent = "这个猜测已被收回";
-        document.querySelector("#uncertainCopy").textContent = "你没有被归类。下一次停留会从这里重新开始。";
-        document.querySelector("#uncertainActions").hidden = true;
+      document.querySelector("#rejectGuess").addEventListener("click",() => { document.querySelector("#uncertainLabel").textContent="这个猜测已被收回"; document.querySelector("#uncertainCopy").textContent="你没有被归类。下一次停留会从这里重新开始。"; document.querySelector("#uncertainActions").hidden=true; });
+      document.querySelector("#authForm").addEventListener("submit",(event) => { event.preventDefault(); codeRequested ? verifyCode() : sendCode(); });
+      document.querySelector("#resendCode").addEventListener("click",sendCode);
+      document.querySelector("#wechatLogin").addEventListener("click",async () => {
+        try {
+          const providers=await apiFetch("/api/auth/providers");
+          if (!providers.wechat) throw new Error("微信登录接口已预留，配置认证公众号后即可启用");
+          location.href=`/api/auth/wechat/start?invite=${encodeURIComponent(document.querySelector("#inviteInput").value.trim())}`;
+        } catch (error) { formMessage("#authMessage",error.message,true); }
       });
+      document.querySelector("#profileForm").addEventListener("submit",async (event) => {
+        event.preventDefault();
+        try {
+          const result=await apiFetch("/api/me",{method:"PATCH",body:JSON.stringify({nickname:document.querySelector("#nicknameInput").value,city:document.querySelector("#cityInput").value,birthYear:document.querySelector("#birthYearInput").value,gender:document.querySelector("#genderInput").value,bio:document.querySelector("#bioInput").value})});
+          state.user=result.user;
+          await enterApp(await apiFetch("/api/me"));
+          if (state.editingProfile) { state.editingProfile=false; showToast("资料已更新"); }
+        } catch (error) { formMessage("#profileMessage",error.message,true); }
+      });
+      document.querySelector("#editProfileButton").addEventListener("click",() => showProfileForm(true));
+      document.querySelector("#profileCancel").addEventListener("click",() => { state.editingProfile=false; document.querySelector("#profileGate").hidden=true; });
+      document.querySelector("#logoutButton").addEventListener("click",async () => { try { await apiFetch("/api/auth/logout",{method:"POST"}); } catch {} localStorage.removeItem("anhao_token"); location.reload(); });
+      document.querySelector("#copyInvite").addEventListener("click",async () => { const code=state.invite?.code; if(!code)return; await navigator.clipboard.writeText(code); showToast("邀请码已复制"); });
+      document.querySelector("#enableNotifications").addEventListener("click",async () => { if("Notification" in window) await Notification.requestPermission(); updateNotificationStatus(); });
 
       let touchY = null;
-      document.querySelector(".discover").addEventListener("touchstart",(event) => { touchY = event.touches[0].clientY; },{passive:true});
-      document.querySelector(".discover").addEventListener("touchend",(event) => {
-        if (touchY !== null && touchY - event.changedTouches[0].clientY > 52) nextFeed();
-        touchY = null;
-      },{passive:true});
+      document.querySelector(".discover").addEventListener("touchstart",(event) => { touchY=event.touches[0].clientY; },{passive:true});
+      document.querySelector(".discover").addEventListener("touchend",(event) => { if(touchY!==null && touchY-event.changedTouches[0].clientY>52)nextFeed(); touchY=null; },{passive:true});
 
-      renderIcons();
-      playCurrentVideo(true);
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+      bootstrap();
     </script>
   </body>
 </html>

@@ -1,0 +1,9 @@
+{
+  "name": "暗号",
+  "short_name": "暗号",
+  "description": "先留下真实的停留，再遇见接得住这句话的人。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf7",
+  "theme_color": "#526b84"
+}
