@@ -374,8 +374,8 @@ function createEchoFor(signal) {
     const demoAnswer = questionItem.demoAnswer;
     db.prepare(`INSERT OR IGNORE INTO echo_answers(echo_id,user_id,answer,created_at) VALUES(?,?,?,?)`).run(echoId, candidate.user_id, demoAnswer, now());
   }
-  notify(signal.user_id, "echo", "一条回声抵达了", "有人在和你相同的地方停了下来。", { echoId });
-  notify(candidate.user_id, "echo", "一条回声抵达了", "有人在和你相同的地方停了下来。", { echoId });
+  notify(signal.user_id, "echo", "有人接住了你的暗号", "Ta 也在同一条内容前停了下来。", { echoId });
+  notify(candidate.user_id, "echo", "有人接住了你的暗号", "Ta 也在同一条内容前停了下来。", { echoId });
   track(signal.user_id,"echo_created",{ echoId, contentId:signal.content_id });
   track(candidate.user_id,"echo_created",{ echoId, contentId:signal.content_id });
   return db.prepare(`SELECT * FROM echoes WHERE id=?`).get(echoId);

@@ -78,7 +78,7 @@
     <script>
       let days=7;
       let adminKey=sessionStorage.getItem("anhao_admin_key") || "";
-      const labels={app_open:"打开应用",tab_view:"切换页面",video_impression:"看到内容",video_play:"播放内容",reaction_sheet_open:"打开感受选择",registration_completed:"完成注册",login_completed:"完成登录",profile_completed:"完成资料",signal_created:"留下感受",echo_created:"生成回声",answer_submitted:"提交回答",echo_revealed:"双方解锁",chat_open:"打开聊天",message_sent:"发送消息",report_created:"提交举报",user_blocked:"拉黑用户",notification_prompt:"请求通知"};
+      const labels={app_open:"打开应用",tab_view:"切换页面",video_impression:"看到内容",video_play:"播放内容",reaction_sheet_open:"打开感受选择",registration_completed:"完成注册",login_completed:"完成登录",profile_completed:"完成资料",signal_created:"留下感受",echo_created:"发生相遇",answer_submitted:"提交回答",echo_revealed:"双方解锁",chat_open:"打开聊天",message_sent:"发送消息",report_created:"提交举报",user_blocked:"拉黑用户",notification_prompt:"请求通知"};
       const number=(value)=>new Intl.NumberFormat("zh-CN").format(value || 0);
       async function call(path,options={}) {
         const response=await fetch(path,{...options,headers:{"content-type":"application/json","x-admin-key":adminKey,...(options.headers||{})}});

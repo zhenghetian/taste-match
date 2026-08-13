@@ -435,17 +435,17 @@
           <button id="nextFeed" class="next-feed" type="button" aria-label="下一条" title="下一条"><i data-lucide="chevron-up"></i></button>
         </section>
 
-        <section class="view" data-view="echo" aria-label="回声">
+        <section class="view" data-view="echo" aria-label="相遇">
           <div class="screen">
-            <header class="screen-head"><small id="echoCountText">还没有新的相遇</small><h1>回声</h1><p>不是推荐名单，是一处意外重合。</p></header>
-            <div id="echoEmpty" class="empty-state"><i><span data-lucide="waves"></span></i><h2>回声还在路上</h2><p>继续刷一些内容并留下真实感受。<br />有人在同一处停下时，它会抵达这里。</p></div>
+            <header class="screen-head"><small id="echoCountText">还没有新的相遇</small><h1>相遇</h1><p>不是附近的人，是在同一处停下的人。</p></header>
+            <div id="echoEmpty" class="empty-state"><i><span data-lucide="sparkles"></span></i><h2>还没有遇见</h2><p>继续刷一些内容并留下真实感受。<br />有人接住你的暗号时，你们会在这里相遇。</p></div>
             <article id="echoLead" class="echo-lead" hidden>
-              <div class="echo-meta"><span>一条新的回声</span><span id="echoTime">刚刚</span></div>
+              <div class="echo-meta"><span>一次意外重合</span><span id="echoTime">刚刚</span></div>
               <div class="echo-media"><img id="echoCover" src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停下的视频" /><div><h2>有人在同一处停下</h2><p id="echoCaption">朋友不是突然离开，而是在一些没有察觉的时刻慢慢走远。</p></div></div>
               <div class="responses"><div class="response you"><b>你留下</b><span id="echoYourResponse">「我抗拒，但停下了」</span></div><div class="response"><b>另一个人</b><span id="echoOtherResponse">「这很像我」</span></div></div>
               <button id="catchEcho" class="echo-open" type="button"><span>接住这句暗号</span><i data-lucide="arrow-right"></i></button>
             </article>
-            <div id="waitingSection" hidden><div class="section-head"><h2>还在路上</h2><span id="waitingCount">0</span></div><div class="waiting"><small>有些回声需要一点时间</small><p>对方还没有回答那个问题。你不需要在这里等待。</p></div></div>
+            <div id="waitingSection" hidden><div class="section-head"><h2>还在路上</h2><span id="waitingCount">0</span></div><div class="waiting"><small>有些相遇需要一点时间</small><p>对方还没有回答那个问题。你不需要在这里等待。</p></div></div>
           </div>
         </section>
 
@@ -463,7 +463,7 @@
             <header class="screen-head"><small>不是结论，仍在变化</small><h1>我的痕迹</h1><p>别人暂时可以从这些地方认出你。</p></header>
             <section class="account-band"><div class="account-line"><div class="account-person"><span id="accountAvatar" class="avatar">我</span><div><strong id="accountName">新朋友</strong><span id="accountCity">上海</span></div></div><div class="account-actions"><button id="editProfileButton" class="icon-action" type="button" aria-label="编辑资料"><i data-lucide="pencil"></i></button><button id="logoutButton" class="icon-action" type="button" aria-label="退出登录"><i data-lucide="log-out"></i></button></div></div></section>
             <section class="invite-band"><small>邀请一个接得住的人</small><div class="invite-code"><strong id="myInviteCode">—</strong><button id="copyInvite" type="button">复制邀请码</button></div></section>
-            <section class="notification-band"><div><strong>回声通知</strong><span id="notificationStatus">有新回声时在当前设备提醒</span></div><button id="enableNotifications" type="button">开启</button></section>
+            <section class="notification-band"><div><strong>相遇通知</strong><span id="notificationStatus">有人接住暗号时在当前设备提醒</span></div><button id="enableNotifications" type="button">开启</button></section>
             <section class="notification-band"><div><strong>已拉黑的人</strong><span id="blockedCount">目前没有拉黑关系</span></div><button id="manageBlocks" type="button">管理</button></section>
             <section class="profile-summary"><small id="profileClarity">暗号刚刚开始 · 8%</small><h2 id="profileInsight">再多停下几次，<br />暗号才会慢慢显形。</h2><p id="profileInsightCopy">这里只根据你真实留下的感受变化，不会用注册资料替你下结论。</p></section>
             <section class="profile-section"><div class="profile-section-head"><h2>反复出现的主题</h2><span id="topicPeriod">还在形成</span></div><div id="recurringTopics" class="recurring-topics"><span>等待第一次停留</span></div></section>
@@ -474,7 +474,7 @@
 
         <nav class="tab-bar" aria-label="主导航">
           <button class="tab-button is-active" data-tab="discover" type="button"><i data-lucide="play"></i><span>发现</span></button>
-          <button class="tab-button" data-tab="echo" type="button"><i data-lucide="waves"></i><span>回声</span><b id="echoBadge" class="badge" hidden>0</b></button>
+          <button class="tab-button" data-tab="echo" type="button"><i data-lucide="sparkles"></i><span>相遇</span><b id="echoBadge" class="badge" hidden>0</b></button>
           <button class="tab-button" data-tab="messages" type="button"><i data-lucide="message-circle"></i><span>对话</span><b id="messageBadge" class="badge" hidden>0</b></button>
           <button class="tab-button" data-tab="profile" type="button"><i data-lucide="user-circle"></i><span>我的</span></button>
         </nav>
@@ -488,7 +488,7 @@
         <div id="revealSheet" class="sheet-layer" aria-hidden="true"><button class="backdrop" data-close-sheet type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">这句暗号被接住了</span><h2 class="serif">你们没有给出相同答案，<br />但都愿意认真回答。</h2><div class="revealed-person"><span id="revealAvatar" class="avatar">默</span><div><strong id="revealName">默默</strong><span id="revealMeta">上海 · 刚刚也完成了回答</span></div></div><button id="startChat" class="primary-button" type="button">开始对话</button></section></div>
 
         <section id="chatScreen" class="chat-screen" aria-label="聊天">
-          <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">默默</strong><small>一条回声已经被接住</small></div><button id="openSafety" type="button" aria-label="对话安全设置"><i data-lucide="ellipsis"></i></button></header>
+          <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">默默</strong><small>你们曾在同一处停下</small></div><button id="openSafety" type="button" aria-label="对话安全设置"><i data-lucide="ellipsis"></i></button></header>
           <div class="chat-context"><img id="chatCover" src="./assets/taste-covers/fluid-friendship.jpg" alt="共同停留的内容" /><p id="chatContextCopy">你们在同一条视频前停下，却给出了不同答案。</p></div>
           <div id="chatMessages" class="messages"><div class="chat-note">从一句没有标准答案的话开始</div></div>
           <form id="composer" class="composer"><input id="messageInput" type="text" placeholder="接着说点具体的" autocomplete="off" aria-label="消息" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
@@ -867,7 +867,7 @@
           document.querySelector("#traceCount").textContent = `留下 ${result.traceCount} 处痕迹`;
           document.querySelector("#insightKicker").textContent = `你留下了一句暗号 · ${reaction}`;
           document.querySelector("#insightTitle").textContent = insight[0];
-          document.querySelector("#insightCopy").textContent = result.echo ? "这一刻已经遇到一处回声。它会出现在「回声」里。" : insight[1];
+          document.querySelector("#insightCopy").textContent = result.echo ? "已经有人接住了这一刻。你们会在「相遇」里看见彼此。" : insight[1];
           if (result.echo) { state.echoes.unshift(result.echo); renderEchoes(); }
           await refreshSignals();
           openSheet("#insightSheet");
@@ -1033,7 +1033,7 @@
       function updateNotificationStatus() {
         if (!("Notification" in window)) { document.querySelector("#notificationStatus").textContent = "当前浏览器不支持系统通知"; document.querySelector("#enableNotifications").disabled = true; return; }
         const allowed = Notification.permission === "granted";
-        document.querySelector("#notificationStatus").textContent = allowed ? "已开启当前设备提醒" : "有新回声时在当前设备提醒";
+        document.querySelector("#notificationStatus").textContent = allowed ? "已开启当前设备提醒" : "有人接住暗号时在当前设备提醒";
         document.querySelector("#enableNotifications").textContent = allowed ? "已开启" : "开启";
         document.querySelector("#enableNotifications").disabled = allowed;
       }
@@ -1047,7 +1047,7 @@
       document.querySelector("#nextFeed").addEventListener("click",nextFeed);
       document.querySelector("#pauseAction").addEventListener("click",() => { trackEvent("reaction_sheet_open",{contentId:feed[feedIndex].id}); openSheet("#reactionSheet"); });
       document.querySelectorAll("[data-reaction]").forEach((button) => button.addEventListener("click",() => leaveReaction(button.dataset.reaction,button)));
-      document.querySelector("#keepSignal").addEventListener("click",() => { closeSheets(); showToast("暗号已留下，回应会出现在回声里"); });
+      document.querySelector("#keepSignal").addEventListener("click",() => { closeSheets(); showToast("暗号已留下，有人接住后会出现在「相遇」里"); });
       document.querySelector("#catchEcho").addEventListener("click",() => {
         const echo = latestEcho();
         if (!echo) return;
