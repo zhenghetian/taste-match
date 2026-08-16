@@ -145,3 +145,41 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   assert.ok(analytics.totals.moderatedContent>=2);
   await request(`/api/admin/reports/${report.report.id}/status`,{method:"POST",headers:{"x-admin-key":"test-admin"},body:{status:"resolved"}});
 });
+
+test("two people can bring the same external content and form a real echo", async () => {
+  async function register(phone, nickname) {
+    await request("/api/auth/send-code",{method:"POST",body:{phone}});
+    const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"246810",inviteCode:"ANHAO2026"}});
+    await request("/api/me",{token:login.token,method:"PATCH",body:{nickname,city:"上海",birthYear:1999,gender:"不公开",bio:"愿意从一句具体的话开始认识人"}});
+    return login.token;
+  }
+
+  const firstToken = await register("13700137001","小满");
+  const secondToken = await register("13700137002","迟迟");
+  const shared = {
+    sourceUrl:"https://www.example.com/watch?id=quiet-night&utm_source=test",
+    title:"那天晚上，我突然不想再逞强",
+    reaction:"我停下来不是因为难过，而是第一次承认自己也希望有人问一句累不累。"
+  };
+
+  const firstSignal = await request("/api/signals",{token:firstToken,method:"POST",body:shared});
+  assert.equal(firstSignal.signal.sourceType,"shared");
+  assert.equal(firstSignal.echo,null);
+
+  const secondSignal = await request("/api/signals",{token:secondToken,method:"POST",body:{...shared,reaction:"我总以为自己能消化所有情绪，看到这里才发现并不是。"}});
+  assert.ok(secondSignal.echo?.id);
+  assert.equal(secondSignal.echo.content.sourceType,"shared");
+  assert.equal(secondSignal.echo.content.sourceUrl,"https://www.example.com/watch?id=quiet-night");
+
+  const firstEchoes = await request("/api/echoes",{token:firstToken});
+  assert.equal(firstEchoes.echoes.length,1);
+  assert.equal(firstEchoes.echoes[0].otherReaction,"我总以为自己能消化所有情绪，看到这里才发现并不是。");
+
+  await request(`/api/echoes/${secondSignal.echo.id}/answer`,{token:firstToken,method:"POST",body:{answer:"我希望有人先问一句，但不逼我马上说清楚"}});
+  const revealed = await request(`/api/echoes/${secondSignal.echo.id}/answer`,{token:secondToken,method:"POST",body:{answer:"我更习惯自己开口，只是需要一点时间"}});
+  assert.equal(revealed.echo.revealed,true);
+  assert.equal(revealed.echo.other.nickname,"小满");
+
+  const invalidUrl = await fetch(`${BASE}/api/signals`,{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${firstToken}`},body:JSON.stringify({sourceUrl:"javascript:alert(1)",title:"不安全链接",reaction:"这是一句完整的感受"})});
+  assert.equal(invalidUrl.status,400);
+});

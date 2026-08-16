@@ -168,6 +168,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_analytics_user ON analytics_events(user_id, created_at DESC);
 `);
 
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((item) => item.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+ensureColumn("signals", "source_url", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("signals", "source_type", "TEXT NOT NULL DEFAULT 'curated'");
+
 function seed() {
   db.prepare(`INSERT OR IGNORE INTO invites(code, max_uses, used_count, active, created_at) VALUES(?, 100, 0, 1, ?)`).run(MASTER_INVITE, now());
   const demoUsers = {
@@ -340,7 +348,14 @@ function echoRow(row, viewerId) {
     id: row.id,
     createdAt: row.created_at,
     question: row.question,
-    content: { id: ownSignal.content_id, creator: ownSignal.creator, title: ownSignal.title, cover: ownSignal.cover },
+    content: {
+      id: ownSignal.content_id,
+      creator: ownSignal.creator,
+      title: ownSignal.title,
+      cover: ownSignal.cover,
+      sourceUrl: ownSignal.source_url || "",
+      sourceType: ownSignal.source_type || "curated"
+    },
     yourReaction: ownSignal.reaction,
     otherReaction: otherSignal.reaction,
     answered: Boolean(ownAnswer),
@@ -384,6 +399,24 @@ function createEchoFor(signal) {
   track(signal.user_id,"echo_created",{ echoId, contentId:signal.content_id });
   track(candidate.user_id,"echo_created",{ echoId, contentId:signal.content_id });
   return db.prepare(`SELECT * FROM echoes WHERE id=?`).get(echoId);
+}
+
+function normalizeExternalUrl(value) {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    if (!["http:", "https:"].includes(parsed.protocol)) return null;
+    parsed.hash = "";
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/^(utm_|spm$|share_|timestamp$|source$)/i.test(key)) parsed.searchParams.delete(key);
+    }
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function sharedContentId(sourceUrl) {
+  return `shared_${hash(sourceUrl).slice(0, 20)}`;
 }
 
 async function api(req, res, url) {
@@ -538,7 +571,7 @@ async function api(req, res, url) {
   }
   if (method === "POST" && path === "/api/analytics/track") {
     const body = await readJson(req);
-    const allowedEvents = ["app_open","tab_view","video_impression","video_play","reaction_sheet_open","chat_open","notification_prompt"];
+    const allowedEvents = ["app_open","tab_view","video_impression","video_play","reaction_sheet_open","chat_open","notification_prompt","signal_composer_open","signal_submitted","echo_open","share_import_open"];
     if (!allowedEvents.includes(body.eventName)) return fail(res,400,"INVALID_EVENT","埋点事件不在允许列表中");
     if (!analyticsAllowed(user.id)) return fail(res,429,"TOO_MANY_EVENTS","埋点请求过于频繁");
     const properties = body.properties && typeof body.properties === "object" && !Array.isArray(body.properties) ? body.properties : {};
@@ -566,28 +599,48 @@ async function api(req, res, url) {
 
   if (method === "POST" && path === "/api/signals") {
     const body = await readJson(req);
-    const allowed = ["这很像我","这是我向往的","我抗拒，但停下了","说不清，但我停下了"];
-    if (!body.contentId || !allowed.includes(body.reaction)) return fail(res, 400, "INVALID_SIGNAL", "停留数据不完整");
-    const content = CONTENT_BY_ID.get(String(body.contentId));
-    if (!content) return fail(res,400,"CONTENT_NOT_FOUND","这条内容已经不在内容池中");
+    const reaction = String(body.reaction || "").trim().slice(0, 160);
+    if (reaction.length < 2) return fail(res, 400, "INVALID_SIGNAL", "请留下一句真实的感受");
+    await moderateText({userId:user.id,surface:"signal",text:reaction});
+
+    let content = body.contentId ? CONTENT_BY_ID.get(String(body.contentId)) : null;
+    let sourceUrl = "";
+    let sourceType = "curated";
+    if (!content) {
+      sourceUrl = normalizeExternalUrl(body.sourceUrl);
+      if (!sourceUrl) return fail(res,400,"INVALID_SOURCE_URL","请粘贴一个可以打开的内容链接");
+      const title = String(body.title || "").trim().slice(0, 80);
+      if (title.length < 2) return fail(res,400,"TITLE_REQUIRED","给这条内容写一个简短标题");
+      await moderateText({userId:user.id,surface:"shared_content",text:title});
+      sourceType = "shared";
+      content = {
+        id: sharedContentId(sourceUrl),
+        creator: "你带来的内容",
+        title,
+        cover: "",
+        url: sourceUrl
+      };
+    } else {
+      sourceUrl = content.url || "";
+    }
     const existing = db.prepare(`SELECT * FROM signals WHERE user_id=? AND content_id=? ORDER BY created_at DESC LIMIT 1`).get(user.id,content.id);
     if (existing) {
-      db.prepare(`UPDATE signals SET reaction=?,created_at=? WHERE id=?`).run(body.reaction,now(),existing.id);
+      db.prepare(`UPDATE signals SET reaction=?,source_url=?,source_type=?,created_at=? WHERE id=?`).run(reaction,sourceUrl,sourceType,now(),existing.id);
       const echo = db.prepare(`SELECT * FROM echoes WHERE signal_a=? OR signal_b=? ORDER BY created_at DESC LIMIT 1`).get(existing.id,existing.id);
       const count = db.prepare(`SELECT COUNT(DISTINCT content_id) AS count FROM signals WHERE user_id=?`).get(user.id).count;
-      track(user.id,"signal_created",{contentId:content.id,reaction:body.reaction,updated:true,echoCreated:Boolean(echo)});
-      return json(res,200,{signal:{id:existing.id,reaction:body.reaction,createdAt:now()},traceCount:count,echo:echo ? echoRow(echo,user.id) : null,updated:true});
+      track(user.id,"signal_created",{contentId:content.id,sourceType,updated:true,echoCreated:Boolean(echo)});
+      return json(res,200,{signal:{id:existing.id,reaction,sourceUrl,sourceType,createdAt:now()},traceCount:count,echo:echo ? echoRow(echo,user.id) : null,updated:true});
     }
-    const signal = { id:id("sig"), user_id:user.id, content_id:content.id, creator:content.creator, title:content.title, cover:content.cover, reaction:body.reaction, created_at:now() };
-    db.prepare(`INSERT INTO signals(id,user_id,content_id,creator,title,cover,reaction,created_at) VALUES(?,?,?,?,?,?,?,?)`)
-      .run(signal.id, signal.user_id, signal.content_id, signal.creator, signal.title, signal.cover, signal.reaction, signal.created_at);
+    const signal = { id:id("sig"), user_id:user.id, content_id:content.id, creator:content.creator, title:content.title, cover:content.cover, reaction, source_url:sourceUrl, source_type:sourceType, created_at:now() };
+    db.prepare(`INSERT INTO signals(id,user_id,content_id,creator,title,cover,reaction,source_url,source_type,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)`)
+      .run(signal.id, signal.user_id, signal.content_id, signal.creator, signal.title, signal.cover, signal.reaction, signal.source_url, signal.source_type, signal.created_at);
     const echo = createEchoFor(signal);
     const count = db.prepare(`SELECT COUNT(DISTINCT content_id) AS count FROM signals WHERE user_id=?`).get(user.id).count;
-    track(user.id,"signal_created",{contentId:signal.content_id,reaction:signal.reaction,echoCreated:Boolean(echo)});
-    return json(res, 201, { signal:{ id:signal.id, reaction:signal.reaction, createdAt:signal.created_at }, traceCount:count, echo:echo ? echoRow(echo,user.id) : null });
+    track(user.id,"signal_created",{contentId:signal.content_id,sourceType,echoCreated:Boolean(echo)});
+    return json(res, 201, { signal:{ id:signal.id, reaction:signal.reaction, sourceUrl, sourceType, createdAt:signal.created_at }, traceCount:count, echo:echo ? echoRow(echo,user.id) : null });
   }
   if (method === "GET" && path === "/api/signals") {
-    const rows = db.prepare(`SELECT id,content_id AS contentId,creator,title,cover,reaction,created_at AS createdAt FROM signals WHERE user_id=? ORDER BY created_at DESC LIMIT 100`).all(user.id);
+    const rows = db.prepare(`SELECT id,content_id AS contentId,creator,title,cover,reaction,source_url AS sourceUrl,source_type AS sourceType,created_at AS createdAt FROM signals WHERE user_id=? ORDER BY created_at DESC LIMIT 100`).all(user.id);
     return json(res, 200, { signals:rows });
   }
 
@@ -714,7 +767,7 @@ async function api(req, res, url) {
 
 const MIME = { ".html":"text/html; charset=utf-8", ".css":"text/css; charset=utf-8", ".js":"text/javascript; charset=utf-8", ".mjs":"text/javascript; charset=utf-8", ".json":"application/json; charset=utf-8", ".jpg":"image/jpeg", ".jpeg":"image/jpeg", ".png":"image/png", ".svg":"image/svg+xml", ".mp4":"video/mp4", ".webmanifest":"application/manifest+json" };
 function staticFile(req,res,url) {
-  const pathname = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+  const pathname = decodeURIComponent(url.pathname === "/" ? "/signal-mvp.html" : url.pathname);
   const target = resolve(ROOT, `.${normalize(pathname)}`);
   if (!target.startsWith(resolve(ROOT)) || !existsSync(target)) return fail(res,404,"NOT_FOUND","页面不存在");
   const content = readFileSync(target);
