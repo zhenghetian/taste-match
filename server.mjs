@@ -15,6 +15,7 @@ const DEV_OTP = process.env.DEV_OTP_CODE || "246810";
 const BETA_TEST_CODE = String(process.env.BETA_TEST_CODE || "").trim();
 const MASTER_INVITE = process.env.MASTER_INVITE_CODE || "ANHAO2026";
 const ADMIN_KEY = process.env.ADMIN_KEY || (IS_PRODUCTION ? "" : "anhao-admin");
+const DEMO_MATCHING_ENABLED = process.env.DEMO_MATCHING_ENABLED === "true" || !IS_PRODUCTION;
 const SESSION_DAYS = 30;
 const clients = new Map();
 const analyticsWindows = new Map();
@@ -372,6 +373,7 @@ function createEchoFor(signal) {
   const candidate = db.prepare(`
     SELECT s.* FROM signals s
     WHERE s.content_id=? AND s.user_id<>?
+      AND (?=1 OR s.user_id NOT IN (SELECT id FROM users WHERE is_demo=1))
       AND NOT EXISTS (
         SELECT 1 FROM blocks b
         WHERE (b.blocker_id=? AND b.blocked_id=s.user_id)
@@ -382,7 +384,7 @@ function createEchoFor(signal) {
         WHERE (e.signal_a=s.id AND e.signal_b=?) OR (e.signal_a=? AND e.signal_b=s.id)
       )
     ORDER BY s.created_at DESC LIMIT 1
-  `).get(signal.content_id, signal.user_id, signal.user_id, signal.user_id, signal.id, signal.id);
+  `).get(signal.content_id, signal.user_id, DEMO_MATCHING_ENABLED ? 1 : 0, signal.user_id, signal.user_id, signal.id, signal.id);
   if (!candidate) return null;
   const echoId = id("ech");
   const questionItem = QUESTION_BANK[Math.abs(signal.content_id.split("").reduce((sum, c) => sum + c.charCodeAt(0), 0)) % QUESTION_BANK.length];

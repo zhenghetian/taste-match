@@ -31,7 +31,7 @@ async function request(path, { token, method="GET", body, headers={} } = {}) {
 }
 
 test.before(async () => {
-  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,NODE_ENV:"production",BETA_TEST_CODE:"246810",SMS_WEBHOOK_URL:"",ADMIN_KEY:"test-admin"}, stdio:["ignore","pipe","pipe"] });
+  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,NODE_ENV:"production",BETA_TEST_CODE:"246810",SMS_WEBHOOK_URL:"",ADMIN_KEY:"test-admin",DEMO_MATCHING_ENABLED:"true"}, stdio:["ignore","pipe","pipe"] });
   await waitForServer();
 });
 
