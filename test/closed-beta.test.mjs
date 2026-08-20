@@ -31,7 +31,7 @@ async function request(path, { token, method="GET", body, headers={} } = {}) {
 }
 
 test.before(async () => {
-  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,NODE_ENV:"production",BETA_TEST_CODE:"246810",SMS_WEBHOOK_URL:"",ADMIN_KEY:"test-admin",DEMO_MATCHING_ENABLED:"true"}, stdio:["ignore","pipe","pipe"] });
+  server = spawn(process.execPath,["server.mjs"],{ cwd:new URL("..",import.meta.url), env:{...process.env,PORT:String(PORT),DATA_DIR:dataDir,NODE_ENV:"production",BETA_TEST_CODE:"123456",SMS_WEBHOOK_URL:"",ADMIN_KEY:"test-admin",DEMO_MATCHING_ENABLED:"true"}, stdio:["ignore","pipe","pipe"] });
   await waitForServer();
 });
 
@@ -59,10 +59,10 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   const lockedPhone = "13600136000";
   await request("/api/auth/send-code",{method:"POST",body:{phone:lockedPhone}});
   for (let attempt=0; attempt<5; attempt+=1) {
-    const response = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"ANHAO2026"})});
+    const response = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"2026"})});
     assert.equal(response.status,400);
   }
-  const locked = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"ANHAO2026"})});
+  const locked = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"2026"})});
   assert.equal(locked.status,429);
 
   const phone = "13800138000";
@@ -70,7 +70,7 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   assert.equal(code.delivery,"beta");
   assert.equal("devCode" in code,false);
 
-  const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"246810",inviteCode:"ANHAO2026"}});
+  const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"123456",inviteCode:"2026"}});
   assert.ok(login.token);
   assert.equal(login.user.profileCompleted,false);
 
@@ -85,7 +85,7 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   assert.equal(updatedProfile.user.city,"苏州");
 
   await request("/api/auth/send-code",{method:"POST",body:{phone}});
-  const returningLogin = await request("/api/auth/verify",{method:"POST",body:{phone,code:"246810",inviteCode:""}});
+  const returningLogin = await request("/api/auth/verify",{method:"POST",body:{phone,code:"123456",inviteCode:""}});
   assert.equal(returningLogin.user.id,login.user.id);
 
   const reviewedProfile = await fetch(`${BASE}/api/me`,{method:"PATCH",headers:{"content-type":"application/json",authorization:`Bearer ${login.token}`},body:JSON.stringify({nickname:"小河",city:"苏州",bio:"加我微信 13800138001"})});
@@ -149,7 +149,7 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
 test("two people can bring the same external content and form a real echo", async () => {
   async function register(phone, nickname) {
     await request("/api/auth/send-code",{method:"POST",body:{phone}});
-    const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"246810",inviteCode:"ANHAO2026"}});
+    const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"123456",inviteCode:"2026"}});
     await request("/api/me",{token:login.token,method:"PATCH",body:{nickname,city:"上海",birthYear:1999,gender:"不公开",bio:"愿意从一句具体的话开始认识人"}});
     return login.token;
   }
