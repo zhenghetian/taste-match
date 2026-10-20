@@ -5,10 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch server.mjs",
+    "dev:ai": "node harness/dev-ai.mjs",
     "start": "node server.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "verify": "node harness/verify.mjs",
+    "harness": "node harness/cli.mjs",
+    "ai:doctor": "node harness/ai.mjs doctor",
+    "ai:smoke": "node harness/ai.mjs smoke",
+    "ai:eval": "node harness/ai.mjs eval"
   },
   "engines": {
     "node": ">=22.5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
   }
 }

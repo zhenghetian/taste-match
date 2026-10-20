@@ -1,10 +1,13 @@
 import http from "node:http";
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { extname, join, normalize, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { CONTENT_LIBRARY, CONTENT_BY_ID, QUESTION_BANK } from "./content-library.mjs";
+import { createIcebreakerHarness } from "./llm/icebreaker.mjs";
+
+const icebreakerHarness = createIcebreakerHarness({ env: process.env });
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || join(ROOT, "data");
@@ -568,6 +571,10 @@ async function api(req, res, url) {
 
   const user = requireUser(req, res, url); if (!user) return;
 
+  if (method === "GET" && path === "/api/ai/status") {
+    return json(res,200,icebreakerHarness.status(),{"cache-control":"no-store"});
+  }
+
   if (method === "POST" && path === "/api/auth/logout") {
     db.prepare(`DELETE FROM sessions WHERE token_hash=?`).run(hash(bearer(req))); return json(res, 200, { ok:true });
   }
@@ -679,6 +686,26 @@ async function api(req, res, url) {
     return json(res,200,{ echo:updated });
   }
 
+  const icebreakersMatch = path.match(/^\/api\/echoes\/([^/]+)\/icebreakers$/);
+  if (method === "POST" && icebreakersMatch) {
+    const row = db.prepare(`SELECT * FROM echoes WHERE id=? AND (user_a=? OR user_b=?)`).get(icebreakersMatch[1],user.id,user.id);
+    if (!row) return fail(res,404,"ECHO_NOT_FOUND","没有找到这条回声");
+    const otherId = row.user_a===user.id ? row.user_b : row.user_a;
+    const body = await readJson(req);
+    if (blockedBetween(user.id,otherId)) return fail(res,403,"USER_BLOCKED","这段关系已被拉黑");
+    const answered = db.prepare(`SELECT user_id FROM echo_answers WHERE echo_id=? AND user_id IN (?,?)`).all(row.id,user.id,otherId);
+    if (answered.length !== 2) return fail(res,403,"ECHO_LOCKED","双方回答后才能生成开场白");
+    if (body?.consent !== true) return fail(res,400,"AI_CONSENT_REQUIRED","请明确同意将内容标题、你自己的感受和共同问题发送给模型");
+    const ownSignal = db.prepare(`SELECT title,reaction FROM signals WHERE id=? AND user_id=?`).get(row.user_a===user.id ? row.signal_a : row.signal_b,user.id);
+    if (!ownSignal) return fail(res,404,"SIGNAL_NOT_FOUND","没有找到你留下的暗号");
+    const result = await icebreakerHarness.suggest({
+      actorId:user.id, echoId:row.id,
+      context:{ title:ownSignal.title, reaction:ownSignal.reaction, question:row.question }
+    });
+    if (blockedBetween(user.id,otherId)) return fail(res,403,"USER_BLOCKED","这段关系已被拉黑");
+    return json(res,200,result,{"cache-control":"no-store"});
+  }
+
   const messagesMatch = path.match(/^\/api\/echoes\/([^/]+)\/messages$/);
   if (messagesMatch) {
     const row = db.prepare(`SELECT * FROM echoes WHERE id=? AND (user_a=? OR user_b=?)`).get(messagesMatch[1],user.id,user.id);
@@ -768,10 +795,25 @@ async function api(req, res, url) {
 }
 
 const MIME = { ".html":"text/html; charset=utf-8", ".css":"text/css; charset=utf-8", ".js":"text/javascript; charset=utf-8", ".mjs":"text/javascript; charset=utf-8", ".json":"application/json; charset=utf-8", ".jpg":"image/jpeg", ".jpeg":"image/jpeg", ".png":"image/png", ".svg":"image/svg+xml", ".mp4":"video/mp4", ".webmanifest":"application/manifest+json" };
+const PUBLIC_FILES = new Set([
+  "/signal-mvp.html", "/index.html", "/admin.html", "/echo-prototype.html", "/ia-prototype.html",
+  "/app.js", "/content-library.mjs", "/styles.css", "/sw.js", "/manifest.webmanifest"
+]);
+const ASSET_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".svg", ".mp4"]);
 function staticFile(req,res,url) {
-  const pathname = decodeURIComponent(url.pathname === "/" ? "/signal-mvp.html" : url.pathname);
-  const target = resolve(ROOT, `.${normalize(pathname)}`);
-  if (!target.startsWith(resolve(ROOT)) || !existsSync(target)) return fail(res,404,"NOT_FOUND","页面不存在");
+  let requested;
+  try { requested = decodeURIComponent((req.url || "/").split("?")[0]); }
+  catch { return fail(res,404,"NOT_FOUND","页面不存在"); }
+  if (requested.includes("\\") || requested.includes("\0") || requested.split("/").some((part) => part.startsWith("."))) {
+    return fail(res,404,"NOT_FOUND","页面不存在");
+  }
+  const pathname = requested === "/" ? "/signal-mvp.html" : requested;
+  const isAsset = pathname.startsWith("/assets/") && ASSET_EXTENSIONS.has(extname(pathname).toLowerCase());
+  if (!PUBLIC_FILES.has(pathname) && !isAsset) return fail(res,404,"NOT_FOUND","页面不存在");
+  const target = resolve(ROOT, `.${pathname}`);
+  if (!target.startsWith(resolve(ROOT) + sep) || !existsSync(target) || !statSync(target).isFile()) return fail(res,404,"NOT_FOUND","页面不存在");
+  const actual = realpathSync(target);
+  if (actual !== target || (isAsset && !actual.startsWith(resolve(ROOT,"assets") + sep))) return fail(res,404,"NOT_FOUND","页面不存在");
   const content = readFileSync(target);
   const headers = { "content-type":MIME[extname(target).toLowerCase()] || "application/octet-stream", "content-length":content.length, "cache-control":target.endsWith("index.html") ? "no-cache" : "public, max-age=3600" };
   if (extname(target)===".mp4") headers["accept-ranges"]="bytes";
@@ -779,7 +821,7 @@ function staticFile(req,res,url) {
 }
 
 export function createServer() {
-  return http.createServer(async (req,res) => {
+  const server = http.createServer(async (req,res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     try {
       if (url.pathname.startsWith("/api/")) await api(req,res,url);
@@ -790,8 +832,16 @@ export function createServer() {
       else res.end();
     }
   });
+  server.on("close", () => icebreakerHarness.close());
+  return server;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  createServer().listen(PORT,HOST,() => console.log(`暗号闭测版已启动: http://${HOST}:${PORT}`));
+  const server = createServer().listen(PORT,HOST,() => console.log(`暗号闭测版已启动: http://${HOST}:${PORT}`));
+  const shutdown = () => {
+    for (const entries of clients.values()) for (const res of entries) res.end();
+    server.close();
+  };
+  process.once("SIGTERM",shutdown);
+  process.once("SIGINT",shutdown);
 }

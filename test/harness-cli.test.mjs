@@ -1,0 +1,35 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+
+test("task gates require evidence, passing checks and unchanged sources", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "anhao-cli-test-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "harness"));
+  copyFileSync(new URL("../harness/cli.mjs", import.meta.url), join(root, "harness/cli.mjs"));
+  const verify = join(root, "harness/verify.mjs");
+  writeFileSync(verify, 'console.log("fixture check failed"); process.exitCode=1;\n');
+  const run = (...args) => spawnSync(process.execPath, [join(root, "harness/cli.mjs"), ...args], { encoding: "utf8" });
+  const created = run("new", "验证任务不会跳过失败检查");
+  assert.equal(created.status, 0);
+  const task = JSON.parse(created.stdout);
+  assert.equal(run("advance", task.id, "verified", "--evidence", "claimed pass").status, 1);
+  assert.equal(run("advance", task.id, "planned").status, 1);
+  assert.equal(run("advance", task.id, "planned", "--evidence", "plan complete").status, 0);
+  assert.equal(run("advance", task.id, "implemented", "--evidence", "code complete").status, 0);
+  assert.equal(run("check", task.id).status, 1);
+  assert.equal(JSON.parse(run("show", task.id).stdout).state, "implemented");
+  writeFileSync(verify, 'console.log("fixture check passed");\n');
+  assert.equal(run("check", task.id).status, 0);
+  assert.equal(JSON.parse(run("show", task.id).stdout).state, "verified");
+  writeFileSync(join(root, "new-source.mjs"), "export const changed = true;\n");
+  assert.equal(run("advance", task.id, "ready", "--evidence", "ready").status, 1);
+  assert.equal(run("check", task.id).status, 0);
+  assert.equal(run("advance", task.id, "ready", "--evidence", "tests and review complete").status, 0);
+  const saved = JSON.parse(readFileSync(join(root, "work/harness/tasks", `${task.id}.json`), "utf8"));
+  assert.equal(saved.state, "ready");
+  assert.ok(saved.history.some((entry) => entry.state === "implemented" && entry.evidence.includes("未通过")));
+});

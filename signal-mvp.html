@@ -177,6 +177,13 @@
       .chat-note { margin: 8px auto 18px; color: var(--faint); font-size: 9px; text-align: center; }
       .bubble { width: fit-content; max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 12px 12px 12px; background: white; font-size: 12px; line-height: 1.5; }
       .bubble.mine { margin-left: auto; border-radius: 12px 4px 12px 12px; background: var(--accent); color: white; }
+      .icebreakers { padding: 0 14px; border-top: 1px solid var(--line); background: var(--surface); }
+      .icebreakers .text-action { margin-top: 0; }
+      .icebreaker-panel { max-height: 220px; overflow-y: auto; padding-bottom: 12px; }
+      .icebreaker-panel p { margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+      .icebreaker-panel .primary { min-height: 44px; padding: 0 14px; }
+      .icebreaker-candidates { display: grid; gap: 7px; }
+      .icebreaker-candidates button { padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 12px; line-height: 1.5; text-align: left; }
       .composer { display: grid; grid-template-columns: 1fr 44px; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom)); border-top: 1px solid var(--line); background: white; }
       .composer input { min-width: 0; height: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: #f3f5f3; color: var(--ink); font-size: 16px; }
       .composer button { display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: white; }
@@ -299,6 +306,15 @@
           <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">另一个人</strong><small>从同一条内容开始</small></div><button id="openSafety" type="button" aria-label="对话安全设置"><i data-lucide="ellipsis"></i></button></header>
           <div id="chatContext" class="chat-context"></div>
           <div id="chatMessages" class="messages"><div class="chat-note">从一句具体的话开始，比“你好”更容易</div></div>
+          <section class="icebreakers" aria-label="开场白建议">
+            <button id="openIcebreakers" class="text-action" type="button" aria-expanded="false" aria-controls="icebreakerPanel">AI帮我想开场白</button>
+            <div id="icebreakerPanel" class="icebreaker-panel" hidden>
+              <p>点击“同意并生成”，表示你同意将这条内容的标题、你自己的感受和你们的共同问题发送给模型。不会发送对方的回答或双方聊天内容。建议仅供参考，选择后只填入草稿，由你修改并决定是否发送。</p>
+              <button id="generateIcebreakers" class="primary" type="button">同意并生成</button>
+              <p id="icebreakerStatus" role="status" aria-live="polite"></p>
+              <div id="icebreakerCandidates" class="icebreaker-candidates"></div>
+            </div>
+          </section>
           <form id="messageForm" class="composer"><input id="messageInput" autocomplete="off" aria-label="消息" placeholder="接着说点具体的" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
         </section>
 
@@ -328,6 +344,11 @@
       };
       let codeRequested = false;
       let toastTimer;
+      let chatVersion = 0;
+      let messageVersion = 0;
+      let icebreakerVersion = 0;
+      let icebreakerController = null;
+      const chatDrafts = new Map();
       const sessionId = sessionStorage.getItem("anhao_session_id") || (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`);
       sessionStorage.setItem("anhao_session_id", sessionId);
 
@@ -478,20 +499,100 @@
         openSheet("#revealSheet");
       }
 
+      function resetIcebreakers() {
+        icebreakerVersion += 1;
+        icebreakerController?.abort();
+        icebreakerController = null;
+        $("#icebreakerPanel").hidden = true;
+        $("#openIcebreakers").setAttribute("aria-expanded", "false");
+        $("#generateIcebreakers").disabled = false;
+        $("#icebreakerStatus").textContent = "";
+        $("#icebreakerCandidates").replaceChildren();
+      }
+      function closeChat({ discardDraft = false } = {}) {
+        if (state.currentChatId) {
+          if (discardDraft) chatDrafts.delete(state.currentChatId);
+          else chatDrafts.set(state.currentChatId, $("#messageInput").value);
+        }
+        chatVersion += 1;
+        resetIcebreakers();
+        state.currentChatId = null;
+        state.currentSafetyUserId = null;
+        $("#messageInput").value = "";
+        $("#chatMessages").replaceChildren();
+        $("#chatName").textContent = "另一个人";
+        $("#chatContext").textContent = "";
+        $("#chatScreen").classList.remove("is-open");
+      }
+      function handleChatError(error) {
+        if (["USER_BLOCKED", "ECHO_LOCKED", "ECHO_NOT_FOUND", "AUTH_REQUIRED"].includes(error.code)) {
+          closeChat({ discardDraft:true });
+          closeSheets();
+        }
+        toast(error.message);
+      }
+      async function refreshChatMessages() {
+        const echoId = state.currentChatId;
+        if (!echoId) return;
+        const version = chatVersion;
+        const requestVersion = ++messageVersion;
+        try {
+          const { messages } = await apiFetch(`/api/echoes/${echoId}/messages`);
+          if (version !== chatVersion || echoId !== state.currentChatId || requestVersion !== messageVersion) return;
+          $("#chatMessages").innerHTML = `<div class="chat-note">从一句具体的话开始，比“你好”更容易</div>` + messages.map((item) => `<div class="bubble ${item.senderId === state.user.id ? "mine" : ""}">${escapeHtml(item.body)}</div>`).join("");
+          $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
+        } catch (error) { if (version === chatVersion && echoId === state.currentChatId && requestVersion === messageVersion) handleChatError(error); }
+      }
       async function openChat(echoId) {
         const echo = [...state.echoes, ...state.conversations].find((item) => item.id === echoId);
         if (!echo?.revealed) return;
-        state.currentChatId = echo.id;
-        state.currentSafetyUserId = echo.other.id;
+        if (echoId !== state.currentChatId) {
+          closeChat();
+          state.currentChatId = echo.id;
+          state.currentSafetyUserId = echo.other.id;
+          $("#messageInput").value = chatDrafts.get(echo.id) || "";
+        }
         $("#chatName").textContent = echo.other.nickname;
         $("#chatContext").textContent = `你说：“${echo.yourReaction}”  Ta 说：“${echo.otherReaction}”`;
         $("#chatScreen").classList.add("is-open");
         track("chat_open", { echoId });
+        await refreshChatMessages();
+      }
+      async function generateIcebreakers() {
+        const echoId = state.currentChatId;
+        if (!echoId || $("#generateIcebreakers").disabled || $("#icebreakerPanel").hidden) return;
+        const version = ++icebreakerVersion;
+        const controller = new AbortController();
+        icebreakerController = controller;
+        $("#generateIcebreakers").disabled = true;
+        $("#icebreakerCandidates").replaceChildren();
+        $("#icebreakerStatus").textContent = "正在生成建议…";
         try {
-          const { messages } = await apiFetch(`/api/echoes/${echo.id}/messages`);
-          $("#chatMessages").innerHTML = `<div class="chat-note">从一句具体的话开始，比“你好”更容易</div>` + messages.map((item) => `<div class="bubble ${item.senderId === state.user.id ? "mine" : ""}">${escapeHtml(item.body)}</div>`).join("");
-          $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
-        } catch (error) { toast(error.message); }
+          const result = await apiFetch(`/api/echoes/${echoId}/icebreakers`, { method:"POST", body:JSON.stringify({consent:true}), signal:controller.signal });
+          if (version !== icebreakerVersion || echoId !== state.currentChatId) return;
+          $("#icebreakerStatus").textContent = result.source === "model" ? "已生成建议，点击一句填入草稿。" : "当前使用备用开场白，点击一句填入草稿。";
+          for (const suggestion of result.suggestions) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = suggestion;
+            button.addEventListener("click", () => {
+              if (version !== icebreakerVersion || echoId !== state.currentChatId) return;
+              $("#messageInput").value = suggestion;
+              chatDrafts.set(echoId,suggestion);
+              $("#messageInput").focus();
+            });
+            $("#icebreakerCandidates").append(button);
+          }
+        } catch (error) {
+          if (version !== icebreakerVersion || echoId !== state.currentChatId) return;
+          $("#icebreakerStatus").textContent = error.message;
+          handleChatError(error);
+        } finally {
+          if (version === icebreakerVersion && echoId === state.currentChatId) {
+            $("#generateIcebreakers").disabled = false;
+            icebreakerController = null;
+          }
+        }
       }
 
       function renderProfile() {
@@ -512,6 +613,10 @@
         state.echoes = echoData.echoes;
         state.conversations = conversationData.conversations;
         state.blocks = blockData.blocks;
+        if (state.currentChatId && !state.conversations.some((echo) => echo.id === state.currentChatId && echo.revealed)) {
+          closeChat({ discardDraft:true });
+          closeSheets();
+        }
         renderEchoes();
         await refreshConversations();
         renderProfile();
@@ -522,7 +627,10 @@
         state.eventSource?.close();
         state.eventSource = new EventSource(`/api/events?token=${encodeURIComponent(state.token)}`);
         state.eventSource.addEventListener("notification", async () => { await refreshAll(); toast("收到一条新的回声"); });
-        state.eventSource.addEventListener("message", async () => { if (state.currentChatId) await openChat(state.currentChatId); });
+        state.eventSource.addEventListener("message", async (event) => {
+          const item = JSON.parse(event.data);
+          if (item.echoId === state.currentChatId) await refreshChatMessages();
+        });
       }
 
       async function enterApp(me) {
@@ -590,13 +698,29 @@
       $("#questionOptions").addEventListener("click", (event) => { const button = event.target.closest("[data-answer]"); if (button) answerEcho(button.dataset.answer); });
       $("#startChat").addEventListener("click", () => { closeSheets(); openChat(state.currentEchoId); });
       $("#conversationList").addEventListener("click", (event) => { const row = event.target.closest("[data-chat-id]"); if (row) openChat(row.dataset.chatId); });
-      $("#closeChat").addEventListener("click", () => $("#chatScreen").classList.remove("is-open"));
+      $("#closeChat").addEventListener("click", () => closeChat());
+      $("#openIcebreakers").addEventListener("click", () => {
+        if (!state.currentChatId) return;
+        if (!$("#icebreakerPanel").hidden) return resetIcebreakers();
+        $("#icebreakerPanel").hidden = false;
+        $("#openIcebreakers").setAttribute("aria-expanded", "true");
+      });
+      $("#generateIcebreakers").addEventListener("click", generateIcebreakers);
+      $("#messageInput").addEventListener("input", () => { if (state.currentChatId) chatDrafts.set(state.currentChatId,$("#messageInput").value); });
       $("#messageForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const body = $("#messageInput").value.trim();
-        if (!body) return;
-        try { await apiFetch(`/api/echoes/${state.currentChatId}/messages`, {method:"POST",body:JSON.stringify({body})}); $("#messageInput").value = ""; await openChat(state.currentChatId); }
-        catch (error) { toast(error.message); }
+        const echoId = state.currentChatId;
+        const version = chatVersion;
+        const draft = $("#messageInput").value;
+        const body = draft.trim();
+        if (!echoId || !body) return;
+        try {
+          await apiFetch(`/api/echoes/${echoId}/messages`, {method:"POST",body:JSON.stringify({body})});
+          if (chatDrafts.get(echoId) === draft) chatDrafts.delete(echoId);
+          if (version !== chatVersion || echoId !== state.currentChatId) return;
+          if ($("#messageInput").value === draft) { $("#messageInput").value = ""; chatDrafts.delete(echoId); }
+          await refreshChatMessages();
+        } catch (error) { if (version === chatVersion && echoId === state.currentChatId) handleChatError(error); }
       });
 
       $("#openSettings").addEventListener("click", () => openSheet("#settingsSheet"));
@@ -621,7 +745,20 @@
       });
       $("#reportOptions").addEventListener("click", async (event) => { const button = event.target.closest("[data-report]"); if (!button) return; try { await apiFetch(`/api/users/${state.currentSafetyUserId}/report`,{method:"POST",body:JSON.stringify({reason:button.dataset.report,echoId:state.currentChatId})}); closeSheets(); toast("举报已提交"); } catch (error) { toast(error.message); } });
       $("#blockUser").addEventListener("click", () => openSheet("#blockSheet"));
-      $("#confirmBlock").addEventListener("click", async () => { try { await apiFetch(`/api/users/${state.currentSafetyUserId}/block`,{method:"POST"}); closeSheets(); $("#chatScreen").classList.remove("is-open"); await refreshAll(); toast("已拉黑，不会再遇见"); } catch (error) { toast(error.message); } });
+      $("#confirmBlock").addEventListener("click", async () => {
+        const userId = state.currentSafetyUserId;
+        const echoId = state.currentChatId;
+        if (!userId) return;
+        resetIcebreakers();
+        try {
+          await apiFetch(`/api/users/${userId}/block`,{method:"POST"});
+          chatDrafts.delete(echoId);
+          closeSheets();
+          if (state.currentSafetyUserId === userId) closeChat({ discardDraft:true });
+          await refreshAll();
+          toast("已拉黑，不会再遇见");
+        } catch (error) { toast(error.message); }
+      });
 
       $("#authForm").addEventListener("submit", async (event) => {
         event.preventDefault();

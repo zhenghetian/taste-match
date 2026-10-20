@@ -1,0 +1,6 @@
+scripts:
+  setup: npm ci
+setupAgentStartupPolicy: wait-for-setup
+defaultTabs:
+  - title: App
+    command: npm run dev
