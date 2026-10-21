@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>暗号 · Agent 代回与接管原型</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; --ink:#202522; --muted:#6f7772; --faint:#969d98; --paper:#fbfcfa; --band:#edf1ee; --line:rgba(32,37,34,.12); --accent:#3f6558; --accent-soft:#dce7e1; --danger:#934a55; }
+    * { box-sizing: border-box; } body { margin: 0; background: #e5ebe8; color: var(--ink); } button, input { font: inherit; } button { border: 0; cursor: pointer; touch-action: manipulation; } button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; } [hidden] { display: none !important; } svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .stage { min-height: 100dvh; display: grid; place-items: center; } .phone { position: relative; width: min(100%,430px); height: 100dvh; max-height: 900px; overflow: hidden; background: var(--paper); } @media (min-width:600px) { .phone { border: 1px solid rgba(32,37,34,.14); box-shadow: 0 24px 80px rgba(31,47,39,.16); } }
+    .screen-head { min-height: 108px; display: flex; align-items: end; justify-content: space-between; padding: 42px 18px 16px; border-bottom: 1px solid var(--line); } h1 { margin: 0; font-size: 27px; } .screen-head p { margin: 6px 0 0; color: var(--muted); font-size: 11px; } .list { margin-top: 10px; border-top: 1px solid var(--line); background: white; } .conversation { width: 100%; display: grid; grid-template-columns: 50px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 15px 18px; border-bottom: 1px solid var(--line); background: transparent; color: inherit; text-align: left; } .avatar { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: white; font-weight: 850; } .row-main { min-width: 0; } .row-main strong { font-size: 14px; } .row-main p { overflow: hidden; margin: 5px 0 0; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; } .conversation time { align-self: start; padding-top: 4px; color: var(--faint); font-size: 9px; } .state-dot { width: 7px; height: 7px; display: inline-block; margin-right: 4px; border-radius: 50%; background: var(--accent); }
+    .chat { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--paper); } .chat-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 42px 10px 11px; border-bottom: 1px solid var(--line); background: white; } .chat-head button { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; color: var(--ink); } .chat-head div { text-align: center; } .chat-head strong { display: block; font-size: 14px; } .chat-head small { color: var(--accent); font-size: 9px; } .context { margin: 11px 14px 0; padding-bottom: 11px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.5; } .messages { flex: 1; overflow-y: auto; padding: 10px 14px; background: var(--band); } .bubble { width: fit-content; max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 12px 12px; background: white; font-size: 12px; line-height: 1.5; } .bubble.mine { margin-left: auto; border-radius: 12px 4px 12px 12px; background: var(--accent); color: white; } .bubble.agent { border: 1px solid var(--accent-soft); } .bubble small { display: block; margin-bottom: 4px; color: var(--accent); font-size: 9px; font-weight: 800; } .bubble.mine small { color: #dce7e1; } .event { margin: 9px auto; color: var(--faint); font-size: 9px; text-align: center; }
+    .control { padding: 0 14px; border-top: 1px solid var(--line); background: white; } .toggle { min-height: 44px; display: flex; align-items: center; gap: 7px; padding: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 800; } .panel { padding-bottom: 12px; } .panel p { margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.6; } .primary { min-height: 44px; border-radius: 7px; background: var(--accent); color: white; font-size: 13px; font-weight: 800; } .panel .primary { width: 100%; } .status { min-height: 18px; margin: 8px 0 0; color: var(--muted); font-size: 10px; } .status.is-error { color: var(--danger); } .choices { display: grid; gap: 7px; margin-top: 8px; } .choices button { padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 12px; line-height: 1.5; text-align: left; }
+    .live { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; } .live strong { display: block; color: var(--accent); font-size: 12px; } .live span { color: var(--muted); font-size: 10px; } .ghost { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 800; }
+    .composer { display: grid; grid-template-columns: 1fr 44px; gap: 8px; padding: 10px 12px 10px; border-top: 1px solid var(--line); background: white; } .composer input { min-width: 0; height: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: #f3f5f3; color: var(--ink); font-size: 16px; } .composer button { display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: white; } .composer input:disabled { color: var(--faint); } .prototype-note { position: absolute; top: 8px; left: 8px; z-index: 2; padding: 3px 6px; border-radius: 999px; background: rgba(32,37,34,.72); color: white; font-size: 9px; }
+  </style>
+</head>
+<body>
+<main class="stage"><section class="phone" id="phone">
+  <span class="prototype-note">交互原型 · 模拟回复</span>
+  <section id="listScreen">
+    <header class="screen-head"><div><h1>对话</h1><p id="countText">3 段已经开始的关系</p></div></header>
+    <div id="conversationList" class="list"></div>
+  </section>
+  <section id="chatScreen" class="chat" hidden aria-label="聊天">
+    <header class="chat-head"><button id="back" type="button" aria-label="返回"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><div><strong id="chatName"></strong><small id="chatState">从同一条内容开始</small></div><span></span></header>
+    <div id="chatContext" class="context"></div>
+    <div id="messages" class="messages" aria-live="polite"></div>
+    <section class="control" aria-label="Agent 代回">
+      <button id="openPanel" class="toggle" type="button" aria-expanded="false" aria-controls="panel">让 Agent 替我回</button>
+      <div id="panel" hidden>
+        <div id="setup" class="panel">
+          <p>本页仅模拟代回，不会调用模型或发送真实消息。拟议方案：经同意后使用当前对话标题、你自己的感受和最近 6 条消息，代回标记为“Agent 代回”。你可以随时点“我来聊”，或直接发送消息接管。</p>
+          <button id="startAgent" class="primary" type="button">同意并开启代回</button>
+          <p id="status" class="status" role="status"></p>
+          <div id="choices" class="choices"></div>
+        </div>
+        <div id="active" class="live" hidden><div><strong>Agent 正在替你回</strong><span id="activeHint">对方发来消息时自动回复</span></div><button id="takeover" class="ghost" type="button">我来聊</button></div>
+      </div>
+      <button id="simulateIncoming" class="toggle" type="button">演示：模拟对方发来消息</button>
+    </section>
+    <form id="form" class="composer"><input id="input" autocomplete="off" aria-label="消息" placeholder="接着说点具体的" /><button type="submit" aria-label="发送"><svg viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button></form>
+  </section>
+</section></main>
+<script>
+const conversations = {
+  walk: { name:"模拟·默默", avatar:"默", title:"晚饭后，一个人慢慢走回生活里", cover:"night-walk.jpg", reaction:"下班以后不急着回家，多走一站路，才觉得这一天有一小段是自己的。", messages:[{from:"other",text:"这很像我。我也会故意晚一点到家。"}], style:"克制、具体" },
+  evening: { name:"模拟·Mina", avatar:"M", title:"认真把东西用完，也认真吃饭", cover:"quiet-evening.jpg", reaction:"认真做一顿简单的晚饭，会让我从忙碌里慢慢安静下来。", messages:[{from:"other",text:"【预置演示消息】你最近有没有一道想学的菜？"}], style:"温和、生活化" },
+  sport: { name:"模拟·阿原", avatar:"原", title:"假掩护之后的反向上篮", cover:"basketball-reverse.jpg", reaction:"比起最后那个进球，我更喜欢为了一个动作反复练习的过程。", messages:[{from:"other",text:"【预置演示消息】你平时喜欢什么运动？"}], style:"直接、轻松" }
+};
+const agent = new Map();
+const drafts = new Map();
+let current = null, version = 0;
+const $ = selector => document.querySelector(selector);
+function time() { return new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}); }
+function list() {
+  $("#conversationList").replaceChildren(...Object.entries(conversations).map(([id,item]) => {
+    const button = document.createElement("button"); button.className = "conversation"; button.type = "button";
+    const preview = item.messages.at(-1)?.text || item.title;
+    const active = agent.get(id)?.active;
+    button.innerHTML = '<span class="avatar"></span><span class="row-main"><strong></strong><p></p></span><time></time>';
+    button.querySelector(".avatar").textContent = item.avatar;
+    button.querySelector("strong").textContent = item.name;
+    button.querySelector("p").textContent = `${active ? "Agent 正在代回 · " : ""}${preview}`;
+    button.querySelector("time").textContent = time();
+    button.addEventListener("click", () => open(id)); return button;
+  }));
+}
+function render() {
+  const item = conversations[current], state = agent.get(current);
+  $("#chatName").textContent = item.name;
+  $("#chatState").textContent = state?.active ? "Agent 正在替你回" : "从同一条内容开始";
+  $("#chatContext").textContent = `你说：“${item.reaction}” 共同内容：${item.title}`;
+  $("#messages").replaceChildren(...item.messages.map(message => {
+    const node = document.createElement("div");
+    if (message.event) { node.className = "event"; node.textContent = message.event; return node; }
+    node.className = `bubble ${message.from === "me" ? "mine" : ""} ${message.by === "agent" ? "agent" : ""}`;
+    if (message.by === "agent") node.append(Object.assign(document.createElement("small"), {textContent:"Agent 代回"}));
+    node.append(message.text); return node;
+  }));
+  $("#messages").scrollTop = $("#messages").scrollHeight;
+  const active = Boolean(state?.active);
+  $("#setup").hidden = active; $("#active").hidden = !active;
+  $("#openPanel").setAttribute("aria-expanded", String(!$("#panel").hidden));
+  $("#activeHint").textContent = state?.pending ? "正在生成模拟回复…" : "对方发来消息时模拟代回";
+  $("#input").placeholder = active ? "Agent 正在代回；发送消息即可接管" : "接着说点具体的";
+}
+function open(id) { current = id; $("#listScreen").hidden = true; $("#chatScreen").hidden = false; version += 1; $("#input").value = drafts.get(id) || ""; $("#panel").hidden = !agent.get(id)?.active; resetSetup(); render(); }
+function back() { version += 1; $("#chatScreen").hidden = true; $("#listScreen").hidden = false; list(); }
+function resetSetup() { $("#status").textContent = ""; $("#status").className = "status"; $("#choices").replaceChildren(); $("#startAgent").disabled = false; }
+function add(id, message) { conversations[id].messages.push(message); if (id === current && !$("#chatScreen").hidden) render(); list(); }
+async function enable(style) {
+  const id = current, state = { active:true, style, pending:false };
+  const unanswered = conversations[id].messages.findLast(message => !message.event)?.from === "other";
+  agent.set(id, state); add(id, {event:`你开启了 Agent 代回 · ${style}`}); $("#panel").hidden = false;
+  if (unanswered) await reply(id);
+}
+async function reply(id) {
+  const state = agent.get(id); if (!state?.active || state.pending) return;
+  state.pending = true; if (id === current) { $("#activeHint").textContent = "正在生成回复…"; }
+  await new Promise(resolve => setTimeout(resolve, 900));
+  if (!state.active || agent.get(id) !== state) return;
+  const text = state.style === "直接、轻松" ? "我更在意那个反复练过的动作。你是喜欢看比赛，还是自己也常打？" : state.style === "温和、生活化" ? "我最近想学一道不复杂、但能慢慢做的菜。你有推荐吗？" : "多走一站的时候，你会听点什么，还是就安静地走？";
+  add(id, {from:"me", by:"agent", text:`［模拟回复］${text}`}); state.pending = false; if (id === current && agent.get(id)?.active) $("#activeHint").textContent = "对方发来消息时自动回复";
+}
+function stop(id, reason) {
+  const state = agent.get(id); if (!state?.active) return;
+  state.active = false; state.pending = false; add(id, {event:reason}); if (id === current) { $("#panel").hidden = true; resetSetup(); render(); }
+}
+$("#openPanel").onclick = () => { $("#panel").hidden = !$("#panel").hidden; $("#openPanel").setAttribute("aria-expanded", String(!$("#panel").hidden)); };
+$("#startAgent").onclick = async () => {
+  const id = current, requestVersion = version;
+  $("#startAgent").disabled = true; $("#status").textContent = "正在准备代回方式…"; $("#status").className = "status";
+  await new Promise(resolve => setTimeout(resolve, 500));
+  if (current !== id || version !== requestVersion || agent.get(id)?.active) return;
+  const styles = ["克制、具体", "温和、生活化", "直接、轻松"]; $("#status").textContent = "选择一种代回方式；之后可随时接管。";
+  $("#choices").replaceChildren(...styles.map(style => { const button = document.createElement("button"); button.type = "button"; button.textContent = style; button.onclick = () => enable(style); return button; }));
+};
+$("#takeover").onclick = () => stop(current, "你已接管，Agent 停止代回");
+function incoming(id) { add(id, {from:"other", text:"［模拟对方］我明白你的意思。那你自己更想怎么做？"}); if (agent.get(id)?.active) reply(id); }
+$("#simulateIncoming").onclick = () => incoming(current);
+$("#input").oninput = () => drafts.set(current, $("#input").value);
+$("#form").onsubmit = event => { event.preventDefault(); const text = $("#input").value.trim(); if (!text || !current) return; const id = current; if (agent.get(id)?.active) stop(id, "你发送了消息，Agent 已停止代回"); add(id, {from:"me", text}); $("#input").value = ""; drafts.delete(id); setTimeout(() => incoming(id), 1200); };
+$("#back").onclick = back;
+$("#input").onfocus = () => { if (current && agent.get(current)?.active) $("#activeHint").textContent = "直接发送就会接管"; };
+list(); open("walk");
+</script>
+</body>
+</html>

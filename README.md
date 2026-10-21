@@ -18,6 +18,8 @@
 
 [添加好友与邀请加入](prototypes/friend-join/index.html)：下载后直接用浏览器打开，在邀请人和朋友视角间切换，体验加入、好友列表和模拟聊天。运行方式与边界见 [原型说明](prototypes/friend-join/README.md)。该原型尚未接入真实注册、好友关系或跨设备消息，不属于下列已实现功能。
 
+[Agent 代回与接管](prototypes/agent-handoff/index.html)：下载后直接用浏览器打开，体验按对话开启模拟代回、收到新消息后继续代回，以及按钮或手动发送接管。运行方式与边界见 [原型说明](prototypes/agent-handoff/README.md)。回复为固定模拟示例，尚未接入真实模型或自动发信。
+
 ## 已完成
 
 - 手机号验证码登录与邀请码准入
