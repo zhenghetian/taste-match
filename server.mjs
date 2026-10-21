@@ -6,8 +6,10 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { CONTENT_LIBRARY, CONTENT_BY_ID, QUESTION_BANK } from "./content-library.mjs";
 import { createIcebreakerHarness } from "./llm/icebreaker.mjs";
+import { createReplyDraftHarness, REPLY_MESSAGE_LIMIT } from "./llm/reply-draft.mjs";
 
 const icebreakerHarness = createIcebreakerHarness({ env: process.env });
+const replyDraftHarness = createReplyDraftHarness({ env: process.env });
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || join(ROOT, "data");
@@ -210,6 +212,24 @@ function ensureColumn(table, column, definition) {
 
 ensureColumn("signals", "source_url", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("signals", "source_type", "TEXT NOT NULL DEFAULT 'curated'");
+ensureColumn("messages", "source", "TEXT NOT NULL DEFAULT 'user'");
+ensureColumn("friend_messages", "source", "TEXT NOT NULL DEFAULT 'user'");
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS agent_thread_settings (
+    thread_kind TEXT NOT NULL,
+    thread_id TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    consent_at TEXT,
+    draft_text TEXT NOT NULL DEFAULT '',
+    draft_source TEXT NOT NULL DEFAULT '',
+    draft_updated_at TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (thread_kind, thread_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_agent_thread_user ON agent_thread_settings(user_id, enabled);
+`);
 
 function seed() {
   db.prepare(`INSERT OR IGNORE INTO invites(code, max_uses, used_count, active, created_at) VALUES(?, 100, 0, 1, ?)`).run(MASTER_INVITE, now());
@@ -368,6 +388,103 @@ function removeFriendship(userA, userB) {
   db.prepare(`DELETE FROM friendships WHERE id=?`).run(row.id);
   return true;
 }
+
+function serializeAgentSettings(row) {
+  if (!row) {
+    return { enabled: false, consentAt: null, draft: "", draftSource: null, draftUpdatedAt: null };
+  }
+  return {
+    enabled: Boolean(row.enabled),
+    consentAt: row.consent_at || null,
+    draft: row.draft_text || "",
+    draftSource: row.draft_source || null,
+    draftUpdatedAt: row.draft_updated_at || null
+  };
+}
+
+function getAgentSettings(kind, threadId, userId) {
+  return db.prepare(`SELECT * FROM agent_thread_settings WHERE thread_kind=? AND thread_id=? AND user_id=?`)
+    .get(kind, threadId, userId) || null;
+}
+
+function upsertAgentSettings(kind, threadId, userId, patch) {
+  const existing = getAgentSettings(kind, threadId, userId);
+  const timestamp = now();
+  if (!existing) {
+    db.prepare(`INSERT INTO agent_thread_settings(thread_kind,thread_id,user_id,enabled,consent_at,draft_text,draft_source,draft_updated_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?)`).run(
+      kind, threadId, userId,
+      patch.enabled ? 1 : 0,
+      patch.consentAt || null,
+      patch.draftText ?? "",
+      patch.draftSource ?? "",
+      patch.draftUpdatedAt || null,
+      timestamp
+    );
+  } else {
+    db.prepare(`UPDATE agent_thread_settings SET
+      enabled=COALESCE(?,enabled),
+      consent_at=COALESCE(?,consent_at),
+      draft_text=COALESCE(?,draft_text),
+      draft_source=COALESCE(?,draft_source),
+      draft_updated_at=COALESCE(?,draft_updated_at),
+      updated_at=?
+      WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(
+      patch.enabled === undefined ? null : (patch.enabled ? 1 : 0),
+      patch.consentAt === undefined ? null : patch.consentAt,
+      patch.draftText === undefined ? null : patch.draftText,
+      patch.draftSource === undefined ? null : patch.draftSource,
+      patch.draftUpdatedAt === undefined ? null : patch.draftUpdatedAt,
+      timestamp, kind, threadId, userId
+    );
+  }
+  return getAgentSettings(kind, threadId, userId);
+}
+
+function assertAgentThreadAccess(kind, threadId, user) {
+  if (kind === "echo") {
+    const row = db.prepare(`SELECT * FROM echoes WHERE id=? AND (user_a=? OR user_b=?)`).get(threadId, user.id, user.id);
+    if (!row) return { error: ["ECHO_NOT_FOUND", "没有找到这条回声", 404] };
+    const otherId = row.user_a === user.id ? row.user_b : row.user_a;
+    if (blockedBetween(user.id, otherId)) return { error: ["USER_BLOCKED", "这段关系已被拉黑", 403] };
+    const state = echoRow(row, user.id);
+    if (!state.revealed) return { error: ["ECHO_LOCKED", "双方回答后才能使用 Agent 建议", 403] };
+    const ownSignal = db.prepare(`SELECT title,reaction FROM signals WHERE id=? AND user_id=?`)
+      .get(row.user_a === user.id ? row.signal_a : row.signal_b, user.id);
+    const recent = db.prepare(`SELECT sender_id AS senderId, body FROM messages WHERE echo_id=? ORDER BY created_at DESC LIMIT ?`)
+      .all(row.id, REPLY_MESSAGE_LIMIT).reverse()
+      .map((item) => ({ role: item.senderId === user.id ? "me" : "other", text: item.body }));
+    return {
+      kind, threadId: row.id, otherId,
+      context: {
+        title: ownSignal?.title || state.content.title,
+        reaction: ownSignal?.reaction || state.yourReaction || "（暂无感受记录）",
+        recentMessages: recent
+      }
+    };
+  }
+  if (kind === "friend") {
+    const friendship = db.prepare(`SELECT * FROM friendships WHERE id=? AND (user_a=? OR user_b=?)`).get(threadId, user.id, user.id);
+    if (!friendship) return { error: ["FRIENDSHIP_NOT_FOUND", "你们还不是好友", 404] };
+    const otherId = friendship.user_a === user.id ? friendship.user_b : friendship.user_a;
+    if (blockedBetween(user.id, otherId)) return { error: ["USER_BLOCKED", "这段关系已被拉黑", 403] };
+    const other = db.prepare(`SELECT nickname FROM users WHERE id=?`).get(otherId);
+    const recent = db.prepare(`SELECT sender_id AS senderId, body FROM friend_messages WHERE friendship_id=? ORDER BY created_at DESC LIMIT ?`)
+      .all(friendship.id, REPLY_MESSAGE_LIMIT).reverse()
+      .map((item) => ({ role: item.senderId === user.id ? "me" : "other", text: item.body }));
+    return {
+      kind, threadId: friendship.id, otherId,
+      context: {
+        title: `与 ${other?.nickname || "好友"} 的好友对话`,
+        reaction: user.bio?.trim() || "这是一次通过好友邀请建立的对话。",
+        recentMessages: recent
+      }
+    };
+  }
+  return { error: ["INVALID_THREAD", "不支持的对话类型", 400] };
+}
+
+
 
 
 
@@ -675,7 +792,12 @@ async function api(req, res, url) {
   const user = requireUser(req, res, url); if (!user) return;
 
   if (method === "GET" && path === "/api/ai/status") {
-    return json(res,200,icebreakerHarness.status(),{"cache-control":"no-store"});
+    return json(res,200,{
+      icebreakers: icebreakerHarness.status(),
+      replyDrafts: replyDraftHarness.status(),
+      // backward-compatible top-level fields for older clients
+      ...icebreakerHarness.status()
+    },{"cache-control":"no-store"});
   }
 
   if (method === "POST" && path === "/api/auth/logout") {
@@ -818,19 +940,23 @@ async function api(req, res, url) {
     const state = echoRow(row,user.id);
     if (!state.revealed) return fail(res,403,"ECHO_LOCKED","双方回答后才能开始对话");
     if (method === "GET") {
-      const rows = db.prepare(`SELECT m.id,m.body,m.created_at AS createdAt,m.sender_id AS senderId,u.nickname AS senderName FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.echo_id=? ORDER BY m.created_at`).all(row.id);
+      const rows = db.prepare(`SELECT m.id,m.body,m.created_at AS createdAt,m.sender_id AS senderId,u.nickname AS senderName,m.source FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.echo_id=? ORDER BY m.created_at`).all(row.id);
       return json(res,200,{ messages:rows });
     }
     if (method === "POST") {
-      const { body } = await readJson(req);
-      const text = String(body || "").trim().slice(0,500);
+      const payload = await readJson(req);
+      const text = String(payload.body || "").trim().slice(0,500);
       if (!text) return fail(res,400,"MESSAGE_REQUIRED","消息不能为空");
+      const source = payload.source === "agent_suggestion" ? "agent_suggestion" : "user";
       await moderateText({userId:user.id,surface:"message",referenceId:row.id,text});
-      const message = { id:id("msg"), echoId:row.id, senderId:user.id, senderName:user.nickname, body:text, createdAt:now() };
-      db.prepare(`INSERT INTO messages(id,echo_id,sender_id,body,created_at) VALUES(?,?,?,?,?)`).run(message.id,row.id,user.id,text,message.createdAt);
+      const message = { id:id("msg"), echoId:row.id, senderId:user.id, senderName:user.nickname, body:text, source, createdAt:now() };
+      db.prepare(`INSERT INTO messages(id,echo_id,sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`).run(message.id,row.id,user.id,text,message.createdAt,source);
+      if (source === "agent_suggestion") {
+        upsertAgentSettings("echo", row.id, user.id, { draftText: "", draftSource: "", draftUpdatedAt: now() });
+      }
       emit(user.id,"message",message); emit(otherId,"message",message);
       notify(otherId,"message",`${user.nickname} 发来一条消息`,text,{ echoId:row.id });
-      track(user.id,"message_sent",{echoId:row.id});
+      track(user.id,"message_sent",{echoId:row.id,source});
       return json(res,201,{ message });
     }
   }
@@ -973,7 +1099,7 @@ async function api(req, res, url) {
     if (!friendship) return fail(res, 404, "FRIENDSHIP_NOT_FOUND", "你们还不是好友");
     if (method === "GET") {
       const rows = db.prepare(`
-        SELECT m.id, m.body, m.created_at AS createdAt, m.sender_id AS senderId, u.nickname AS senderName
+        SELECT m.id, m.body, m.created_at AS createdAt, m.sender_id AS senderId, u.nickname AS senderName, m.source
         FROM friend_messages m JOIN users u ON u.id=m.sender_id
         WHERE m.friendship_id=? ORDER BY m.created_at
       `).all(friendship.id);
@@ -983,15 +1109,112 @@ async function api(req, res, url) {
       const body = await readJson(req);
       const text = String(body.body || "").trim().slice(0, 500);
       if (!text) return fail(res, 400, "MESSAGE_REQUIRED", "消息不能为空");
+      const source = body.source === "agent_suggestion" ? "agent_suggestion" : "user";
       await moderateText({ userId: user.id, surface: "friend_message", referenceId: friendship.id, text });
-      const message = { id: id("fmsg"), friendshipId: friendship.id, senderId: user.id, senderName: user.nickname, body: text, createdAt: now() };
-      db.prepare(`INSERT INTO friend_messages(id,friendship_id,sender_id,body,created_at) VALUES(?,?,?,?,?)`)
-        .run(message.id, friendship.id, user.id, text, message.createdAt);
+      const message = { id: id("fmsg"), friendshipId: friendship.id, senderId: user.id, senderName: user.nickname, body: text, source, createdAt: now() };
+      db.prepare(`INSERT INTO friend_messages(id,friendship_id,sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`)
+        .run(message.id, friendship.id, user.id, text, message.createdAt, source);
+      if (source === "agent_suggestion") {
+        upsertAgentSettings("friend", friendship.id, user.id, { draftText: "", draftSource: "", draftUpdatedAt: now() });
+      }
       emit(user.id, "friend_message", message);
       emit(friendId, "friend_message", message);
       notify(friendId, "friend_message", `${user.nickname} 发来一条消息`, text, { friendshipId: friendship.id, userId: user.id });
-      track(user.id, "friend_message_sent", { friendshipId: friendship.id });
+      track(user.id, "friend_message_sent", { friendshipId: friendship.id, source });
       return json(res, 201, { message });
+    }
+  }
+
+
+
+  const agentThreadMatch = path.match(/^\/api\/agent\/threads\/(echo|friend)\/([^/]+)(?:\/(enable|disable|suggest|draft))?$/);
+  if (agentThreadMatch) {
+    const kind = agentThreadMatch[1];
+    const threadId = agentThreadMatch[2];
+    const action = agentThreadMatch[3] || null;
+    const access = assertAgentThreadAccess(kind, threadId, user);
+    if (access.error) return fail(res, access.error[2], access.error[0], access.error[1]);
+
+    if (method === "GET" && !action) {
+      return json(res, 200, {
+        thread: { kind, id: access.threadId },
+        settings: serializeAgentSettings(getAgentSettings(kind, access.threadId, user.id)),
+        limits: { messageLimit: REPLY_MESSAGE_LIMIT, autoSend: false }
+      }, { "cache-control": "no-store" });
+    }
+
+    if (method === "POST" && action === "enable") {
+      const body = await readJson(req);
+      if (body?.consent !== true) return fail(res, 400, "AI_CONSENT_REQUIRED", "请明确同意将内容标题、你自己的感受和最近聊天发送给模型以生成草稿");
+      const row = upsertAgentSettings(kind, access.threadId, user.id, {
+        enabled: true,
+        consentAt: now()
+      });
+      track(user.id, "agent_enabled", { kind, threadId: access.threadId });
+      return json(res, 200, { settings: serializeAgentSettings(row) });
+    }
+
+    if (method === "POST" && action === "disable") {
+      const row = upsertAgentSettings(kind, access.threadId, user.id, {
+        enabled: false,
+        draftText: "",
+        draftSource: "",
+        draftUpdatedAt: now()
+      });
+      track(user.id, "agent_disabled", { kind, threadId: access.threadId });
+      return json(res, 200, { settings: serializeAgentSettings(row) });
+    }
+
+    if (method === "POST" && action === "suggest") {
+      const body = await readJson(req);
+      let settings = getAgentSettings(kind, access.threadId, user.id);
+      if (!settings?.enabled) {
+        if (body?.consent !== true) return fail(res, 400, "AI_CONSENT_REQUIRED", "请先同意并开启 Agent 建议");
+        settings = upsertAgentSettings(kind, access.threadId, user.id, { enabled: true, consentAt: now() });
+      }
+      // Rebuild context after possible new messages
+      const fresh = assertAgentThreadAccess(kind, threadId, user);
+      if (fresh.error) return fail(res, fresh.error[2], fresh.error[0], fresh.error[1]);
+      const result = await replyDraftHarness.suggest({
+        actorId: user.id,
+        threadKey: `${kind}:${access.threadId}`,
+        context: fresh.context
+      });
+      const saved = upsertAgentSettings(kind, access.threadId, user.id, {
+        enabled: true,
+        draftText: result.draft,
+        draftSource: result.source,
+        draftUpdatedAt: now()
+      });
+      track(user.id, "agent_draft_suggested", { kind, threadId: access.threadId, source: result.source, reason: result.reason || null });
+      return json(res, 200, {
+        draft: result.draft,
+        source: result.source,
+        reason: result.reason || null,
+        runId: result.runId || null,
+        settings: serializeAgentSettings(saved),
+        autoSend: false
+      }, { "cache-control": "no-store" });
+    }
+
+    if (method === "PATCH" && action === "draft") {
+      const body = await readJson(req);
+      const draft = String(body.text || "").trim().slice(0, 500);
+      const saved = upsertAgentSettings(kind, access.threadId, user.id, {
+        draftText: draft,
+        draftSource: draft ? (getAgentSettings(kind, access.threadId, user.id)?.draft_source || "user_edit") : "",
+        draftUpdatedAt: now()
+      });
+      return json(res, 200, { settings: serializeAgentSettings(saved) });
+    }
+
+    if (method === "DELETE" && action === "draft") {
+      const saved = upsertAgentSettings(kind, access.threadId, user.id, {
+        draftText: "",
+        draftSource: "",
+        draftUpdatedAt: now()
+      });
+      return json(res, 200, { settings: serializeAgentSettings(saved) });
     }
   }
 
@@ -1037,7 +1260,7 @@ export function createServer() {
       else res.end();
     }
   });
-  server.on("close", () => icebreakerHarness.close());
+  server.on("close", () => { icebreakerHarness.close(); replyDraftHarness.close(); });
   return server;
 }
 

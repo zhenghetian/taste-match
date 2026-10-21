@@ -99,10 +99,12 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
 
   await expectFailure("/api/ai/status",401,"AUTH_REQUIRED");
   const aiStatus = await request("/api/ai/status",{token:login.token});
-  assert.deepEqual(Object.keys(aiStatus).sort(),["consentRequired","enabled","feature","promptVersion"]);
   assert.equal(aiStatus.enabled,false);
   assert.equal(aiStatus.consentRequired,true);
   assert.equal(aiStatus.feature,"icebreakers");
+  assert.equal(aiStatus.replyDrafts.feature,"reply_drafts");
+  assert.equal(aiStatus.replyDrafts.autoSend,false);
+  assert.equal(aiStatus.replyDrafts.consentRequired,true);
 
   const profile = await request("/api/me",{token:login.token,method:"PATCH",body:{nickname:"小河",city:"杭州",birthYear:1998,gender:"不公开",bio:"喜欢散步和没有安排的周末"}});
   assert.equal(profile.user.nickname,"小河");

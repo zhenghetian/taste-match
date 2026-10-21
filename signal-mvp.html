@@ -177,6 +177,16 @@
       .chat-note { margin: 8px auto 18px; color: var(--faint); font-size: 9px; text-align: center; }
       .bubble { width: fit-content; max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 12px 12px 12px; background: white; font-size: 12px; line-height: 1.5; }
       .bubble.mine { margin-left: auto; border-radius: 12px 4px 12px 12px; background: var(--accent); color: white; }
+
+      .bubble.agent-suggestion { border: 1px solid var(--accent-soft); }
+      .bubble.agent-suggestion small.agent-tag { display: block; margin-bottom: 4px; color: var(--accent); font-size: 9px; font-weight: 800; }
+      .bubble.mine.agent-suggestion small.agent-tag { color: #dce7e1; }
+      .agent-live { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 4px; }
+      .agent-live strong { display: block; color: var(--accent); font-size: 12px; }
+      .agent-live span { color: var(--muted); font-size: 10px; }
+      .agent-live .ghost { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 800; }
+      .draft-banner { margin: 0 0 8px; padding: 8px 10px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-size: 10px; line-height: 1.45; }
+
       .icebreakers { padding: 0 14px; border-top: 1px solid var(--line); background: var(--surface); }
       .icebreakers .text-action { margin-top: 0; }
       .icebreaker-panel { max-height: 220px; overflow-y: auto; padding-bottom: 12px; }
@@ -323,13 +333,27 @@
           <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">另一个人</strong><small>从同一条内容开始</small></div><button id="openSafety" type="button" aria-label="对话安全设置"><i data-lucide="ellipsis"></i></button></header>
           <div id="chatContext" class="chat-context"></div>
           <div id="chatMessages" class="messages"><div class="chat-note">从一句具体的话开始，比“你好”更容易</div></div>
-          <section class="icebreakers" aria-label="开场白建议">
+          <section class="icebreakers" aria-label="AI 建议">
             <button id="openIcebreakers" class="text-action" type="button" aria-expanded="false" aria-controls="icebreakerPanel">AI帮我想开场白</button>
             <div id="icebreakerPanel" class="icebreaker-panel" hidden>
               <p>点击“同意并生成”，表示你同意将这条内容的标题、你自己的感受和你们的共同问题发送给模型。不会发送对方的回答或双方聊天内容。建议仅供参考，选择后只填入草稿，由你修改并决定是否发送。</p>
               <button id="generateIcebreakers" class="primary" type="button">同意并生成</button>
               <p id="icebreakerStatus" role="status" aria-live="polite"></p>
               <div id="icebreakerCandidates" class="icebreaker-candidates"></div>
+            </div>
+            <button id="openAgentAssist" class="text-action" type="button" aria-expanded="false" aria-controls="agentAssistPanel">Agent 建议</button>
+            <div id="agentAssistPanel" class="icebreaker-panel" hidden>
+              <div id="agentSetup">
+                <p>开启后，可基于内容标题、你自己的感受和最近 10 条消息生成回复草稿。草稿只会填入输入框，<strong>不会自动发送</strong>；你修改并点击发送后，消息会标注“Agent 建议”。</p>
+                <button id="enableAgentAssist" class="primary" type="button">同意并开启建议</button>
+              </div>
+              <div id="agentLive" class="agent-live" hidden>
+                <div><strong>Agent 建议已开启</strong><span id="agentAssistHint">生成草稿后由你确认发送</span></div>
+                <button id="disableAgentAssist" class="ghost" type="button">关闭</button>
+              </div>
+              <button id="generateAgentDraft" class="primary" type="button" hidden>生成回复建议</button>
+              <p id="agentAssistStatus" role="status" aria-live="polite"></p>
+              <div id="draftBanner" class="draft-banner" hidden>当前输入框内容来自 Agent 建议，发送前可自由修改。</div>
             </div>
           </section>
           <form id="messageForm" class="composer"><input id="messageInput" autocomplete="off" aria-label="消息" placeholder="接着说点具体的" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
@@ -376,9 +400,12 @@
         user: null, invite: null, signals: [], echoes: [], conversations: [], blocks: [],
         friends: [], friendInvite: null,
         contentIndex: 0, currentEchoId: null, currentChatId: null, currentSafetyUserId: null,
-        chatKind: null, currentFriendUserId: null,
+        chatKind: null, currentFriendUserId: null, currentFriendshipId: null,
+        agentSettings: null, pendingAgentSend: false,
         editingProfile: false, sound: false, eventSource: null
       };
+      let agentAssistVersion = 0;
+      let agentAssistController = null;
       const pendingFriendInvite = sessionStorage.getItem("anhao_friend_invite") || "";
       let codeRequested = false;
       let toastTimer;
@@ -558,12 +585,20 @@
         state.currentSafetyUserId = null;
         state.chatKind = null;
         state.currentFriendUserId = null;
+        state.currentFriendshipId = null;
+        state.agentSettings = null;
+        state.pendingAgentSend = false;
+        agentAssistVersion += 1;
+        agentAssistController?.abort();
+        agentAssistController = null;
         $("#messageInput").value = "";
         $("#chatMessages").replaceChildren();
         $("#chatName").textContent = "另一个人";
         $("#chatContext").textContent = "";
         $("#chatScreen").querySelector(".chat-head small").textContent = "从同一条内容开始";
         $("#openIcebreakers").hidden = false;
+        $("#openAgentAssist").hidden = false;
+        resetAgentAssistPanel();
         $("#chatScreen").classList.remove("is-open");
       }
       function handleChatError(error) {
@@ -585,7 +620,12 @@
           const { messages } = await apiFetch(path);
           if (version !== chatVersion || chatId !== state.currentChatId || requestVersion !== messageVersion) return;
           const note = state.chatKind === "friend" ? "通过好友邀请加入 · 直接说点具体的" : "从一句具体的话开始，比“你好”更容易";
-          $("#chatMessages").innerHTML = `<div class="chat-note">${note}</div>` + messages.map((item) => `<div class="bubble ${item.senderId === state.user.id ? "mine" : ""}">${escapeHtml(item.body)}</div>`).join("");
+          $("#chatMessages").innerHTML = `<div class="chat-note">${note}</div>` + messages.map((item) => {
+            const mine = item.senderId === state.user.id ? "mine" : "";
+            const agent = item.source === "agent_suggestion" ? "agent-suggestion" : "";
+            const tag = item.source === "agent_suggestion" ? `<small class="agent-tag">Agent 建议</small>` : "";
+            return `<div class="bubble ${mine} ${agent}">${tag}${escapeHtml(item.body)}</div>`;
+          }).join("");
           $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
         } catch (error) { if (version === chatVersion && chatId === state.currentChatId && requestVersion === messageVersion) handleChatError(error); }
       }
@@ -604,9 +644,11 @@
         $("#chatScreen").querySelector(".chat-head small").textContent = "从同一条内容开始";
         $("#chatContext").textContent = `你说：“${echo.yourReaction}”  Ta 说：“${echo.otherReaction}”`;
         $("#openIcebreakers").hidden = false;
+        $("#openAgentAssist").hidden = false;
         $("#chatScreen").classList.add("is-open");
         track("chat_open", { echoId });
         await refreshChatMessages();
+        await loadAgentAssist("echo", echo.id);
       }
 
       async function openFriendChat(friendUserId) {
@@ -618,17 +660,143 @@
           state.chatKind = "friend";
           state.currentChatId = chatKey;
           state.currentFriendUserId = friendUserId;
+          state.currentFriendshipId = row.id;
           state.currentSafetyUserId = friendUserId;
           $("#messageInput").value = chatDrafts.get(chatKey) || "";
+        } else {
+          state.currentFriendshipId = row.id;
         }
         $("#chatName").textContent = row.friend.nickname;
         $("#chatScreen").querySelector(".chat-head small").textContent = "通过好友邀请加入";
         $("#chatContext").textContent = "你们通过好友邀请成为朋友。邀请不含聊天记录。";
         $("#openIcebreakers").hidden = true;
         $("#icebreakerPanel").hidden = true;
+        $("#openAgentAssist").hidden = false;
         $("#chatScreen").classList.add("is-open");
         track("friend_chat_open", { friendUserId });
         await refreshChatMessages();
+        await loadAgentAssist("friend", row.id);
+      }
+
+      function agentThreadRef() {
+        if (state.chatKind === "echo" && state.currentChatId) return { kind: "echo", id: state.currentChatId };
+        if (state.chatKind === "friend" && state.currentFriendshipId) return { kind: "friend", id: state.currentFriendshipId };
+        return null;
+      }
+
+      function resetAgentAssistPanel() {
+        $("#agentAssistPanel").hidden = true;
+        $("#openAgentAssist").setAttribute("aria-expanded", "false");
+        $("#agentAssistStatus").textContent = "";
+        $("#draftBanner").hidden = true;
+        $("#generateAgentDraft").hidden = true;
+        $("#generateAgentDraft").disabled = false;
+        $("#agentSetup").hidden = false;
+        $("#agentLive").hidden = true;
+        $("#enableAgentAssist").disabled = false;
+      }
+
+      function renderAgentAssist() {
+        const settings = state.agentSettings;
+        const enabled = Boolean(settings?.enabled);
+        $("#agentSetup").hidden = enabled;
+        $("#agentLive").hidden = !enabled;
+        $("#generateAgentDraft").hidden = !enabled;
+        $("#agentAssistHint").textContent = settings?.draft ? "已有草稿，可继续修改后发送" : "生成草稿后由你确认发送";
+        if (settings?.draft && !$("#messageInput").value) {
+          $("#messageInput").value = settings.draft;
+          state.pendingAgentSend = true;
+        }
+        $("#draftBanner").hidden = !state.pendingAgentSend;
+        if (state.currentChatId) chatDrafts.set(state.currentChatId, $("#messageInput").value);
+        icons();
+      }
+
+      async function loadAgentAssist(kind, threadId) {
+        try {
+          const result = await apiFetch(`/api/agent/threads/${kind}/${threadId}`);
+          state.agentSettings = result.settings;
+          if (result.settings.draft) {
+            const existing = $("#messageInput").value;
+            if (!existing) {
+              $("#messageInput").value = result.settings.draft;
+              state.pendingAgentSend = true;
+            } else if (existing === result.settings.draft) {
+              state.pendingAgentSend = true;
+            }
+          }
+          renderAgentAssist();
+        } catch (error) {
+          state.agentSettings = null;
+          $("#agentAssistStatus").textContent = error.message;
+        }
+      }
+
+      async function enableAgentAssist() {
+        const thread = agentThreadRef();
+        if (!thread) return;
+        $("#enableAgentAssist").disabled = true;
+        $("#agentAssistStatus").textContent = "正在开启…";
+        try {
+          const result = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/enable`, {
+            method: "POST", body: JSON.stringify({ consent: true })
+          });
+          state.agentSettings = result.settings;
+          renderAgentAssist();
+          $("#agentAssistStatus").textContent = "已开启。点击下方生成建议，不会自动发送。";
+          await generateAgentDraft();
+        } catch (error) {
+          $("#agentAssistStatus").textContent = error.message;
+          $("#enableAgentAssist").disabled = false;
+        }
+      }
+
+      async function disableAgentAssist() {
+        const thread = agentThreadRef();
+        if (!thread) return;
+        try {
+          const result = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/disable`, { method: "POST" });
+          state.agentSettings = result.settings;
+          state.pendingAgentSend = false;
+          $("#draftBanner").hidden = true;
+          renderAgentAssist();
+          $("#agentAssistStatus").textContent = "已关闭 Agent 建议。";
+        } catch (error) { $("#agentAssistStatus").textContent = error.message; }
+      }
+
+      async function generateAgentDraft() {
+        const thread = agentThreadRef();
+        if (!thread || $("#generateAgentDraft").disabled) return;
+        const version = ++agentAssistVersion;
+        const controller = new AbortController();
+        agentAssistController = controller;
+        $("#generateAgentDraft").disabled = true;
+        $("#agentAssistStatus").textContent = "正在生成草稿…";
+        try {
+          const result = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/suggest`, {
+            method: "POST",
+            body: JSON.stringify({ consent: true }),
+            signal: controller.signal
+          });
+          if (version !== agentAssistVersion) return;
+          state.agentSettings = result.settings;
+          $("#messageInput").value = result.draft;
+          state.pendingAgentSend = true;
+          if (state.currentChatId) chatDrafts.set(state.currentChatId, result.draft);
+          renderAgentAssist();
+          $("#agentAssistStatus").textContent = result.source === "model"
+            ? "已生成草稿，请确认或修改后再发送。"
+            : "当前使用备用草稿，请确认或修改后再发送。";
+          $("#messageInput").focus();
+        } catch (error) {
+          if (version !== agentAssistVersion) return;
+          $("#agentAssistStatus").textContent = error.message;
+        } finally {
+          if (version === agentAssistVersion) {
+            $("#generateAgentDraft").disabled = false;
+            agentAssistController = null;
+          }
+        }
       }
       async function generateIcebreakers() {
         const echoId = state.currentChatId;
@@ -784,12 +952,24 @@
         });
         state.eventSource.addEventListener("message", async (event) => {
           const item = JSON.parse(event.data);
-          if (state.chatKind === "echo" && item.echoId === state.currentChatId) await refreshChatMessages();
+          if (state.chatKind === "echo" && item.echoId === state.currentChatId) {
+            await refreshChatMessages();
+            if (state.agentSettings?.enabled && item.senderId !== state.user.id) {
+              $("#agentAssistHint").textContent = "对方发来新消息，可生成回复建议";
+              $("#agentAssistPanel").hidden = false;
+              $("#openAgentAssist").setAttribute("aria-expanded", "true");
+            }
+          }
         });
         state.eventSource.addEventListener("friend_message", async (event) => {
           const item = JSON.parse(event.data);
           if (state.chatKind === "friend" && item.friendshipId && state.friends.some((row) => row.id === item.friendshipId && row.friend.id === state.currentFriendUserId)) {
             await refreshChatMessages();
+            if (state.agentSettings?.enabled && item.senderId !== state.user.id) {
+              $("#agentAssistHint").textContent = "对方发来新消息，可生成回复建议";
+              $("#agentAssistPanel").hidden = false;
+              $("#openAgentAssist").setAttribute("aria-expanded", "true");
+            }
           } else {
             await refreshAll();
           }
@@ -870,7 +1050,17 @@
         $("#openIcebreakers").setAttribute("aria-expanded", "true");
       });
       $("#generateIcebreakers").addEventListener("click", generateIcebreakers);
-      $("#messageInput").addEventListener("input", () => { if (state.currentChatId) chatDrafts.set(state.currentChatId,$("#messageInput").value); });
+      $("#messageInput").addEventListener("input", () => {
+        if (state.currentChatId) chatDrafts.set(state.currentChatId,$("#messageInput").value);
+        if (state.pendingAgentSend && state.agentSettings?.draft && $("#messageInput").value !== state.agentSettings.draft) {
+          // Still agent-assisted even if edited; keep banner until send/clear
+          $("#draftBanner").hidden = false;
+        }
+        if (!$("#messageInput").value.trim()) {
+          state.pendingAgentSend = false;
+          $("#draftBanner").hidden = true;
+        }
+      });
       $("#messageForm").addEventListener("submit", async (event) => {
         event.preventDefault();
         const chatId = state.currentChatId;
@@ -879,15 +1069,20 @@
         const body = draft.trim();
         if (!chatId || !body) return;
         try {
+          const source = state.pendingAgentSend ? "agent_suggestion" : "user";
           if (state.chatKind === "friend") {
-            await apiFetch(`/api/friends/${state.currentFriendUserId}/messages`, {method:"POST",body:JSON.stringify({body})});
+            await apiFetch(`/api/friends/${state.currentFriendUserId}/messages`, {method:"POST",body:JSON.stringify({body,source})});
           } else {
-            await apiFetch(`/api/echoes/${chatId}/messages`, {method:"POST",body:JSON.stringify({body})});
+            await apiFetch(`/api/echoes/${chatId}/messages`, {method:"POST",body:JSON.stringify({body,source})});
           }
+          state.pendingAgentSend = false;
+          $("#draftBanner").hidden = true;
+          if (state.agentSettings) state.agentSettings = { ...state.agentSettings, draft: "", draftSource: null };
           if (chatDrafts.get(chatId) === draft) chatDrafts.delete(chatId);
           if (version !== chatVersion || chatId !== state.currentChatId) return;
           if ($("#messageInput").value === draft) { $("#messageInput").value = ""; chatDrafts.delete(chatId); }
           await refreshChatMessages();
+          renderAgentAssist();
         } catch (error) { if (version === chatVersion && chatId === state.currentChatId) handleChatError(error); }
       });
 
@@ -1002,6 +1197,22 @@
           await openFriendsScreen();
         } catch (error) { message("#friendJoinMessage", error.message, true); }
       });
+
+
+      $("#openAgentAssist")?.addEventListener("click", () => {
+        if (!agentThreadRef()) return;
+        if (!$("#agentAssistPanel").hidden) {
+          $("#agentAssistPanel").hidden = true;
+          $("#openAgentAssist").setAttribute("aria-expanded", "false");
+          return;
+        }
+        $("#agentAssistPanel").hidden = false;
+        $("#openAgentAssist").setAttribute("aria-expanded", "true");
+        renderAgentAssist();
+      });
+      $("#enableAgentAssist")?.addEventListener("click", enableAgentAssist);
+      $("#disableAgentAssist")?.addEventListener("click", disableAgentAssist);
+      $("#generateAgentDraft")?.addEventListener("click", generateAgentDraft);
 
       async function boot() {
         const params = new URLSearchParams(location.search);
