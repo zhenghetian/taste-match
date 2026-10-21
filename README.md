@@ -16,9 +16,9 @@
 
 ## 交互原型
 
-[添加好友与邀请加入](prototypes/friend-join/index.html)：下载后直接用浏览器打开，在邀请人和朋友视角间切换，体验加入、好友列表和模拟聊天。运行方式与边界见 [原型说明](prototypes/friend-join/README.md)。该原型尚未接入真实注册、好友关系或跨设备消息，不属于下列已实现功能。
+[添加好友与邀请加入](prototypes/friend-join/index.html)：早期交互原型，保留对照。**产品内已实现真实好友邀请**（`signal-mvp.html` → 我的 / 设置 → 好友；邀请码前缀 `FH`，7 天 / 最多 20 人，分享链接 `/?friend_invite=`）。
 
-[Agent 代回与接管](prototypes/agent-handoff/index.html)：下载后直接用浏览器打开，体验按对话开启模拟代回、收到新消息后继续代回，以及按钮或手动发送接管。运行方式与边界见 [原型说明](prototypes/agent-handoff/README.md)。回复为固定模拟示例，尚未接入真实模型或自动发信。
+[Agent 代回与接管](prototypes/agent-handoff/index.html)：早期交互原型，保留对照。**产品内已实现「Agent 建议」**（suggest-then-confirm）：聊天页开启后生成草稿填入输入框，**不会自动发送**；你确认发送后消息标注“Agent 建议”。上下文为标题、自己的感受与最近 10 条消息，复用现有 LLM 配置与离线回退。
 
 ## 已完成
 
@@ -35,6 +35,8 @@
 - 昵称、简介、回答和聊天内容审核
 - 注册到真实聊天的关键漏斗埋点
 - 内测数据和举报处理后台
+- 好友邀请、好友列表与好友聊天（与闭测注册邀请码分离）
+- Agent 建议草稿（确认后发送，消息标注“Agent 建议”，不会自动代发）
 
 ## 本地运行
 
