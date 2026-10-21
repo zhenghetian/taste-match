@@ -14,6 +14,10 @@
 - `npm run verify`：语法和离线回归；`npm run ai:doctor`：不暴露密钥的配置检查。
 - `npm run harness -- new "本轮目标"`：记录任务，按计划、实现、验证推进；详见根目录 `AGENTS.md`。
 
+## 交互原型
+
+[添加好友与邀请加入](prototypes/friend-join/index.html)：下载后直接用浏览器打开，在邀请人和朋友视角间切换，体验加入、好友列表和模拟聊天。运行方式与边界见 [原型说明](prototypes/friend-join/README.md)。该原型尚未接入真实注册、好友关系或跨设备消息，不属于下列已实现功能。
+
 ## 已完成
 
 - 手机号验证码登录与邀请码准入
