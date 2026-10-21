@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>暗号 · 添加好友与加入原型</title>
+  <style>
+    :root { color-scheme:light; font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; --ink:#202522; --muted:#6f7772; --faint:#969d98; --paper:#fbfcfa; --band:#edf1ee; --line:rgba(32,37,34,.12); --accent:#3f6558; --accent-soft:#dce7e1; --danger:#934a55; }
+    * { box-sizing:border-box; } body { margin:0; background:#e5ebe8; color:var(--ink); } button,input { font:inherit; } button { border:0; cursor:pointer; touch-action:manipulation; } button:focus-visible,input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; } [hidden] { display:none !important; } svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .stage { min-height:100dvh; display:grid; place-items:center; } .phone { position:relative; width:min(100%,430px); height:100dvh; max-height:900px; overflow:hidden; background:var(--paper); } @media (min-width:600px) { .phone { border:1px solid rgba(32,37,34,.14); box-shadow:0 24px 80px rgba(31,47,39,.16); } }
+    .screen { position:absolute; inset:0; overflow-y:auto; background:var(--band); } .head { min-height:108px; display:flex; align-items:end; justify-content:space-between; padding:42px 18px 16px; border-bottom:1px solid var(--line); background:var(--paper); } h1 { margin:0; font-size:27px; } .head p,.lead { margin:6px 0 0; color:var(--muted); font-size:12px; line-height:1.55; } .icon { width:44px; height:44px; display:grid; place-items:center; background:transparent; color:var(--ink); }
+    .card { margin-top:10px; padding:18px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:white; } .kicker { color:var(--accent); font-size:10px; font-weight:850; } .card h2 { margin:8px 0; font-size:20px; line-height:1.35; } .card p { margin:0; color:var(--muted); font-size:12px; line-height:1.6; } .code { margin:16px 0; padding:14px; border-radius:8px; background:var(--band); letter-spacing:.12em; font-size:24px; font-weight:850; text-align:center; } .primary,.ghost { min-height:48px; width:100%; border-radius:7px; font-size:13px; font-weight:800; } .primary { background:var(--accent); color:white; } .ghost { border:1px solid var(--line); background:white; color:var(--ink); } .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .person { width:100%; display:grid; grid-template-columns:50px minmax(0,1fr) auto; gap:12px; align-items:center; padding:15px 18px; border:0; border-bottom:1px solid var(--line); background:white; color:inherit; text-align:left; } .avatar { width:50px; height:50px; display:grid; place-items:center; border-radius:50%; background:var(--accent); color:white; font-weight:850; } .person strong { display:block; font-size:14px; } .person span,.person small { color:var(--muted); font-size:11px; } .person b { color:var(--accent); font-size:11px; }
+    .gate { padding:58px 24px 28px; background:var(--paper); } .brand { display:flex; align-items:center; gap:8px; color:var(--accent); font-size:11px; font-weight:800; } .mark { width:10px; height:10px; border:2px solid var(--accent); border-radius:50%; } .gate h1 { margin:24px 0 10px; font-size:42px; } .field { display:grid; gap:7px; margin:14px 0; } label { font-size:11px; font-weight:750; } input { min-height:48px; padding:0 12px; border:1px solid var(--line); border-radius:7px; background:white; color:var(--ink); font-size:16px; } .message { min-height:18px; color:var(--danger); font-size:11px; }
+    .chat-head { min-height:104px; display:grid; grid-template-columns:44px 1fr 44px; align-items:end; padding:42px 10px 12px; border-bottom:1px solid var(--line); background:white; } .chat-head div { text-align:center; } .chat-head strong { display:block; } .chat-head small { color:var(--accent); font-size:10px; } .messages { min-height:280px; padding:18px 14px; } .bubble { width:fit-content; max-width:78%; margin:10px 0; padding:10px 12px; border-radius:4px 12px 12px; background:white; font-size:12px; line-height:1.5; } .bubble.mine { margin-left:auto; border-radius:12px 4px 12px 12px; background:var(--accent); color:white; } .composer { display:grid; grid-template-columns:1fr 44px; gap:8px; padding:10px 12px; border-top:1px solid var(--line); background:white; } .composer button { display:grid; place-items:center; border-radius:7px; background:var(--accent); color:white; } .switcher { position:absolute; z-index:5; top:8px; right:8px; min-height:30px; padding:0 9px; border-radius:999px; background:rgba(32,37,34,.78); color:white; font-size:10px; } .note { position:absolute; z-index:5; top:8px; left:50%; transform:translateX(-50%); padding:6px 8px; border-radius:999px; background:rgba(32,37,34,.72); color:white; font-size:9px; }
+  </style>
+</head>
+<body>
+<main class="stage"><section class="phone">
+  <span class="note">交互原型</span>
+  <button id="switchRole" class="switcher" type="button">切换为朋友视角</button>
+  <section id="ownerHome" class="screen">
+    <header class="head"><div><h1>好友</h1><p id="ownerCount">还没有朋友加入</p></div></header>
+    <section class="card"><span class="kicker">分享给朋友</span><h2>让朋友用这个邀请加入</h2><p>邀请只用于加入并成为你的好友，不包含聊天记录。链接 7 天后失效，最多 20 人使用。</p><div id="ownerCode" class="code">AH7K2M</div><div class="actions"><button id="copyInvite" class="ghost" type="button">复制邀请</button><button id="shareInvite" class="primary" type="button">分享链接</button></div><p id="ownerStatus" class="lead"></p></section>
+    <div id="ownerFriends"></div>
+  </section>
+  <section id="joinScreen" class="screen gate" hidden>
+    <div class="brand"><span class="mark"></span><span>朋友收到的邀请</span></div>
+    <h1>加入暗号</h1>
+    <p class="lead">你正在接受“演示体验者”的好友邀请。加入后，你们会互相出现在好友列表里。</p>
+    <form id="joinForm"><div class="field"><label for="invite">邀请码</label><input id="invite" value="AH7K2M" maxlength="12" /></div><div class="field"><label for="nickname">你的名字</label><input id="nickname" maxlength="20" placeholder="例如：小林" /></div><p id="joinMessage" class="message"></p><button class="primary" type="submit">接受邀请并加入</button></form>
+  </section>
+  <section id="friendHome" class="screen" hidden>
+    <header class="head"><div><h1>好友</h1><p>你已通过邀请加入</p></div></header>
+    <div id="friendFriends"></div>
+  </section>
+  <section id="chatScreen" class="screen" hidden>
+    <header class="chat-head"><button id="back" class="icon" type="button" aria-label="返回"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><div><strong id="chatName"></strong><small>通过好友邀请加入</small></div><span></span></header>
+    <div id="messages" class="messages"></div>
+    <form id="chatForm" class="composer"><input id="chatInput" aria-label="消息" maxlength="200" placeholder="发一条消息" /><button type="submit" aria-label="发送"><svg viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button></form>
+  </section>
+</section></main>
+<script>
+const state = { role:"owner", joined:false, friendName:"", messages:[], status:"" };
+const $ = selector => document.querySelector(selector);
+function escapeText(node, text) { node.textContent = text; return node; }
+function renderFriends(target, people) {
+  const box = $(target); box.replaceChildren();
+  people.forEach(person => { const button = document.createElement("button"); button.className = "person"; button.type = "button"; const avatar = document.createElement("span"); avatar.className = "avatar"; avatar.textContent = person.avatar; const main = document.createElement("span"); main.append(escapeText(document.createElement("strong"), person.name), document.createElement("br"), escapeText(document.createElement("span"), person.meta)); const stateLabel = document.createElement("b"); stateLabel.textContent = "聊天"; button.append(avatar, main, stateLabel); button.addEventListener("click", () => openChat(person.name)); box.append(button); });
+}
+function render() {
+  const joined = state.joined;
+  $("#ownerHome").hidden = state.role !== "owner" || $("#chatScreen").dataset.open === "true";
+  $("#joinScreen").hidden = state.role !== "friend" || joined || $("#chatScreen").dataset.open === "true";
+  $("#friendHome").hidden = state.role !== "friend" || !joined || $("#chatScreen").dataset.open === "true";
+  $("#chatScreen").hidden = $("#chatScreen").dataset.open !== "true";
+  $("#switchRole").textContent = state.role === "owner" ? "切换为朋友视角" : "切换为我的视角";
+  $("#ownerCount").textContent = joined ? "1 位朋友已加入" : "还没有朋友加入";
+  $("#ownerStatus").textContent = state.status;
+  renderFriends("#ownerFriends", joined ? [{name:state.friendName, avatar:[...state.friendName][0], meta:"刚刚通过你的邀请加入"}] : []);
+  renderFriends("#friendFriends", [{name:"演示体验者", avatar:"演", meta:"邀请了你加入暗号"}]);
+}
+function openChat(name) { $("#chatName").textContent = name; $("#chatScreen").dataset.open = "true"; $("#messages").replaceChildren(...state.messages.map(item => { const node = document.createElement("div"); node.className = `bubble ${item.role === state.role ? "mine" : ""}`; node.textContent = item.text; return node; })); render(); }
+$("#copyInvite").onclick = async () => { try { await navigator.clipboard.writeText("【暗号交互原型演示】邀请码 AH7K2M。仅用于原型页面内体验，不是实际注册邀请。"); state.status = "演示邀请码已复制，仅用于原型页面内体验。"; } catch { state.status = "当前浏览器不能复制，演示邀请码为 AH7K2M。"; } render(); };
+$("#shareInvite").onclick = () => { state.status = "原型中已准备分享内容：邀请码 AH7K2M。真实分享需接入系统分享。"; render(); };
+$("#joinForm").onsubmit = event => { event.preventDefault(); const code = $("#invite").value.trim().toUpperCase(); const name = $("#nickname").value.trim(); if (code !== "AH7K2M") { $("#joinMessage").textContent = "邀请码无效或已失效。"; return; } if (name.length < 2) { $("#joinMessage").textContent = "请填写至少 2 个字的名字。"; return; } state.friendName = name; state.joined = true; state.status = `${name} 已通过邀请加入，并成为你的好友。`; $("#joinMessage").textContent = ""; render(); };
+$("#chatForm").onsubmit = event => { event.preventDefault(); const text = $("#chatInput").value.trim(); if (!text) return; state.messages.push({role:state.role, text}); $("#chatInput").value = ""; openChat($("#chatName").textContent); };
+$("#back").onclick = () => { $("#chatScreen").dataset.open = "false"; render(); };
+$("#switchRole").onclick = () => { state.role = state.role === "owner" ? "friend" : "owner"; $("#chatScreen").dataset.open = "false"; render(); };
+render();
+</script>
+</body>
+</html>
