@@ -20,6 +20,8 @@ const MASTER_INVITE = process.env.MASTER_INVITE_CODE || "2026";
 const ADMIN_KEY = process.env.ADMIN_KEY || (IS_PRODUCTION ? "" : "anhao-admin");
 const DEMO_MATCHING_ENABLED = process.env.DEMO_MATCHING_ENABLED === "true" || !IS_PRODUCTION;
 const SESSION_DAYS = 30;
+const FRIEND_INVITE_MAX_USES = 20;
+const FRIEND_INVITE_DAYS = 7;
 const clients = new Map();
 const analyticsWindows = new Map();
 
@@ -38,6 +40,7 @@ function hash(value) { return createHash("sha256").update(value).digest("hex"); 
 function token(bytes = 24) { return randomBytes(bytes).toString("base64url"); }
 function id(prefix) { return `${prefix}_${token(10)}`; }
 function inviteCode() { return `AH${randomBytes(4).toString("hex").toUpperCase()}`; }
+function friendInviteCode() { return `FH${randomBytes(4).toString("hex").toUpperCase()}`; }
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -161,6 +164,34 @@ db.exec(`
     session_id TEXT,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS friend_invites (
+    code TEXT PRIMARY KEY,
+    owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    max_uses INTEGER NOT NULL DEFAULT 20,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS friendships (
+    id TEXT PRIMARY KEY,
+    user_a TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_b TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invited_by TEXT NOT NULL REFERENCES users(id),
+    invite_code TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE(user_a, user_b)
+  );
+  CREATE TABLE IF NOT EXISTS friend_messages (
+    id TEXT PRIMARY KEY,
+    friendship_id TEXT NOT NULL REFERENCES friendships(id) ON DELETE CASCADE,
+    sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_friend_invites_owner ON friend_invites(owner_user_id, active, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_friendships_users ON friendships(user_a, user_b);
+  CREATE INDEX IF NOT EXISTS idx_friend_messages_thread ON friend_messages(friendship_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_signals_content ON signals(content_id, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_echoes_users ON echoes(user_a, user_b, created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_messages_echo ON messages(echo_id, created_at);
@@ -267,6 +298,78 @@ function analyticsAllowed(userId) {
 function blockedBetween(userA, userB) {
   return Boolean(db.prepare(`SELECT 1 FROM blocks WHERE (blocker_id=? AND blocked_id=?) OR (blocker_id=? AND blocked_id=?) LIMIT 1`).get(userA,userB,userB,userA));
 }
+
+function orderedPair(userA, userB) {
+  return userA < userB ? [userA, userB] : [userB, userA];
+}
+
+function friendshipBetween(userA, userB) {
+  const [a, b] = orderedPair(userA, userB);
+  return db.prepare(`SELECT * FROM friendships WHERE user_a=? AND user_b=?`).get(a, b) || null;
+}
+
+function publicBaseUrl(req) {
+  const configured = String(process.env.PUBLIC_URL || "").trim().replace(/\/$/, "");
+  if (configured) return configured;
+  const host = req.headers.host || `127.0.0.1:${PORT}`;
+  const proto = IS_PRODUCTION ? "https" : "http";
+  return `${proto}://${host}`;
+}
+
+function ensureFriendInvite(ownerUserId) {
+  const existing = db.prepare(`
+    SELECT * FROM friend_invites
+    WHERE owner_user_id=? AND active=1 AND expires_at>? AND used_count<max_uses
+    ORDER BY created_at DESC LIMIT 1
+  `).get(ownerUserId, now());
+  if (existing) return existing;
+  const code = friendInviteCode();
+  const created = now();
+  db.prepare(`INSERT INTO friend_invites(code,owner_user_id,max_uses,used_count,expires_at,active,created_at) VALUES(?,?,?,?,?,1,?)`)
+    .run(code, ownerUserId, FRIEND_INVITE_MAX_USES, 0, addDays(FRIEND_INVITE_DAYS), created);
+  return db.prepare(`SELECT * FROM friend_invites WHERE code=?`).get(code);
+}
+
+function serializeFriendInvite(invite, req) {
+  const remaining = Math.max(0, invite.max_uses - invite.used_count);
+  return {
+    code: invite.code,
+    maxUses: invite.max_uses,
+    usedCount: invite.used_count,
+    remainingUses: remaining,
+    expiresAt: invite.expires_at,
+    active: Boolean(invite.active) && invite.expires_at > now() && remaining > 0,
+    shareUrl: `${publicBaseUrl(req)}/?friend_invite=${encodeURIComponent(invite.code)}`
+  };
+}
+
+function friendOtherId(row, viewerId) {
+  return row.user_a === viewerId ? row.user_b : row.user_a;
+}
+
+function serializeFriendship(row, viewerId) {
+  const otherId = friendOtherId(row, viewerId);
+  const other = db.prepare(`SELECT * FROM users WHERE id=?`).get(otherId);
+  const last = db.prepare(`SELECT body, created_at AS createdAt, sender_id AS senderId FROM friend_messages WHERE friendship_id=? ORDER BY created_at DESC LIMIT 1`).get(row.id);
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    invitedBy: row.invited_by,
+    inviteCode: row.invite_code || null,
+    friend: publicUser(other),
+    lastMessage: last || null
+  };
+}
+
+function removeFriendship(userA, userB) {
+  const row = friendshipBetween(userA, userB);
+  if (!row) return false;
+  db.prepare(`DELETE FROM friend_messages WHERE friendship_id=?`).run(row.id);
+  db.prepare(`DELETE FROM friendships WHERE id=?`).run(row.id);
+  return true;
+}
+
+
 
 const BLOCKED_CONTENT = [
   { pattern:/未成年.{0,8}(约炮|性交易|裸照)|儿童色情/i, reason:"未成年人性内容" },
@@ -749,13 +852,21 @@ async function api(req, res, url) {
     const body = await readJson(req);
     const reasons = ["骚扰或辱骂","色情或不适内容","诈骗或广告","冒充他人","其他"];
     if (!reasons.includes(body.reason)) return fail(res,400,"INVALID_REPORT_REASON","请选择举报原因");
-    const relationship = db.prepare(`SELECT id FROM echoes WHERE id=? AND ((user_a=? AND user_b=?) OR (user_a=? AND user_b=?))`).get(body.echoId,user.id,reportedId,reportedId,user.id);
-    if (!relationship) return fail(res,403,"REPORT_NOT_ALLOWED","只能举报与你发生过回声的人");
-    const existing = db.prepare(`SELECT id,status FROM reports WHERE reporter_id=? AND reported_user_id=? AND echo_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`).get(user.id,reportedId,relationship.id);
+    let echoId = null;
+    if (body.echoId) {
+      const relationship = db.prepare(`SELECT id FROM echoes WHERE id=? AND ((user_a=? AND user_b=?) OR (user_a=? AND user_b=?))`).get(body.echoId,user.id,reportedId,reportedId,user.id);
+      if (!relationship) return fail(res,403,"REPORT_NOT_ALLOWED","只能举报与你发生过回声或互为好友的人");
+      echoId = relationship.id;
+    } else if (!friendshipBetween(user.id, reportedId)) {
+      return fail(res,403,"REPORT_NOT_ALLOWED","只能举报与你发生过回声或互为好友的人");
+    }
+    const existing = echoId
+      ? db.prepare(`SELECT id,status FROM reports WHERE reporter_id=? AND reported_user_id=? AND echo_id=? AND status='pending' ORDER BY created_at DESC LIMIT 1`).get(user.id,reportedId,echoId)
+      : db.prepare(`SELECT id,status FROM reports WHERE reporter_id=? AND reported_user_id=? AND echo_id IS NULL AND status='pending' ORDER BY created_at DESC LIMIT 1`).get(user.id,reportedId);
     if (existing) return json(res,200,{report:existing});
     const reportId = id("rpt");
     db.prepare(`INSERT INTO reports(id,reporter_id,reported_user_id,echo_id,reason,detail,status,created_at) VALUES(?,?,?,?,?,?,'pending',?)`)
-      .run(reportId,user.id,reportedId,relationship.id,body.reason,String(body.detail || "").trim().slice(0,300),now());
+      .run(reportId,user.id,reportedId,echoId,body.reason,String(body.detail || "").trim().slice(0,300),now());
     track(user.id,"report_created",{reason:body.reason,reportedUserId:reportedId});
     return json(res,201,{report:{id:reportId,status:"pending"}});
   }
@@ -766,9 +877,11 @@ async function api(req, res, url) {
     if (blockedId === user.id) return fail(res,400,"CANNOT_BLOCK_SELF","不能拉黑自己");
     const target = db.prepare(`SELECT * FROM users WHERE id=?`).get(blockedId);
     if (!target) return fail(res,404,"USER_NOT_FOUND","没有找到这个用户");
-    const relationship = db.prepare(`SELECT 1 FROM echoes WHERE (user_a=? AND user_b=?) OR (user_a=? AND user_b=?) LIMIT 1`).get(user.id,blockedId,blockedId,user.id);
-    if (!relationship) return fail(res,403,"BLOCK_NOT_ALLOWED","只能拉黑与你发生过回声的人");
+    const relationship = db.prepare(`SELECT 1 FROM echoes WHERE (user_a=? AND user_b=?) OR (user_a=? AND user_b=?) LIMIT 1`).get(user.id,blockedId,blockedId,user.id)
+      || friendshipBetween(user.id, blockedId);
+    if (!relationship) return fail(res,403,"BLOCK_NOT_ALLOWED","只能拉黑与你发生过回声或互为好友的人");
     db.prepare(`INSERT OR IGNORE INTO blocks(blocker_id,blocked_id,created_at) VALUES(?,?,?)`).run(user.id,blockedId,now());
+    removeFriendship(user.id, blockedId);
     track(user.id,"user_blocked",{blockedUserId:blockedId});
     return json(res,201,{blocked:true});
   }
@@ -790,6 +903,98 @@ async function api(req, res, url) {
   if (method === "POST" && path === "/api/notifications/read") {
     db.prepare(`UPDATE notifications SET read_at=? WHERE user_id=? AND read_at IS NULL`).run(now(),user.id); return json(res,200,{ok:true});
   }
+
+  if (method === "GET" && path === "/api/friends/invite") {
+    const invite = ensureFriendInvite(user.id);
+    return json(res, 200, { invite: serializeFriendInvite(invite, req) });
+  }
+  if (method === "POST" && path === "/api/friends/invite/rotate") {
+    db.prepare(`UPDATE friend_invites SET active=0 WHERE owner_user_id=? AND active=1`).run(user.id);
+    const invite = ensureFriendInvite(user.id);
+    track(user.id, "friend_invite_rotated", { code: invite.code });
+    return json(res, 200, { invite: serializeFriendInvite(invite, req) });
+  }
+  if (method === "GET" && path === "/api/friends") {
+    const rows = db.prepare(`
+      SELECT * FROM friendships
+      WHERE (user_a=? OR user_b=?)
+        AND NOT EXISTS (
+          SELECT 1 FROM blocks b
+          WHERE (b.blocker_id=friendships.user_a AND b.blocked_id=friendships.user_b)
+             OR (b.blocker_id=friendships.user_b AND b.blocked_id=friendships.user_a)
+        )
+      ORDER BY created_at DESC
+    `).all(user.id, user.id);
+    return json(res, 200, { friends: rows.map((row) => serializeFriendship(row, user.id)) });
+  }
+  if (method === "POST" && path === "/api/friends/join") {
+    const body = await readJson(req);
+    const code = String(body.code || "").trim().toUpperCase();
+    if (!/^FH[A-F0-9]{8}$/.test(code)) return fail(res, 400, "INVALID_FRIEND_INVITE", "好友邀请码无效或已失效");
+    const invite = db.prepare(`SELECT * FROM friend_invites WHERE code=?`).get(code);
+    if (!invite || !invite.active || invite.expires_at <= now() || invite.used_count >= invite.max_uses) {
+      return fail(res, 400, "INVALID_FRIEND_INVITE", "好友邀请码无效或已失效");
+    }
+    if (invite.owner_user_id === user.id) return fail(res, 400, "CANNOT_FRIEND_SELF", "不能接受自己的好友邀请");
+    if (blockedBetween(user.id, invite.owner_user_id)) return fail(res, 403, "USER_BLOCKED", "这段关系已被拉黑");
+    const existing = friendshipBetween(user.id, invite.owner_user_id);
+    if (existing) {
+      return json(res, 200, { friendship: serializeFriendship(existing, user.id), alreadyFriends: true });
+    }
+    const [a, b] = orderedPair(user.id, invite.owner_user_id);
+    const friendshipId = id("frn");
+    db.prepare(`INSERT INTO friendships(id,user_a,user_b,invited_by,invite_code,created_at) VALUES(?,?,?,?,?,?)`)
+      .run(friendshipId, a, b, invite.owner_user_id, invite.code, now());
+    db.prepare(`UPDATE friend_invites SET used_count=used_count+1 WHERE code=?`).run(invite.code);
+    const owner = db.prepare(`SELECT * FROM users WHERE id=?`).get(invite.owner_user_id);
+    notify(invite.owner_user_id, "friend", `${user.nickname} 通过邀请成为你的好友`, "你们现在可以在好友列表里聊天。", { friendshipId, userId: user.id });
+    notify(user.id, "friend", `你已成为 ${owner.nickname} 的好友`, "你们现在可以在好友列表里聊天。", { friendshipId, userId: owner.id });
+    track(user.id, "friend_joined", { inviteCode: invite.code, ownerUserId: invite.owner_user_id });
+    track(invite.owner_user_id, "friend_accepted", { inviteCode: invite.code, joinerUserId: user.id });
+    const row = db.prepare(`SELECT * FROM friendships WHERE id=?`).get(friendshipId);
+    return json(res, 201, { friendship: serializeFriendship(row, user.id), alreadyFriends: false });
+  }
+
+  const friendMatch = path.match(/^\/api\/friends\/([^/]+)$/);
+  if (friendMatch && method === "DELETE") {
+    const friendId = friendMatch[1];
+    if (friendId === user.id) return fail(res, 400, "CANNOT_UNFRIEND_SELF", "不能解除与自己的好友关系");
+    if (!removeFriendship(user.id, friendId)) return fail(res, 404, "FRIENDSHIP_NOT_FOUND", "你们还不是好友");
+    track(user.id, "friend_removed", { friendUserId: friendId });
+    return json(res, 200, { removed: true });
+  }
+
+  const friendMessagesMatch = path.match(/^\/api\/friends\/([^/]+)\/messages$/);
+  if (friendMessagesMatch) {
+    const friendId = friendMessagesMatch[1];
+    if (friendId === user.id) return fail(res, 400, "INVALID_FRIEND", "不能给自己发好友消息");
+    if (blockedBetween(user.id, friendId)) return fail(res, 403, "USER_BLOCKED", "这段关系已被拉黑");
+    const friendship = friendshipBetween(user.id, friendId);
+    if (!friendship) return fail(res, 404, "FRIENDSHIP_NOT_FOUND", "你们还不是好友");
+    if (method === "GET") {
+      const rows = db.prepare(`
+        SELECT m.id, m.body, m.created_at AS createdAt, m.sender_id AS senderId, u.nickname AS senderName
+        FROM friend_messages m JOIN users u ON u.id=m.sender_id
+        WHERE m.friendship_id=? ORDER BY m.created_at
+      `).all(friendship.id);
+      return json(res, 200, { friendshipId: friendship.id, messages: rows });
+    }
+    if (method === "POST") {
+      const body = await readJson(req);
+      const text = String(body.body || "").trim().slice(0, 500);
+      if (!text) return fail(res, 400, "MESSAGE_REQUIRED", "消息不能为空");
+      await moderateText({ userId: user.id, surface: "friend_message", referenceId: friendship.id, text });
+      const message = { id: id("fmsg"), friendshipId: friendship.id, senderId: user.id, senderName: user.nickname, body: text, createdAt: now() };
+      db.prepare(`INSERT INTO friend_messages(id,friendship_id,sender_id,body,created_at) VALUES(?,?,?,?,?)`)
+        .run(message.id, friendship.id, user.id, text, message.createdAt);
+      emit(user.id, "friend_message", message);
+      emit(friendId, "friend_message", message);
+      notify(friendId, "friend_message", `${user.nickname} 发来一条消息`, text, { friendshipId: friendship.id, userId: user.id });
+      track(user.id, "friend_message_sent", { friendshipId: friendship.id });
+      return json(res, 201, { message });
+    }
+  }
+
 
   return fail(res,404,"NOT_FOUND","接口不存在");
 }

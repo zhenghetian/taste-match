@@ -200,6 +200,22 @@
       .profile-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
       .ghost { min-height: 50px; padding: 0 16px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); }
 
+
+      .friend-invite-card { margin: 10px 0 0; padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: white; }
+      .friend-invite-card .kicker { color: var(--accent); font-size: 10px; font-weight: 850; }
+      .friend-invite-card h2 { margin: 8px 0; font-size: 18px; line-height: 1.35; }
+      .friend-invite-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+      .friend-code { margin: 14px 0; padding: 14px; border-radius: 8px; background: var(--band); letter-spacing: .12em; font-size: 22px; font-weight: 850; text-align: center; }
+      .friend-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .friend-actions .ghost, .friend-actions .primary { min-height: 44px; border-radius: 7px; font-size: 13px; font-weight: 800; }
+      .friend-actions .ghost { border: 1px solid var(--line); background: white; color: var(--ink); }
+      #friendsScreen { overflow-y: auto; }
+      #friendsList { flex: 1; }
+      .friend-person { width: 100%; display: grid; grid-template-columns: 50px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 15px 18px; border: 0; border-bottom: 1px solid var(--line); background: white; color: inherit; text-align: left; }
+      .friend-person strong { display: block; font-size: 14px; }
+      .friend-person span { color: var(--muted); font-size: 11px; }
+      .friend-person b { color: var(--accent); font-size: 11px; }
+
       .toast { position: absolute; z-index: 120; right: 50%; bottom: calc(82px + var(--safe-bottom)); max-width: calc(100% - 34px); padding: 9px 13px; border-radius: 999px; background: rgba(30,36,32,.94); color: white; opacity: 0; pointer-events: none; font-size: 11px; white-space: nowrap; transform: translateX(50%) translateY(8px); transition: 160ms ease; }
       .toast.is-visible { opacity: 1; transform: translateX(50%) translateY(0); }
 
@@ -278,6 +294,7 @@
             <header class="screen-head"><div><h1>我的</h1><p>这里保存你真正说过的话</p></div><button id="openSettings" class="icon-button" type="button" aria-label="打开设置"><i data-lucide="settings"></i></button></header>
             <section class="profile-account"><span id="profileAvatar" class="avatar">我</span><div><strong id="profileName">新朋友</strong><span id="profileCity">上海</span></div></section>
             <section class="profile-metrics"><div><strong id="signalMetric">0</strong><span>留下的暗号</span></div><div><strong id="echoMetric">0</strong><span>收到的回声</span></div><div><strong id="chatMetric">0</strong><span>开始的对话</span></div></section>
+            <button id="openFriends" class="settings-row" type="button" style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:white"><i data-lucide="users"></i><span><strong>好友</strong><span id="friendsSummary">邀请已注册的朋友，互相出现在列表里</span></span><b id="friendsMetric">0</b></button>
             <div class="section-label"><h2>我真正停下来的地方</h2><span id="signalPeriod">还没有记录</span></div>
             <div id="signalLog" class="signal-log"><div class="empty"><p>第一句暗号会保存在这里。</p></div></div>
           </section>
@@ -300,7 +317,7 @@
 
         <div id="revealSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">双方都愿意继续</span><h2>你们没有给出相同答案，<br />但都认真回答了。</h2><div class="revealed-person"><span id="revealAvatar" class="avatar">?</span><div><strong id="revealName">另一个人</strong><span id="revealMeta">刚刚也完成了回答</span></div></div><button id="startChat" class="primary" type="button">从这句话开始聊</button></section></div>
 
-        <div id="settingsSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">账户与安全</span><h2>设置</h2><div class="settings-list"><button id="editProfile" class="settings-row" type="button"><i data-lucide="pencil"></i><span><strong>编辑资料</strong><span>昵称、城市与个人介绍</span></span><i data-lucide="chevron-right"></i></button><button id="copyInvite" class="settings-row" type="button"><i data-lucide="ticket"></i><span><strong>邀请朋友</strong><span>复制专属邀请码</span></span><b id="inviteCode">—</b></button><button id="enableNotifications" class="settings-row" type="button"><i data-lucide="bell"></i><span><strong>回声通知</strong><span id="notificationStatus">有人接住时提醒</span></span><b>开启</b></button><button id="manageBlocks" class="settings-row" type="button"><i data-lucide="shield"></i><span><strong>已拉黑的人</strong><span id="blockedCount">目前没有</span></span><i data-lucide="chevron-right"></i></button><button id="logout" class="settings-row is-danger" type="button"><i data-lucide="log-out"></i><span><strong>退出登录</strong></span><i data-lucide="chevron-right"></i></button></div></section></div>
+        <div id="settingsSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">账户与安全</span><h2>设置</h2><div class="settings-list"><button id="editProfile" class="settings-row" type="button"><i data-lucide="pencil"></i><span><strong>编辑资料</strong><span>昵称、城市与个人介绍</span></span><i data-lucide="chevron-right"></i></button><button id="copyInvite" class="settings-row" type="button"><i data-lucide="ticket"></i><span><strong>闭测邀请码</strong><span>给还没注册的朋友</span></span><b id="inviteCode">—</b></button><button id="openFriendsFromSettings" class="settings-row" type="button"><i data-lucide="users"></i><span><strong>好友邀请</strong><span>已注册朋友可扫码或输入加入</span></span><i data-lucide="chevron-right"></i></button><button id="enableNotifications" class="settings-row" type="button"><i data-lucide="bell"></i><span><strong>回声通知</strong><span id="notificationStatus">有人接住时提醒</span></span><b>开启</b></button><button id="manageBlocks" class="settings-row" type="button"><i data-lucide="shield"></i><span><strong>已拉黑的人</strong><span id="blockedCount">目前没有</span></span><i data-lucide="chevron-right"></i></button><button id="logout" class="settings-row is-danger" type="button"><i data-lucide="log-out"></i><span><strong>退出登录</strong></span><i data-lucide="chevron-right"></i></button></div></section></div>
 
         <section id="chatScreen" class="chat" aria-label="聊天">
           <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">另一个人</strong><small>从同一条内容开始</small></div><button id="openSafety" type="button" aria-label="对话安全设置"><i data-lucide="ellipsis"></i></button></header>
@@ -322,6 +339,24 @@
         <div id="reportSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">提交举报</span><h2>发生了什么？</h2><div class="sheet-options" id="reportOptions"></div></section></div>
         <div id="blockSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">确认拉黑</span><h2>不再遇见 Ta？</h2><p>这段回声和对话会从列表中消失，对方也不能继续发送消息。</p><button id="confirmBlock" class="primary" type="button" style="background:var(--danger)">确认拉黑</button></section></div>
         <div id="blocksSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">关系设置</span><h2>已拉黑的人</h2><div id="blockedList" class="settings-list"></div></section></div>
+
+        <section id="friendsScreen" class="chat" aria-label="好友" hidden>
+          <header class="chat-head"><button id="closeFriends" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong>好友</strong><small id="friendsCountText">还没有朋友加入</small></div><span></span></header>
+          <section class="friend-invite-card">
+            <span class="kicker">分享给朋友</span>
+            <h2>让朋友用这个邀请加入</h2>
+            <p>邀请只用于成为好友，不包含聊天记录。链接 7 天后失效，最多 20 人使用。对方需要已有暗号账号。</p>
+            <div id="friendInviteCode" class="friend-code">—</div>
+            <div class="friend-actions"><button id="copyFriendInvite" class="ghost" type="button">复制邀请</button><button id="shareFriendInvite" class="primary" type="button">分享链接</button></div>
+            <p id="friendInviteStatus" class="lead" style="margin-top:10px;color:var(--muted);font-size:12px"></p>
+            <button id="rotateFriendInvite" class="text-action" type="button" style="margin-top:8px">换一个邀请码</button>
+          </section>
+          <div id="friendsEmpty" class="empty"><i><span data-lucide="users"></span></i><h2>还没有好友</h2><p>把上方邀请发给已经在用暗号的朋友。<br />对方接受后，你们会互相出现在这里。</p></div>
+          <div id="friendsList" class="list-band"></div>
+        </section>
+
+        <div id="friendJoinSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">好友邀请</span><h2>接受好友邀请</h2><p>加入后，你们会互相出现在好友列表里，可以单独聊天。这与闭测注册邀请码不同。</p><form id="friendJoinForm"><div class="field"><label for="friendJoinCodeInput">好友邀请码</label><input id="friendJoinCodeInput" maxlength="12" autocomplete="off" /></div><p id="friendJoinMessage" class="form-message"></p><button class="primary" type="submit">接受邀请并加入</button></form></section></div>
+
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
     </main>
@@ -339,9 +374,12 @@
       const state = {
         token: localStorage.getItem("anhao_token") || "",
         user: null, invite: null, signals: [], echoes: [], conversations: [], blocks: [],
+        friends: [], friendInvite: null,
         contentIndex: 0, currentEchoId: null, currentChatId: null, currentSafetyUserId: null,
+        chatKind: null, currentFriendUserId: null,
         editingProfile: false, sound: false, eventSource: null
       };
+      const pendingFriendInvite = sessionStorage.getItem("anhao_friend_invite") || "";
       let codeRequested = false;
       let toastTimer;
       let chatVersion = 0;
@@ -518,44 +556,78 @@
         resetIcebreakers();
         state.currentChatId = null;
         state.currentSafetyUserId = null;
+        state.chatKind = null;
+        state.currentFriendUserId = null;
         $("#messageInput").value = "";
         $("#chatMessages").replaceChildren();
         $("#chatName").textContent = "另一个人";
         $("#chatContext").textContent = "";
+        $("#chatScreen").querySelector(".chat-head small").textContent = "从同一条内容开始";
+        $("#openIcebreakers").hidden = false;
         $("#chatScreen").classList.remove("is-open");
       }
       function handleChatError(error) {
-        if (["USER_BLOCKED", "ECHO_LOCKED", "ECHO_NOT_FOUND", "AUTH_REQUIRED"].includes(error.code)) {
+        if (["USER_BLOCKED", "ECHO_LOCKED", "ECHO_NOT_FOUND", "FRIENDSHIP_NOT_FOUND", "AUTH_REQUIRED"].includes(error.code)) {
           closeChat({ discardDraft:true });
           closeSheets();
         }
         toast(error.message);
       }
       async function refreshChatMessages() {
-        const echoId = state.currentChatId;
-        if (!echoId) return;
+        const chatId = state.currentChatId;
+        if (!chatId) return;
         const version = chatVersion;
         const requestVersion = ++messageVersion;
         try {
-          const { messages } = await apiFetch(`/api/echoes/${echoId}/messages`);
-          if (version !== chatVersion || echoId !== state.currentChatId || requestVersion !== messageVersion) return;
-          $("#chatMessages").innerHTML = `<div class="chat-note">从一句具体的话开始，比“你好”更容易</div>` + messages.map((item) => `<div class="bubble ${item.senderId === state.user.id ? "mine" : ""}">${escapeHtml(item.body)}</div>`).join("");
+          const path = state.chatKind === "friend"
+            ? `/api/friends/${state.currentFriendUserId}/messages`
+            : `/api/echoes/${chatId}/messages`;
+          const { messages } = await apiFetch(path);
+          if (version !== chatVersion || chatId !== state.currentChatId || requestVersion !== messageVersion) return;
+          const note = state.chatKind === "friend" ? "通过好友邀请加入 · 直接说点具体的" : "从一句具体的话开始，比“你好”更容易";
+          $("#chatMessages").innerHTML = `<div class="chat-note">${note}</div>` + messages.map((item) => `<div class="bubble ${item.senderId === state.user.id ? "mine" : ""}">${escapeHtml(item.body)}</div>`).join("");
           $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
-        } catch (error) { if (version === chatVersion && echoId === state.currentChatId && requestVersion === messageVersion) handleChatError(error); }
+        } catch (error) { if (version === chatVersion && chatId === state.currentChatId && requestVersion === messageVersion) handleChatError(error); }
       }
       async function openChat(echoId) {
         const echo = [...state.echoes, ...state.conversations].find((item) => item.id === echoId);
         if (!echo?.revealed) return;
-        if (echoId !== state.currentChatId) {
+        if (echoId !== state.currentChatId || state.chatKind !== "echo") {
           closeChat();
+          state.chatKind = "echo";
           state.currentChatId = echo.id;
+          state.currentFriendUserId = null;
           state.currentSafetyUserId = echo.other.id;
           $("#messageInput").value = chatDrafts.get(echo.id) || "";
         }
         $("#chatName").textContent = echo.other.nickname;
+        $("#chatScreen").querySelector(".chat-head small").textContent = "从同一条内容开始";
         $("#chatContext").textContent = `你说：“${echo.yourReaction}”  Ta 说：“${echo.otherReaction}”`;
+        $("#openIcebreakers").hidden = false;
         $("#chatScreen").classList.add("is-open");
         track("chat_open", { echoId });
+        await refreshChatMessages();
+      }
+
+      async function openFriendChat(friendUserId) {
+        const row = state.friends.find((item) => item.friend.id === friendUserId);
+        if (!row) return;
+        const chatKey = `friend:${friendUserId}`;
+        if (chatKey !== state.currentChatId || state.chatKind !== "friend") {
+          closeChat();
+          state.chatKind = "friend";
+          state.currentChatId = chatKey;
+          state.currentFriendUserId = friendUserId;
+          state.currentSafetyUserId = friendUserId;
+          $("#messageInput").value = chatDrafts.get(chatKey) || "";
+        }
+        $("#chatName").textContent = row.friend.nickname;
+        $("#chatScreen").querySelector(".chat-head small").textContent = "通过好友邀请加入";
+        $("#chatContext").textContent = "你们通过好友邀请成为朋友。邀请不含聊天记录。";
+        $("#openIcebreakers").hidden = true;
+        $("#icebreakerPanel").hidden = true;
+        $("#chatScreen").classList.add("is-open");
+        track("friend_chat_open", { friendUserId });
         await refreshChatMessages();
       }
       async function generateIcebreakers() {
@@ -603,33 +675,124 @@
         $("#signalMetric").textContent = state.signals.length;
         $("#echoMetric").textContent = state.echoes.length;
         $("#chatMetric").textContent = state.conversations.length;
+        $("#friendsMetric").textContent = state.friends.length;
+        $("#friendsSummary").textContent = state.friends.length ? `${state.friends.length} 位好友` : "邀请已注册的朋友，互相出现在列表里";
         $("#signalPeriod").textContent = state.signals.length ? `最近 ${Math.min(state.signals.length, 20)} 句` : "还没有记录";
         $("#signalLog").innerHTML = state.signals.length ? state.signals.slice(0,20).map((signal) => `<article class="signal-item"><small>${signal.sourceType === "shared" ? "从别处带来" : "今日内容"} · ${formatTime(signal.createdAt)}</small><h3>${escapeHtml(signal.title)}</h3><p>${escapeHtml(signal.reaction)}</p></article>`).join("") : `<div class="empty"><p>第一句暗号会保存在这里。</p></div>`;
       }
 
       async function refreshAll() {
-        const [signalData, echoData, conversationData, blockData] = await Promise.all([apiFetch("/api/signals"),apiFetch("/api/echoes"),apiFetch("/api/conversations"),apiFetch("/api/blocks")]);
+        const [signalData, echoData, conversationData, blockData, friendData] = await Promise.all([
+          apiFetch("/api/signals"), apiFetch("/api/echoes"), apiFetch("/api/conversations"), apiFetch("/api/blocks"), apiFetch("/api/friends")
+        ]);
         state.signals = signalData.signals;
         state.echoes = echoData.echoes;
         state.conversations = conversationData.conversations;
         state.blocks = blockData.blocks;
-        if (state.currentChatId && !state.conversations.some((echo) => echo.id === state.currentChatId && echo.revealed)) {
+        state.friends = friendData.friends;
+        if (state.chatKind === "echo" && state.currentChatId && !state.conversations.some((echo) => echo.id === state.currentChatId && echo.revealed)) {
+          closeChat({ discardDraft:true });
+          closeSheets();
+        }
+        if (state.chatKind === "friend" && state.currentFriendUserId && !state.friends.some((item) => item.friend.id === state.currentFriendUserId)) {
           closeChat({ discardDraft:true });
           closeSheets();
         }
         renderEchoes();
         await refreshConversations();
+        renderFriends();
         renderProfile();
         $("#blockedCount").textContent = state.blocks.length ? `${state.blocks.length} 人` : "目前没有";
+      }
+
+      function renderFriends() {
+        const count = state.friends.length;
+        $("#friendsCountText").textContent = count ? `${count} 位朋友已加入` : "还没有朋友加入";
+        $("#friendsEmpty").hidden = count > 0;
+        $("#friendsList").hidden = count === 0;
+        $("#friendsList").innerHTML = state.friends.map((item) => {
+          const preview = item.lastMessage?.body || "通过好友邀请加入";
+          return `<button class="friend-person" data-friend-id="${escapeHtml(item.friend.id)}" type="button"><span class="avatar">${escapeHtml(item.friend.avatar)}</span><span><strong>${escapeHtml(item.friend.nickname)}</strong><span>${escapeHtml(preview)}</span></span><b>聊天</b></button>`;
+        }).join("");
+        icons();
+      }
+
+      async function loadFriendInvite() {
+        const result = await apiFetch("/api/friends/invite");
+        state.friendInvite = result.invite;
+        $("#friendInviteCode").textContent = result.invite.code;
+        const daysLeft = Math.max(0, Math.ceil((new Date(result.invite.expiresAt).getTime() - Date.now()) / 86_400_000));
+        $("#friendInviteStatus").textContent = `还可邀请 ${result.invite.remainingUses} 人 · ${daysLeft} 天后失效`;
+        return result.invite;
+      }
+
+      async function openFriendsScreen() {
+        closeSheets();
+        closeChat();
+        try {
+          await Promise.all([loadFriendInvite(), refreshAll()]);
+        } catch (error) { toast(error.message); }
+        $("#friendsScreen").hidden = false;
+        $("#friendsScreen").classList.add("is-open");
+        icons();
+      }
+
+      function closeFriendsScreen() {
+        $("#friendsScreen").hidden = true;
+        $("#friendsScreen").classList.remove("is-open");
+      }
+
+      async function acceptFriendInvite(code) {
+        const normalized = String(code || "").trim().toUpperCase();
+        if (!normalized) throw new Error("请填写好友邀请码");
+        const result = await apiFetch("/api/friends/join", { method: "POST", body: JSON.stringify({ code: normalized }) });
+        sessionStorage.removeItem("anhao_friend_invite");
+        await refreshAll();
+        toast(result.alreadyFriends ? "你们已经是好友" : "已加入，成为好友");
+        return result;
+      }
+
+      async function consumePendingFriendInvite() {
+        const params = new URLSearchParams(location.search);
+        const fromQuery = params.get("friend_invite");
+        if (fromQuery) {
+          sessionStorage.setItem("anhao_friend_invite", fromQuery.trim().toUpperCase());
+          params.delete("friend_invite");
+          const next = params.toString();
+          history.replaceState({}, "", `${location.pathname}${next ? `?${next}` : ""}`);
+        }
+        const code = sessionStorage.getItem("anhao_friend_invite");
+        if (!code || !state.token || !state.user?.profileCompleted) return;
+        try {
+          await acceptFriendInvite(code);
+          await openFriendsScreen();
+        } catch (error) {
+          $("#friendJoinCodeInput").value = code;
+          message("#friendJoinMessage", error.message, true);
+          openSheet("#friendJoinSheet");
+        }
       }
 
       function connectEvents() {
         state.eventSource?.close();
         state.eventSource = new EventSource(`/api/events?token=${encodeURIComponent(state.token)}`);
-        state.eventSource.addEventListener("notification", async () => { await refreshAll(); toast("收到一条新的回声"); });
+        state.eventSource.addEventListener("notification", async (event) => {
+          await refreshAll();
+          let type = "";
+          try { type = JSON.parse(event.data)?.type || ""; } catch {}
+          toast(type.startsWith("friend") ? "好友动态有更新" : "收到一条新的回声");
+        });
         state.eventSource.addEventListener("message", async (event) => {
           const item = JSON.parse(event.data);
-          if (item.echoId === state.currentChatId) await refreshChatMessages();
+          if (state.chatKind === "echo" && item.echoId === state.currentChatId) await refreshChatMessages();
+        });
+        state.eventSource.addEventListener("friend_message", async (event) => {
+          const item = JSON.parse(event.data);
+          if (state.chatKind === "friend" && item.friendshipId && state.friends.some((row) => row.id === item.friendshipId && row.friend.id === state.currentFriendUserId)) {
+            await refreshChatMessages();
+          } else {
+            await refreshAll();
+          }
         });
       }
 
@@ -642,6 +805,7 @@
         renderHome();
         await refreshAll();
         if (!state.user.profileCompleted) showProfile(false);
+        else await consumePendingFriendInvite();
         connectEvents();
         track("app_open", { experiment:"signal-conversation-mvp" });
         icons();
@@ -709,18 +873,22 @@
       $("#messageInput").addEventListener("input", () => { if (state.currentChatId) chatDrafts.set(state.currentChatId,$("#messageInput").value); });
       $("#messageForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const echoId = state.currentChatId;
+        const chatId = state.currentChatId;
         const version = chatVersion;
         const draft = $("#messageInput").value;
         const body = draft.trim();
-        if (!echoId || !body) return;
+        if (!chatId || !body) return;
         try {
-          await apiFetch(`/api/echoes/${echoId}/messages`, {method:"POST",body:JSON.stringify({body})});
-          if (chatDrafts.get(echoId) === draft) chatDrafts.delete(echoId);
-          if (version !== chatVersion || echoId !== state.currentChatId) return;
-          if ($("#messageInput").value === draft) { $("#messageInput").value = ""; chatDrafts.delete(echoId); }
+          if (state.chatKind === "friend") {
+            await apiFetch(`/api/friends/${state.currentFriendUserId}/messages`, {method:"POST",body:JSON.stringify({body})});
+          } else {
+            await apiFetch(`/api/echoes/${chatId}/messages`, {method:"POST",body:JSON.stringify({body})});
+          }
+          if (chatDrafts.get(chatId) === draft) chatDrafts.delete(chatId);
+          if (version !== chatVersion || chatId !== state.currentChatId) return;
+          if ($("#messageInput").value === draft) { $("#messageInput").value = ""; chatDrafts.delete(chatId); }
           await refreshChatMessages();
-        } catch (error) { if (version === chatVersion && echoId === state.currentChatId) handleChatError(error); }
+        } catch (error) { if (version === chatVersion && chatId === state.currentChatId) handleChatError(error); }
       });
 
       $("#openSettings").addEventListener("click", () => openSheet("#settingsSheet"));
@@ -743,7 +911,7 @@
         $("#reportOptions").innerHTML = reasons.map((reason) => `<button data-report="${reason}" type="button"><span>${reason}</span><i data-lucide="arrow-right"></i></button>`).join("");
         openSheet("#reportSheet");
       });
-      $("#reportOptions").addEventListener("click", async (event) => { const button = event.target.closest("[data-report]"); if (!button) return; try { await apiFetch(`/api/users/${state.currentSafetyUserId}/report`,{method:"POST",body:JSON.stringify({reason:button.dataset.report,echoId:state.currentChatId})}); closeSheets(); toast("举报已提交"); } catch (error) { toast(error.message); } });
+      $("#reportOptions").addEventListener("click", async (event) => { const button = event.target.closest("[data-report]"); if (!button) return; try { const payload = { reason: button.dataset.report }; if (state.chatKind === "echo") payload.echoId = state.currentChatId; await apiFetch(`/api/users/${state.currentSafetyUserId}/report`,{method:"POST",body:JSON.stringify(payload)}); closeSheets(); toast("举报已提交"); } catch (error) { toast(error.message); } });
       $("#blockUser").addEventListener("click", () => openSheet("#blockSheet"));
       $("#confirmBlock").addEventListener("click", async () => {
         const userId = state.currentSafetyUserId;
@@ -783,15 +951,74 @@
         event.preventDefault();
         try {
           const result = await apiFetch("/api/me",{method:"PATCH",body:JSON.stringify({nickname:$("#nicknameInput").value,city:$("#cityInput").value,birthYear:$("#birthYearInput").value,gender:$("#genderInput").value,bio:$("#bioInput").value})});
-          state.user = result.user; $("#profileGate").hidden = true; renderProfile(); toast(state.editingProfile ? "资料已更新" : "欢迎来到暗号");
+          state.user = result.user; $("#profileGate").hidden = true; renderProfile(); toast(state.editingProfile ? "资料已更新" : "欢迎来到暗号"); if (!state.editingProfile) await consumePendingFriendInvite();
         } catch (error) { message("#profileMessage", error.message, true); }
       });
 
+
+      $("#openFriends")?.addEventListener("click", () => openFriendsScreen());
+      $("#openFriendsFromSettings")?.addEventListener("click", () => openFriendsScreen());
+      $("#closeFriends")?.addEventListener("click", () => closeFriendsScreen());
+      $("#friendsList")?.addEventListener("click", (event) => {
+        const row = event.target.closest("[data-friend-id]");
+        if (row) openFriendChat(row.dataset.friendId);
+      });
+      $("#copyFriendInvite")?.addEventListener("click", async () => {
+        try {
+          const invite = state.friendInvite || await loadFriendInvite();
+          const textToCopy = `【暗号】邀请你成为我的好友。打开 ${invite.shareUrl} 或在 App 内输入好友邀请码 ${invite.code}（需已有账号）。`;
+          await navigator.clipboard?.writeText(textToCopy);
+          $("#friendInviteStatus").textContent = "邀请已复制，可发给已注册的朋友。";
+          toast("好友邀请已复制");
+        } catch (error) { toast(error.message); }
+      });
+      $("#shareFriendInvite")?.addEventListener("click", async () => {
+        try {
+          const invite = state.friendInvite || await loadFriendInvite();
+          const shareData = { title: "暗号好友邀请", text: `用好友邀请码 ${invite.code} 加入我的好友列表`, url: invite.shareUrl };
+          if (navigator.share) await navigator.share(shareData);
+          else {
+            await navigator.clipboard?.writeText(`${shareData.text}\n${shareData.url}`);
+            toast("当前环境不支持系统分享，已复制链接");
+          }
+        } catch (error) {
+          if (error?.name !== "AbortError") toast(error.message || "分享取消");
+        }
+      });
+      $("#rotateFriendInvite")?.addEventListener("click", async () => {
+        try {
+          const result = await apiFetch("/api/friends/invite/rotate", { method: "POST" });
+          state.friendInvite = result.invite;
+          $("#friendInviteCode").textContent = result.invite.code;
+          $("#friendInviteStatus").textContent = "已换新邀请码，旧码立即失效。";
+          toast("已换新邀请码");
+        } catch (error) { toast(error.message); }
+      });
+      $("#friendJoinForm")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+          await acceptFriendInvite($("#friendJoinCodeInput").value);
+          closeSheets();
+          await openFriendsScreen();
+        } catch (error) { message("#friendJoinMessage", error.message, true); }
+      });
+
       async function boot() {
-        const session = new URLSearchParams(location.search).get("wechat_session");
-        if (session) { state.token = session; localStorage.setItem("anhao_token",session); history.replaceState({},"",location.pathname); }
+        const params = new URLSearchParams(location.search);
+        const session = params.get("wechat_session");
+        const friendInvite = params.get("friend_invite");
+        if (friendInvite) sessionStorage.setItem("anhao_friend_invite", friendInvite.trim().toUpperCase());
+        if (session) {
+          state.token = session; localStorage.setItem("anhao_token",session);
+          params.delete("wechat_session");
+          const next = params.toString();
+          history.replaceState({},"", `${location.pathname}${next ? `?${next}` : ""}`);
+        }
         icons();
-        if (!state.token) return;
+        if (!state.token) {
+          if (friendInvite) toast("登录后即可接受好友邀请");
+          return;
+        }
         try { await enterApp(await apiFetch("/api/me")); }
         catch { localStorage.removeItem("anhao_token"); state.token = ""; }
       }
