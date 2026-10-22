@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { anthropicOptions, inspectAIConfig, resolveModel, thinkingOptions, useServerFallbacks } from "./config.mjs";
 
 export const REPLY_PROMPT_VERSION = "reply-draft-v1";
 export const REPLY_MESSAGE_LIMIT = 10;
@@ -51,19 +52,18 @@ const AUTO_SYSTEM = `你是暗号中明确标记为“Agent 代回”的聊天�
 
 export function createAnthropicReplyProvider(env = process.env) {
   let client;
-  const model = env.ANHAO_LLM_MODEL || "claude-opus-5-5";
+  const model = resolveModel(env);
   return async ({ context, signal, maxTokens, autoSend }) => {
     if (!client) {
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      client = new Anthropic({ maxRetries: 0 });
+      client = new Anthropic(anthropicOptions(env));
     }
-    const official = !env.ANTHROPIC_BASE_URL || new URL(env.ANTHROPIC_BASE_URL).hostname === "api.anthropic.com";
     const options = {
       model, max_tokens: maxTokens, system: autoSend ? AUTO_SYSTEM : SYSTEM,
-      thinking: { type: "adaptive" }, output_config: { effort: "low" },
+      ...thinkingOptions(env),
       messages: [{ role: "user", content: JSON.stringify(context) }]
     };
-    const useFallbacks = env.ANHAO_LLM_SERVER_FALLBACKS === "true" || (official && env.ANHAO_LLM_SERVER_FALLBACKS !== "false");
+    const useFallbacks = useServerFallbacks(env);
     const stream = useFallbacks
       ? client.beta.messages.stream({ ...options, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }, { signal })
       : client.messages.stream(options, { signal });
@@ -78,7 +78,7 @@ export function createAnthropicReplyProvider(env = process.env) {
 
 export function createReplyDraftHarness({ env = process.env, provider, now = () => Date.now(), record } = {}) {
   const enabled = env.ANHAO_LLM_ENABLED === "true";
-  const model = env.ANHAO_LLM_MODEL || "claude-opus-5-5";
+  const model = resolveModel(env);
   const timeoutMs = positive(env.ANHAO_LLM_TIMEOUT_MS, 20000, 120000);
   const maxTokens = positive(env.ANHAO_LLM_MAX_TOKENS, 4096, 16000);
   const dailyLimit = positive(env.ANHAO_LLM_DAILY_LIMIT, 100, 10000);
@@ -112,8 +112,13 @@ export function createReplyDraftHarness({ env = process.env, provider, now = () 
 
   return {
     status() {
+      const config = inspectAIConfig(env);
       return {
         enabled,
+        provider: config.provider,
+        configured: config.configurationValid && config.credentialPresent,
+        configurationIssues: config.issues,
+        connectionVerified: false,
         feature: "reply_drafts",
         promptVersion: REPLY_PROMPT_VERSION,
         consentRequired: true,
@@ -166,7 +171,7 @@ export function createReplyDraftHarness({ env = process.env, provider, now = () 
         result = { draft: validateDraft(response.output), source: "model", runId };
       } catch (error) {
         let reason = "provider_error";
-        if (["timeout", "refusal", "invalid_output", "incomplete_output"].includes(error?.message)) reason = error.message;
+        if (["timeout", "refusal", "invalid_output", "incomplete_output", "invalid_configuration"].includes(error?.message)) reason = error.message;
         else if (error?.status === 401 || error?.status === 403) reason = "authentication";
         else if (error?.status === 429) reason = "provider_rate_limit";
         result = fallback(reason, runId);
