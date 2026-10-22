@@ -173,7 +173,7 @@
       .chat-head strong { display: block; font-size: 14px; }
       .chat-head small { color: var(--accent); font-size: 9px; }
       .chat-context { margin: 11px 14px 0; padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; line-height: 1.5; }
-      .messages { flex: 1; overflow-y: auto; padding: 10px 14px; background: var(--band); }
+      .messages { flex: 1; min-height: 60px; overflow-y: auto; padding: 10px 14px; background: var(--band); }
       .chat-note { margin: 8px auto 18px; color: var(--faint); font-size: 9px; text-align: center; }
       .bubble { width: fit-content; max-width: 78%; margin: 10px 0; padding: 10px 12px; border-radius: 4px 12px 12px 12px; background: white; font-size: 12px; line-height: 1.5; }
       .bubble.mine { margin-left: auto; border-radius: 12px 4px 12px 12px; background: var(--accent); color: white; }
@@ -184,10 +184,10 @@
       .agent-live { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 4px; }
       .agent-live strong { display: block; color: var(--accent); font-size: 12px; }
       .agent-live span { color: var(--muted); font-size: 10px; }
-      .agent-live .ghost { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 800; }
+      .agent-live .ghost { flex-shrink: 0; min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 800; }
       .draft-banner { margin: 0 0 8px; padding: 8px 10px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-size: 10px; line-height: 1.45; }
 
-      .icebreakers { padding: 0 14px; border-top: 1px solid var(--line); background: var(--surface); }
+      .icebreakers { flex-shrink: 0; padding: 0 14px; border-top: 1px solid var(--line); background: var(--surface); }
       .icebreakers .text-action { margin-top: 0; }
       .icebreaker-panel { max-height: 220px; overflow-y: auto; padding-bottom: 12px; }
       .icebreaker-panel p { margin: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.6; }
@@ -247,11 +247,10 @@
     <main class="stage">
       <section class="phone" id="phone">
         <section class="gate" id="authGate">
-          <div class="gate-brand"><span class="brand-mark"></span><span>限量闭测</span></div>
+          <div class="gate-brand"><span class="brand-mark"></span><span>用手机号开始</span></div>
           <h1>暗号</h1>
           <p class="gate-lead">把那条没找到人分享的内容，递给一个也愿意停下来的人。</p>
           <form id="authForm">
-            <div class="field"><label for="inviteInput">邀请码（首次注册）</label><input id="inviteInput" autocomplete="one-time-code" placeholder="已有账号无需填写" /></div>
             <div class="field"><label for="phoneInput">手机号</label><input id="phoneInput" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" /></div>
             <div class="field" id="codeField" hidden><label for="codeInput">验证码</label><input id="codeInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></div>
             <p id="authMessage" class="form-message"></p>
@@ -304,7 +303,7 @@
             <header class="screen-head"><div><h1>我的</h1><p>这里保存你真正说过的话</p></div><button id="openSettings" class="icon-button" type="button" aria-label="打开设置"><i data-lucide="settings"></i></button></header>
             <section class="profile-account"><span id="profileAvatar" class="avatar">我</span><div><strong id="profileName">新朋友</strong><span id="profileCity">上海</span></div></section>
             <section class="profile-metrics"><div><strong id="signalMetric">0</strong><span>留下的暗号</span></div><div><strong id="echoMetric">0</strong><span>收到的回声</span></div><div><strong id="chatMetric">0</strong><span>开始的对话</span></div></section>
-            <button id="openFriends" class="settings-row" type="button" style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:white"><i data-lucide="users"></i><span><strong>好友</strong><span id="friendsSummary">邀请已注册的朋友，互相出现在列表里</span></span><b id="friendsMetric">0</b></button>
+            <button id="openFriends" class="settings-row" type="button" style="margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:white"><i data-lucide="users"></i><span><strong>好友</strong><span id="friendsSummary">邀请朋友加入，互相出现在列表里</span></span><b id="friendsMetric">0</b></button>
             <div class="section-label"><h2>我真正停下来的地方</h2><span id="signalPeriod">还没有记录</span></div>
             <div id="signalLog" class="signal-log"><div class="empty"><p>第一句暗号会保存在这里。</p></div></div>
           </section>
@@ -327,7 +326,7 @@
 
         <div id="revealSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">双方都愿意继续</span><h2>你们没有给出相同答案，<br />但都认真回答了。</h2><div class="revealed-person"><span id="revealAvatar" class="avatar">?</span><div><strong id="revealName">另一个人</strong><span id="revealMeta">刚刚也完成了回答</span></div></div><button id="startChat" class="primary" type="button">从这句话开始聊</button></section></div>
 
-        <div id="settingsSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">账户与安全</span><h2>设置</h2><div class="settings-list"><button id="editProfile" class="settings-row" type="button"><i data-lucide="pencil"></i><span><strong>编辑资料</strong><span>昵称、城市与个人介绍</span></span><i data-lucide="chevron-right"></i></button><button id="copyInvite" class="settings-row" type="button"><i data-lucide="ticket"></i><span><strong>闭测邀请码</strong><span>给还没注册的朋友</span></span><b id="inviteCode">—</b></button><button id="openFriendsFromSettings" class="settings-row" type="button"><i data-lucide="users"></i><span><strong>好友邀请</strong><span>已注册朋友可扫码或输入加入</span></span><i data-lucide="chevron-right"></i></button><button id="enableNotifications" class="settings-row" type="button"><i data-lucide="bell"></i><span><strong>回声通知</strong><span id="notificationStatus">有人接住时提醒</span></span><b>开启</b></button><button id="manageBlocks" class="settings-row" type="button"><i data-lucide="shield"></i><span><strong>已拉黑的人</strong><span id="blockedCount">目前没有</span></span><i data-lucide="chevron-right"></i></button><button id="logout" class="settings-row is-danger" type="button"><i data-lucide="log-out"></i><span><strong>退出登录</strong></span><i data-lucide="chevron-right"></i></button></div></section></div>
+        <div id="settingsSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">账户与安全</span><h2>设置</h2><div class="settings-list"><button id="editProfile" class="settings-row" type="button"><i data-lucide="pencil"></i><span><strong>编辑资料</strong><span>昵称、城市与个人介绍</span></span><i data-lucide="chevron-right"></i></button><button id="openFriendsFromSettings" class="settings-row" type="button"><i data-lucide="users"></i><span><strong>好友</strong><span>查看好友、分享好友邀请</span></span><i data-lucide="chevron-right"></i></button><button id="openFriendJoinFromSettings" class="settings-row" type="button"><i data-lucide="user-plus"></i><span><strong>输入好友码</strong><span>接受朋友的邀请，加入好友列表</span></span><i data-lucide="chevron-right"></i></button><button id="enableNotifications" class="settings-row" type="button"><i data-lucide="bell"></i><span><strong>回声通知</strong><span id="notificationStatus">有人接住时提醒</span></span><b>开启</b></button><button id="manageBlocks" class="settings-row" type="button"><i data-lucide="shield"></i><span><strong>已拉黑的人</strong><span id="blockedCount">目前没有</span></span><i data-lucide="chevron-right"></i></button><button id="logout" class="settings-row is-danger" type="button"><i data-lucide="log-out"></i><span><strong>退出登录</strong></span><i data-lucide="chevron-right"></i></button></div></section></div>
 
         <section id="chatScreen" class="chat" aria-label="聊天">
           <header class="chat-head"><button id="closeChat" type="button" aria-label="返回"><i data-lucide="chevron-left"></i></button><div><strong id="chatName">另一个人</strong><small>从同一条内容开始</small></div><button id="openSafety" type="button" aria-label="对话安全设置"><i data-lucide="ellipsis"></i></button></header>
@@ -341,15 +340,21 @@
               <p id="icebreakerStatus" role="status" aria-live="polite"></p>
               <div id="icebreakerCandidates" class="icebreaker-candidates"></div>
             </div>
-            <button id="openAgentAssist" class="text-action" type="button" aria-expanded="false" aria-controls="agentAssistPanel">Agent 建议</button>
+            <button id="openAgentAssist" class="text-action" type="button" aria-expanded="false" aria-controls="agentAssistPanel">Agent 建议 / 自动代回</button>
+            <div id="agentLive" class="agent-live" hidden>
+              <div><strong id="agentModeTitle">Agent 建议已开启</strong><span id="agentAssistHint" role="status" aria-live="polite">生成草稿后由你确认发送</span></div>
+              <button id="disableAgentAssist" class="ghost" type="button">关闭</button>
+            </div>
             <div id="agentAssistPanel" class="icebreaker-panel" hidden>
               <div id="agentSetup">
-                <p>开启后，可基于内容标题、你自己的感受和最近 10 条消息生成回复草稿。草稿只会填入输入框，<strong>不会自动发送</strong>；你修改并点击发送后，消息会标注“Agent 建议”。</p>
+                <p>建议模式会将当前内容标题、你自己的感受（好友聊天使用本人简介）及最近 10 条双方聊天发送给模型，生成草稿。由你确认发送，消息标注“Agent 建议”。</p>
                 <button id="enableAgentAssist" class="primary" type="button">同意并开启建议</button>
               </div>
-              <div id="agentLive" class="agent-live" hidden>
-                <div><strong>Agent 建议已开启</strong><span id="agentAssistHint">生成草稿后由你确认发送</span></div>
-                <button id="disableAgentAssist" class="ghost" type="button">关闭</button>
+              <div id="agentAutoSetup">
+                <p><strong>自动代回会直接发送消息，无需逐条确认。</strong>开启即同意将当前内容标题、你自己的感受（好友聊天使用本人简介）及最近 10 条双方聊天发送给模型，并立即处理当前尚未回复的真人消息。后续收到真人消息也会自动回复；对方的 Agent 代回不会触发回复。</p>
+                <p>双方都会看到“Agent 代回”标识。生成失败会停止，不发送备用话术。你可随时点“我来聊”接管，或直接发送任意消息停止本会话自动代回。输入框始终可用，自动代回不会改写你的草稿。</p>
+                <button id="enableAgentAuto" class="primary" type="button">同意并开启自动代回</button>
+                <p id="agentAutoAvailability" role="status"></p>
               </div>
               <button id="generateAgentDraft" class="primary" type="button" hidden>生成回复建议</button>
               <p id="agentAssistStatus" role="status" aria-live="polite"></p>
@@ -369,17 +374,17 @@
           <section class="friend-invite-card">
             <span class="kicker">分享给朋友</span>
             <h2>让朋友用这个邀请加入</h2>
-            <p>邀请只用于成为好友，不包含聊天记录。链接 7 天后失效，最多 20 人使用。对方需要已有暗号账号。</p>
+            <p>邀请只用于成为好友，不包含聊天记录。链接 7 天后失效，最多 20 人使用。新朋友注册并完善资料后可继续接受邀请。</p>
             <div id="friendInviteCode" class="friend-code">—</div>
             <div class="friend-actions"><button id="copyFriendInvite" class="ghost" type="button">复制邀请</button><button id="shareFriendInvite" class="primary" type="button">分享链接</button></div>
             <p id="friendInviteStatus" class="lead" style="margin-top:10px;color:var(--muted);font-size:12px"></p>
             <button id="rotateFriendInvite" class="text-action" type="button" style="margin-top:8px">换一个邀请码</button>
           </section>
-          <div id="friendsEmpty" class="empty"><i><span data-lucide="users"></span></i><h2>还没有好友</h2><p>把上方邀请发给已经在用暗号的朋友。<br />对方接受后，你们会互相出现在这里。</p></div>
+          <div id="friendsEmpty" class="empty"><i><span data-lucide="users"></span></i><h2>还没有好友</h2><p>把上方邀请发给想一起聊天的朋友。<br />对方接受后，你们会互相出现在这里。</p></div>
           <div id="friendsList" class="list-band"></div>
         </section>
 
-        <div id="friendJoinSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">好友邀请</span><h2>接受好友邀请</h2><p>加入后，你们会互相出现在好友列表里，可以单独聊天。这与闭测注册邀请码不同。</p><form id="friendJoinForm"><div class="field"><label for="friendJoinCodeInput">好友邀请码</label><input id="friendJoinCodeInput" maxlength="12" autocomplete="off" /></div><p id="friendJoinMessage" class="form-message"></p><button class="primary" type="submit">接受邀请并加入</button></form></section></div>
+        <div id="friendJoinSheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">好友邀请</span><h2>接受好友邀请</h2><p>加入后，你们会互相出现在好友列表里，可以单独聊天。好友码只用于添加好友，不用于注册。</p><form id="friendJoinForm"><div class="field"><label for="friendJoinCodeInput">好友邀请码</label><input id="friendJoinCodeInput" maxlength="12" autocomplete="off" /></div><p id="friendJoinMessage" class="form-message"></p><button class="primary" type="submit">接受邀请并加入</button></form></section></div>
 
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
@@ -397,16 +402,18 @@
       const today = preferredIds.map((id) => CONTENT_LIBRARY.find((item) => item.id === id)).filter(Boolean);
       const state = {
         token: localStorage.getItem("anhao_token") || "",
-        user: null, invite: null, signals: [], echoes: [], conversations: [], blocks: [],
+        user: null, signals: [], echoes: [], conversations: [], blocks: [],
         friends: [], friendInvite: null,
         contentIndex: 0, currentEchoId: null, currentChatId: null, currentSafetyUserId: null,
         chatKind: null, currentFriendUserId: null, currentFriendshipId: null,
-        agentSettings: null, pendingAgentSend: false,
+        agentSettings: null, agentLimits: null, pendingAgentSend: false,
         editingProfile: false, sound: false, eventSource: null
       };
       let agentAssistVersion = 0;
       let agentAssistController = null;
-      const pendingFriendInvite = sessionStorage.getItem("anhao_friend_invite") || "";
+      let agentMutationPending = false;
+      let agentMutationVersion = 0;
+      let agentStateVersion = 0;
       let codeRequested = false;
       let toastTimer;
       let chatVersion = 0;
@@ -587,10 +594,11 @@
         state.currentFriendUserId = null;
         state.currentFriendshipId = null;
         state.agentSettings = null;
+        state.agentLimits = null;
         state.pendingAgentSend = false;
-        agentAssistVersion += 1;
-        agentAssistController?.abort();
-        agentAssistController = null;
+        agentMutationPending = false;
+        agentMutationVersion += 1;
+        invalidateAgentRequests();
         $("#messageInput").value = "";
         $("#chatMessages").replaceChildren();
         $("#chatName").textContent = "另一个人";
@@ -622,8 +630,9 @@
           const note = state.chatKind === "friend" ? "通过好友邀请加入 · 直接说点具体的" : "从一句具体的话开始，比“你好”更容易";
           $("#chatMessages").innerHTML = `<div class="chat-note">${note}</div>` + messages.map((item) => {
             const mine = item.senderId === state.user.id ? "mine" : "";
-            const agent = item.source === "agent_suggestion" ? "agent-suggestion" : "";
-            const tag = item.source === "agent_suggestion" ? `<small class="agent-tag">Agent 建议</small>` : "";
+            const agentSource = item.source === "agent_suggestion" || item.source === "agent_auto";
+            const agent = agentSource ? "agent-suggestion" : "";
+            const tag = item.source === "agent_suggestion" ? `<small class="agent-tag">Agent 建议</small>` : item.source === "agent_auto" ? `<small class="agent-tag">Agent 代回</small>` : "";
             return `<div class="bubble ${mine} ${agent}">${tag}${escapeHtml(item.body)}</div>`;
           }).join("");
           $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
@@ -672,6 +681,8 @@
         $("#openIcebreakers").hidden = true;
         $("#icebreakerPanel").hidden = true;
         $("#openAgentAssist").hidden = false;
+        $("#friendsScreen").hidden = true;
+        $("#friendsScreen").classList.remove("is-open");
         $("#chatScreen").classList.add("is-open");
         track("friend_chat_open", { friendUserId });
         await refreshChatMessages();
@@ -684,6 +695,29 @@
         return null;
       }
 
+      function invalidateAgentRequests() {
+        agentAssistVersion += 1;
+        agentAssistController?.abort();
+        agentAssistController = null;
+        $("#generateAgentDraft").disabled = false;
+      }
+
+      function sameAgentThread(thread, version = chatVersion) {
+        const current = agentThreadRef();
+        return version === chatVersion && current?.kind === thread?.kind && current?.id === thread?.id;
+      }
+
+      function applyAgentSettings(settings) {
+        if (!settings) return false;
+        const previous = state.agentSettings;
+        if (Number.isFinite(settings.version) && Number.isFinite(previous?.version) && settings.version < previous.version) return false;
+        state.agentSettings = settings;
+        agentStateVersion += 1;
+        if (!settings.enabled || settings.mode === "auto") invalidateAgentRequests();
+        renderAgentAssist();
+        return true;
+      }
+
       function resetAgentAssistPanel() {
         $("#agentAssistPanel").hidden = true;
         $("#openAgentAssist").setAttribute("aria-expanded", "false");
@@ -694,80 +728,138 @@
         $("#agentSetup").hidden = false;
         $("#agentLive").hidden = true;
         $("#enableAgentAssist").disabled = false;
+        $("#disableAgentAssist").disabled = false;
+        $("#agentAutoSetup").hidden = false;
+        $("#enableAgentAuto").disabled = true;
       }
 
       function renderAgentAssist() {
         const settings = state.agentSettings;
-        const enabled = Boolean(settings?.enabled);
-        $("#agentSetup").hidden = enabled;
-        $("#agentLive").hidden = !enabled;
-        $("#generateAgentDraft").hidden = !enabled;
-        $("#agentAssistHint").textContent = settings?.draft ? "已有草稿，可继续修改后发送" : "生成草稿后由你确认发送";
-        if (settings?.draft && !$("#messageInput").value) {
-          $("#messageInput").value = settings.draft;
-          state.pendingAgentSend = true;
-        }
+        const mode = settings?.enabled ? settings.mode || "suggest" : null;
+        const automatic = mode === "auto";
+        const autoAvailable = state.agentLimits?.autoSend === true;
+        const statusText = { idle: "等待真人消息", generating: "正在生成回复", failed: "生成失败，已停止" };
+        $("#agentSetup").hidden = Boolean(mode);
+        $("#agentAutoSetup").hidden = automatic;
+        const failureReasons = { disabled: "模型尚未开启", daily_limit: "今天的使用次数已用完", busy: "当前服务繁忙", timeout: "生成超时", authentication: "模型服务暂不可用", provider_rate_limit: "模型服务繁忙", invalid_output: "回复未通过检查", refusal: "此次回复未生成", CONTENT_BLOCKED: "回复未通过内容审核", CONTENT_UNDER_REVIEW: "回复需要审核" };
+        const failed = settings?.autoStatus === "failed";
+        $("#agentLive").hidden = !mode && !failed;
+        $("#generateAgentDraft").hidden = mode !== "suggest";
+        $("#agentModeTitle").textContent = failed ? "自动代回已停止" : automatic ? "自动代回进行中" : "Agent 建议已开启";
+        $("#agentAssistHint").textContent = automatic || failed
+          ? (settings?.autoStatus === "failed" && settings?.autoReason
+            ? `${failureReasons[settings.autoReason] || "回复暂未生成"}，已停止，请手动接着聊`
+            : (statusText[settings?.autoStatus] || "等待真人消息"))
+          : (settings?.draft ? "已有草稿，可继续修改后发送" : "生成草稿后由你确认发送");
+        $("#disableAgentAssist").textContent = automatic ? "我来聊" : "关闭";
+        $("#enableAgentAuto").disabled = !autoAvailable;
+        $("#agentAutoAvailability").textContent = autoAvailable ? "" : "当前服务尚未开放自动代回能力。";
         $("#draftBanner").hidden = !state.pendingAgentSend;
         if (state.currentChatId) chatDrafts.set(state.currentChatId, $("#messageInput").value);
         icons();
       }
 
       async function loadAgentAssist(kind, threadId) {
+        const thread = { kind, id: threadId };
+        const version = chatVersion;
+        if (!sameAgentThread(thread, version)) return;
+        const requestVersion = agentAssistVersion;
+        const stateVersion = agentStateVersion;
         try {
           const result = await apiFetch(`/api/agent/threads/${kind}/${threadId}`);
-          state.agentSettings = result.settings;
-          if (result.settings.draft) {
+          if (!sameAgentThread(thread, version)) return;
+          state.agentLimits = result.limits || null;
+          if (requestVersion !== agentAssistVersion || stateVersion !== agentStateVersion || !applyAgentSettings(result.settings)) {
+            renderAgentAssist();
+            return;
+          }
+          const settings = state.agentSettings;
+          if (settings?.enabled && (settings.mode || "suggest") === "suggest" && settings.draft) {
             const existing = $("#messageInput").value;
             if (!existing) {
-              $("#messageInput").value = result.settings.draft;
+              $("#messageInput").value = settings.draft;
               state.pendingAgentSend = true;
-            } else if (existing === result.settings.draft) {
-              state.pendingAgentSend = true;
-            }
+            } else if (existing === settings.draft) state.pendingAgentSend = true;
           }
           renderAgentAssist();
         } catch (error) {
+          if (!sameAgentThread(thread, version) || requestVersion !== agentAssistVersion || stateVersion !== agentStateVersion) return;
           state.agentSettings = null;
+          state.agentLimits = null;
+          renderAgentAssist();
           $("#agentAssistStatus").textContent = error.message;
         }
       }
 
-      async function enableAgentAssist() {
+      async function enableAgentAssist(mode = "suggest") {
         const thread = agentThreadRef();
-        if (!thread) return;
+        if (!thread || agentMutationPending || (mode === "auto" && state.agentLimits?.autoSend !== true)) return;
+        const version = chatVersion;
+        invalidateAgentRequests();
+        const mutation = ++agentMutationVersion;
+        const stateVersion = agentStateVersion;
+        agentMutationPending = true;
         $("#enableAgentAssist").disabled = true;
-        $("#agentAssistStatus").textContent = "正在开启…";
+        $("#enableAgentAuto").disabled = true;
+        $("#agentAssistStatus").textContent = mode === "auto" ? "正在开启自动代回…" : "正在开启建议…";
+        let enabled = false;
         try {
           const result = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/enable`, {
-            method: "POST", body: JSON.stringify({ consent: true })
+            method: "POST", body: JSON.stringify({ consent: true, mode })
           });
-          state.agentSettings = result.settings;
-          renderAgentAssist();
-          $("#agentAssistStatus").textContent = "已开启。点击下方生成建议，不会自动发送。";
-          await generateAgentDraft();
+          if (!sameAgentThread(thread, version) || mutation !== agentMutationVersion) return;
+          if (result.limits) state.agentLimits = result.limits;
+          if (stateVersion === agentStateVersion) applyAgentSettings(result.settings);
+          enabled = state.agentSettings?.enabled && (state.agentSettings.mode || "suggest") === mode;
+          $("#agentAssistStatus").textContent = enabled
+            ? (mode === "auto" ? "已开启自动代回，将处理尚未回复的真人消息。" : "已开启建议，草稿由你确认发送。")
+            : "会话状态已更新，请查看当前状态。";
         } catch (error) {
-          $("#agentAssistStatus").textContent = error.message;
-          $("#enableAgentAssist").disabled = false;
+          if (sameAgentThread(thread, version) && mutation === agentMutationVersion) $("#agentAssistStatus").textContent = error.message;
+        } finally {
+          if (sameAgentThread(thread, version) && mutation === agentMutationVersion) {
+            agentMutationPending = false;
+            $("#enableAgentAssist").disabled = false;
+            renderAgentAssist();
+          }
         }
+        if (enabled && mode === "suggest" && sameAgentThread(thread, version) && mutation === agentMutationVersion) await generateAgentDraft();
       }
 
       async function disableAgentAssist() {
         const thread = agentThreadRef();
-        if (!thread) return;
+        if (!thread || $("#disableAgentAssist").disabled) return;
+        const version = chatVersion;
+        const wasAuto = state.agentSettings?.mode === "auto";
+        invalidateAgentRequests();
+        const mutation = ++agentMutationVersion;
+        agentMutationPending = true;
+        $("#disableAgentAssist").disabled = true;
+        $("#agentAssistStatus").textContent = "正在停止…";
         try {
           const result = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/disable`, { method: "POST" });
-          state.agentSettings = result.settings;
+          if (!sameAgentThread(thread, version) || mutation !== agentMutationVersion) return;
           state.pendingAgentSend = false;
           $("#draftBanner").hidden = true;
-          renderAgentAssist();
-          $("#agentAssistStatus").textContent = "已关闭 Agent 建议。";
-        } catch (error) { $("#agentAssistStatus").textContent = error.message; }
+          applyAgentSettings(result.settings);
+          $("#enableAgentAssist").disabled = false;
+          $("#agentAssistStatus").textContent = wasAuto ? "已停止自动代回，你可以继续手动聊天。" : "已关闭 Agent 建议。";
+        } catch (error) {
+          if (sameAgentThread(thread, version) && mutation === agentMutationVersion) $("#agentAssistStatus").textContent = `停止失败，请重试：${error.message}`;
+        } finally {
+          if (sameAgentThread(thread, version) && mutation === agentMutationVersion) {
+            agentMutationPending = false;
+            $("#disableAgentAssist").disabled = false;
+          }
+        }
       }
 
       async function generateAgentDraft() {
         const thread = agentThreadRef();
-        if (!thread || $("#generateAgentDraft").disabled) return;
+        if (!thread || !state.agentSettings?.enabled || state.agentSettings?.mode === "auto" || agentMutationPending || $("#generateAgentDraft").disabled) return;
         const version = ++agentAssistVersion;
+        const chatSnapshot = chatVersion;
+        const inputSnapshot = $("#messageInput").value;
         const controller = new AbortController();
         agentAssistController = controller;
         $("#generateAgentDraft").disabled = true;
@@ -778,8 +870,9 @@
             body: JSON.stringify({ consent: true }),
             signal: controller.signal
           });
-          if (version !== agentAssistVersion) return;
-          state.agentSettings = result.settings;
+          if (version !== agentAssistVersion || !sameAgentThread(thread, chatSnapshot) || state.agentSettings?.enabled !== true) return;
+          if (result.settings && !applyAgentSettings(result.settings)) return;
+          if (!state.agentSettings?.enabled || state.agentSettings?.mode === "auto" || $("#messageInput").value !== inputSnapshot) return;
           $("#messageInput").value = result.draft;
           state.pendingAgentSend = true;
           if (state.currentChatId) chatDrafts.set(state.currentChatId, result.draft);
@@ -789,7 +882,7 @@
             : "当前使用备用草稿，请确认或修改后再发送。";
           $("#messageInput").focus();
         } catch (error) {
-          if (version !== agentAssistVersion) return;
+          if (version !== agentAssistVersion || !sameAgentThread(thread, chatSnapshot) || error.name === "AbortError") return;
           $("#agentAssistStatus").textContent = error.message;
         } finally {
           if (version === agentAssistVersion) {
@@ -844,7 +937,7 @@
         $("#echoMetric").textContent = state.echoes.length;
         $("#chatMetric").textContent = state.conversations.length;
         $("#friendsMetric").textContent = state.friends.length;
-        $("#friendsSummary").textContent = state.friends.length ? `${state.friends.length} 位好友` : "邀请已注册的朋友，互相出现在列表里";
+        $("#friendsSummary").textContent = state.friends.length ? `${state.friends.length} 位好友` : "邀请朋友加入，互相出现在列表里";
         $("#signalPeriod").textContent = state.signals.length ? `最近 ${Math.min(state.signals.length, 20)} 句` : "还没有记录";
         $("#signalLog").innerHTML = state.signals.length ? state.signals.slice(0,20).map((signal) => `<article class="signal-item"><small>${signal.sourceType === "shared" ? "从别处带来" : "今日内容"} · ${formatTime(signal.createdAt)}</small><h3>${escapeHtml(signal.title)}</h3><p>${escapeHtml(signal.reaction)}</p></article>`).join("") : `<div class="empty"><p>第一句暗号会保存在这里。</p></div>`;
       }
@@ -944,32 +1037,41 @@
       function connectEvents() {
         state.eventSource?.close();
         state.eventSource = new EventSource(`/api/events?token=${encodeURIComponent(state.token)}`);
+        state.eventSource.addEventListener("agent_state", (event) => {
+          let payload = null;
+          try { payload = JSON.parse(event.data); } catch { return; }
+          const current = agentThreadRef();
+          if (!payload?.settings || payload.kind !== current?.kind || payload.threadId !== current?.id) return;
+          applyAgentSettings(payload.settings);
+        });
         state.eventSource.addEventListener("notification", async (event) => {
           await refreshAll();
           let type = "";
           try { type = JSON.parse(event.data)?.type || ""; } catch {}
           toast(type.startsWith("friend") ? "好友动态有更新" : "收到一条新的回声");
         });
+        const showReplyHint = (item, thread, version) => {
+          if (!sameAgentThread(thread, version) || !state.agentSettings?.enabled || state.agentSettings.mode === "auto" || item.source === "agent_auto" || item.senderId === state.user.id) return;
+          $("#agentAssistHint").textContent = "对方发来新消息，可生成回复建议";
+          $("#agentAssistPanel").hidden = false;
+          $("#openAgentAssist").setAttribute("aria-expanded", "true");
+        };
         state.eventSource.addEventListener("message", async (event) => {
           const item = JSON.parse(event.data);
           if (state.chatKind === "echo" && item.echoId === state.currentChatId) {
+            const thread = agentThreadRef();
+            const version = chatVersion;
             await refreshChatMessages();
-            if (state.agentSettings?.enabled && item.senderId !== state.user.id) {
-              $("#agentAssistHint").textContent = "对方发来新消息，可生成回复建议";
-              $("#agentAssistPanel").hidden = false;
-              $("#openAgentAssist").setAttribute("aria-expanded", "true");
-            }
+            showReplyHint(item, thread, version);
           }
         });
         state.eventSource.addEventListener("friend_message", async (event) => {
           const item = JSON.parse(event.data);
           if (state.chatKind === "friend" && item.friendshipId && state.friends.some((row) => row.id === item.friendshipId && row.friend.id === state.currentFriendUserId)) {
+            const thread = agentThreadRef();
+            const version = chatVersion;
             await refreshChatMessages();
-            if (state.agentSettings?.enabled && item.senderId !== state.user.id) {
-              $("#agentAssistHint").textContent = "对方发来新消息，可生成回复建议";
-              $("#agentAssistPanel").hidden = false;
-              $("#openAgentAssist").setAttribute("aria-expanded", "true");
-            }
+            showReplyHint(item, thread, version);
           } else {
             await refreshAll();
           }
@@ -978,10 +1080,8 @@
 
       async function enterApp(me) {
         state.user = me.user;
-        state.invite = me.invite;
         $("#authGate").hidden = true;
         $("#appShell").hidden = false;
-        $("#inviteCode").textContent = state.invite?.code || "—";
         renderHome();
         await refreshAll();
         if (!state.user.profileCompleted) showProfile(false);
@@ -1042,7 +1142,14 @@
       $("#questionOptions").addEventListener("click", (event) => { const button = event.target.closest("[data-answer]"); if (button) answerEcho(button.dataset.answer); });
       $("#startChat").addEventListener("click", () => { closeSheets(); openChat(state.currentEchoId); });
       $("#conversationList").addEventListener("click", (event) => { const row = event.target.closest("[data-chat-id]"); if (row) openChat(row.dataset.chatId); });
-      $("#closeChat").addEventListener("click", () => closeChat());
+      $("#closeChat").addEventListener("click", () => {
+        const returnToFriends = state.chatKind === "friend";
+        closeChat();
+        if (returnToFriends) {
+          $("#friendsScreen").hidden = false;
+          $("#friendsScreen").classList.add("is-open");
+        }
+      });
       $("#openIcebreakers").addEventListener("click", () => {
         if (!state.currentChatId) return;
         if (!$("#icebreakerPanel").hidden) return resetIcebreakers();
@@ -1069,17 +1176,22 @@
         const body = draft.trim();
         if (!chatId || !body) return;
         try {
-          const source = state.pendingAgentSend ? "agent_suggestion" : "user";
+          const source = state.pendingAgentSend && state.agentSettings?.mode !== "auto" ? "agent_suggestion" : "user";
           if (state.chatKind === "friend") {
             await apiFetch(`/api/friends/${state.currentFriendUserId}/messages`, {method:"POST",body:JSON.stringify({body,source})});
           } else {
             await apiFetch(`/api/echoes/${chatId}/messages`, {method:"POST",body:JSON.stringify({body,source})});
           }
+          if (version === chatVersion && chatId === state.currentChatId && state.agentSettings?.mode === "auto") {
+            state.agentSettings = { ...state.agentSettings, enabled: false, autoStatus: "idle", autoReason: null };
+            renderAgentAssist();
+          }
+          if (chatDrafts.get(chatId) === draft) chatDrafts.delete(chatId);
+          if (version !== chatVersion || chatId !== state.currentChatId) return;
+          invalidateAgentRequests();
           state.pendingAgentSend = false;
           $("#draftBanner").hidden = true;
           if (state.agentSettings) state.agentSettings = { ...state.agentSettings, draft: "", draftSource: null };
-          if (chatDrafts.get(chatId) === draft) chatDrafts.delete(chatId);
-          if (version !== chatVersion || chatId !== state.currentChatId) return;
           if ($("#messageInput").value === draft) { $("#messageInput").value = ""; chatDrafts.delete(chatId); }
           await refreshChatMessages();
           renderAgentAssist();
@@ -1089,7 +1201,6 @@
       $("#openSettings").addEventListener("click", () => openSheet("#settingsSheet"));
       $("#editProfile").addEventListener("click", () => showProfile(true));
       $("#profileCancel").addEventListener("click", () => $("#profileGate").hidden = true);
-      $("#copyInvite").addEventListener("click", async () => { const code = state.invite?.code; if (!code) return; await navigator.clipboard?.writeText(code); toast("邀请码已复制"); });
       $("#enableNotifications").addEventListener("click", async () => { if (!("Notification" in window)) return toast("当前浏览器不支持通知"); const permission = await Notification.requestPermission(); $("#notificationStatus").textContent = permission === "granted" ? "已允许回声通知" : "通知尚未开启"; });
       $("#manageBlocks").addEventListener("click", async () => {
         closeSheets();
@@ -1135,13 +1246,13 @@
             message("#authMessage", result.delivery === "development" ? `测试验证码：${result.devCode}` : result.delivery === "beta" ? "闭测验证码已启用" : "验证码已发送");
             $("#codeInput").focus();
           } else {
-            const result = await apiFetch("/api/auth/verify",{method:"POST",body:JSON.stringify({phone,code:$("#codeInput").value.trim(),inviteCode:$("#inviteInput").value.trim()})});
+            const result = await apiFetch("/api/auth/verify",{method:"POST",body:JSON.stringify({phone,code:$("#codeInput").value.trim()})});
             state.token = result.token; localStorage.setItem("anhao_token", state.token); await enterApp(await apiFetch("/api/me"));
           }
         } catch (error) { message("#authMessage", error.message, true); }
         finally { button.disabled = false; }
       });
-      $("#wechatLogin").addEventListener("click", async () => { try { const providers = await apiFetch("/api/auth/providers"); if (!providers.wechat) return toast("微信登录尚未配置"); location.href = `/api/auth/wechat/start?invite=${encodeURIComponent($("#inviteInput").value.trim())}`; } catch (error) { toast(error.message); } });
+      $("#wechatLogin").addEventListener("click", async () => { try { const providers = await apiFetch("/api/auth/providers"); if (!providers.wechat) return toast("微信登录尚未配置"); location.href = "/api/auth/wechat/start"; } catch (error) { toast(error.message); } });
       $("#profileForm").addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
@@ -1153,6 +1264,7 @@
 
       $("#openFriends")?.addEventListener("click", () => openFriendsScreen());
       $("#openFriendsFromSettings")?.addEventListener("click", () => openFriendsScreen());
+      $("#openFriendJoinFromSettings")?.addEventListener("click", () => { closeSheets(); message("#friendJoinMessage", ""); openSheet("#friendJoinSheet"); });
       $("#closeFriends")?.addEventListener("click", () => closeFriendsScreen());
       $("#friendsList")?.addEventListener("click", (event) => {
         const row = event.target.closest("[data-friend-id]");
@@ -1161,9 +1273,9 @@
       $("#copyFriendInvite")?.addEventListener("click", async () => {
         try {
           const invite = state.friendInvite || await loadFriendInvite();
-          const textToCopy = `【暗号】邀请你成为我的好友。打开 ${invite.shareUrl} 或在 App 内输入好友邀请码 ${invite.code}（需已有账号）。`;
+          const textToCopy = `【暗号】邀请你成为我的好友。打开 ${invite.shareUrl}，或先用手机号注册登录，再输入好友邀请码 ${invite.code}。`;
           await navigator.clipboard?.writeText(textToCopy);
-          $("#friendInviteStatus").textContent = "邀请已复制，可发给已注册的朋友。";
+          $("#friendInviteStatus").textContent = "邀请已复制，朋友注册登录后即可加入。";
           toast("好友邀请已复制");
         } catch (error) { toast(error.message); }
       });
@@ -1210,7 +1322,8 @@
         $("#openAgentAssist").setAttribute("aria-expanded", "true");
         renderAgentAssist();
       });
-      $("#enableAgentAssist")?.addEventListener("click", enableAgentAssist);
+      $("#enableAgentAssist")?.addEventListener("click", () => enableAgentAssist("suggest"));
+      $("#enableAgentAuto")?.addEventListener("click", () => enableAgentAssist("auto"));
       $("#disableAgentAssist")?.addEventListener("click", disableAgentAssist);
       $("#generateAgentDraft")?.addEventListener("click", generateAgentDraft);
 
