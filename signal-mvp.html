@@ -182,6 +182,13 @@
       .bubble.agent-suggestion small.agent-tag { display: block; margin-bottom: 4px; color: var(--accent); font-size: 9px; font-weight: 800; }
       .bubble.mine.agent-suggestion small.agent-tag { color: #dce7e1; }
       .agent-live { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0 4px; }
+      .agent-toggle { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 700; }
+      .agent-toggle small { display: block; color: var(--muted); font-size: 10px; font-weight: 400; }
+      #toneExamplesList { list-style: none; padding: 0; margin: 6px 0; max-height: 220px; overflow: auto; }
+      #toneExamplesList li { border-bottom: 1px solid var(--line); padding: 6px 0; font-size: 11px; }
+      #toneExamplesList li .tone-orig { color: var(--muted); text-decoration: line-through; }
+      #toneExamplesList li button { float: right; font-size: 10px; }
+      .tone-hint { color: var(--muted); font-size: 10px; }
       .agent-live strong { display: block; color: var(--accent); font-size: 12px; }
       .agent-live span { color: var(--muted); font-size: 10px; }
       .agent-live .ghost { flex-shrink: 0; min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; font-weight: 800; }
@@ -371,6 +378,16 @@
               <button id="disableAgentAssist" class="ghost" type="button">关闭</button>
             </div>
             <div id="agentAssistPanel" class="icebreaker-panel" hidden>
+              <label class="agent-toggle"><input id="agentThreadAllowed" type="checkbox" checked> 在此对话中允许 Agent 建议<small>关闭后不会生成建议，也不会从此对话学习语气（已学样例会删除）</small></label>
+              <div class="agent-tone">
+                <button id="openToneExamples" class="text-action" type="button" aria-expanded="false">此对话中 Agent 学到的语气样例</button>
+                <div id="toneExamplesPanel" hidden>
+                  <p class="tone-hint">采用或修改 Agent 建议后发送，会被记作语气样例（仅用于此对话，最多保留最近 50 条），生成建议时参考其中最近约 8 条。</p>
+                  <ul id="toneExamplesList"></ul>
+                  <button id="clearToneExamples" class="ghost" type="button">清空此对话的样例</button>
+                  <p id="toneExamplesStatus" role="status" aria-live="polite"></p>
+                </div>
+              </div>
               <div id="agentSetup">
                 <p>建议模式会将当前内容标题、你自己的感受（好友聊天使用本人简介）及最近 10 条双方聊天发送给模型，生成草稿。由你确认发送，消息标注“Agent 建议”。</p>
                 <button id="enableAgentAssist" class="primary" type="button">同意并开启建议</button>
@@ -768,6 +785,10 @@
 
       function resetAgentAssistPanel() {
         $("#agentAssistPanel").hidden = true;
+        $("#toneExamplesPanel").hidden = true;
+        $("#toneExamplesList").innerHTML = "";
+        $("#toneExamplesStatus").textContent = "";
+        $("#openToneExamples").setAttribute("aria-expanded", "false");
         $("#openAgentAssist").setAttribute("aria-expanded", "false");
         $("#agentAssistStatus").textContent = "";
         $("#draftBanner").hidden = true;
@@ -787,8 +808,10 @@
         const automatic = mode === "auto";
         const autoAvailable = state.agentLimits?.autoSend === true;
         const statusText = { idle: "等待真人消息", generating: "正在生成回复", failed: "生成失败，已停止" };
-        $("#agentSetup").hidden = Boolean(mode);
-        $("#agentAutoSetup").hidden = automatic;
+        const allowed = settings?.suggestionsAllowed !== false;
+        $("#agentThreadAllowed").checked = allowed;
+        $("#agentSetup").hidden = Boolean(mode) || !allowed;
+        $("#agentAutoSetup").hidden = automatic || !allowed;
         const failureReasons = { disabled: "模型尚未开启", daily_limit: "今天的使用次数已用完", busy: "当前服务繁忙", timeout: "生成超时", authentication: "模型服务暂不可用", provider_rate_limit: "模型服务繁忙", invalid_output: "回复未通过检查", refusal: "此次回复未生成", CONTENT_BLOCKED: "回复未通过内容审核", CONTENT_UNDER_REVIEW: "回复需要审核" };
         const adminDisabled = settings?.autoReason === "admin_disabled";
         const failed = settings?.autoStatus === "failed" || adminDisabled;
@@ -1251,6 +1274,60 @@
       $("#editProfile").addEventListener("click", () => showProfile(true));
       $("#profileCancel").addEventListener("click", () => $("#profileGate").hidden = true);
       $("#enableNotifications").addEventListener("click", async () => { if (!("Notification" in window)) return toast("当前浏览器不支持通知"); const permission = await Notification.requestPermission(); $("#notificationStatus").textContent = permission === "granted" ? "已允许回声通知" : "通知尚未开启"; });
+      $("#agentThreadAllowed").addEventListener("change", async (event) => {
+        const thread = agentThreadRef();
+        if (!thread) return;
+        const allowed = event.target.checked;
+        if (!allowed && !confirm("关闭后此对话不再生成 Agent 建议，并删除从此对话学到的语气样例。继续？")) { event.target.checked = true; return; }
+        invalidateAgentRequests();
+        try {
+          const result = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/suggestions`, { method: "POST", body: JSON.stringify({ allowed }) });
+          if (!sameAgentThread(thread)) return;
+          applyAgentSettings(result.settings);
+          $("#agentAssistStatus").textContent = allowed ? "已允许此对话使用 Agent 建议。" : `已关闭此对话的 Agent${result.deletedToneExamples ? `，删除 ${result.deletedToneExamples} 条语气样例` : ""}。`;
+          if (!$("#toneExamplesPanel").hidden) loadToneExamples();
+        } catch (error) {
+          event.target.checked = !allowed;
+          $("#agentAssistStatus").textContent = error.message;
+        }
+      });
+      async function loadToneExamples() {
+        const list = $("#toneExamplesList");
+        const thread = agentThreadRef();
+        if (!thread) return;
+        try {
+          const { examples } = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/tone-examples`);
+          if (!sameAgentThread(thread)) return;
+          list.innerHTML = "";
+          if (!examples.length) list.innerHTML = "<li>此对话还没有学到语气样例。</li>";
+          for (const item of examples) {
+            const li = document.createElement("li");
+            const del = document.createElement("button");
+            del.type = "button"; del.className = "ghost"; del.textContent = "删除";
+            del.addEventListener("click", async () => {
+              try { await apiFetch(`/api/agent/tone-examples/${encodeURIComponent(item.id)}`, { method: "DELETE" }); loadToneExamples(); }
+              catch (error) { $("#toneExamplesStatus").textContent = error.message; }
+            });
+            const finalText = document.createElement("div"); finalText.textContent = `${item.edited ? "✏️ 已修改" : "✓ 直接采用"}：${item.finalText}`;
+            li.append(del, finalText);
+            if (item.edited) { const orig = document.createElement("div"); orig.className = "tone-orig"; orig.textContent = item.suggestion; li.append(orig); }
+            list.append(li);
+          }
+          $("#clearToneExamples").disabled = !examples.length;
+        } catch (error) { $("#toneExamplesStatus").textContent = error.message; }
+      }
+      $("#openToneExamples").addEventListener("click", () => {
+        const panel = $("#toneExamplesPanel");
+        panel.hidden = !panel.hidden;
+        $("#openToneExamples").setAttribute("aria-expanded", String(!panel.hidden));
+        if (!panel.hidden) loadToneExamples();
+      });
+      $("#clearToneExamples").addEventListener("click", async () => {
+        const thread = agentThreadRef();
+        if (!thread || !confirm("清空此对话已学的语气样例？")) return;
+        try { const r = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/tone-examples`, { method: "DELETE" }); $("#toneExamplesStatus").textContent = `已清空 ${r.deleted} 条。`; loadToneExamples(); }
+        catch (error) { $("#toneExamplesStatus").textContent = error.message; }
+      });
       $("#manageBlocks").addEventListener("click", async () => {
         closeSheets();
         state.blocks = (await apiFetch("/api/blocks")).blocks;

@@ -254,6 +254,55 @@ ensureColumn("agent_thread_settings", "generation_version", "INTEGER NOT NULL DE
 ensureColumn("agent_thread_settings", "auto_status", "TEXT NOT NULL DEFAULT 'idle'");
 ensureColumn("agent_thread_settings", "auto_reason", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("agent_thread_settings", "handled_message_id", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("agent_thread_settings", "suggestions_allowed", "INTEGER NOT NULL DEFAULT 1");
+ensureColumn("agent_thread_settings", "suggested_text", "TEXT NOT NULL DEFAULT ''");
+db.exec(`
+  CREATE TABLE IF NOT EXISTS agent_tone_examples (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    thread_kind TEXT NOT NULL,
+    thread_id TEXT NOT NULL,
+    suggestion TEXT NOT NULL,
+    final_text TEXT NOT NULL,
+    edited INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_agent_tone_user ON agent_tone_examples(user_id, created_at);
+`);
+const TONE_EXAMPLE_CAP = 50;
+const TONE_PROMPT_EXAMPLES = 8;
+
+function recordToneExample(kind, threadId, userId, finalText) {
+  const settings = getAgentSettings(kind, threadId, userId);
+  if (!settings) return null;
+  const suggestion = settings.suggested_text || "";
+  db.prepare(`UPDATE agent_thread_settings SET suggested_text='' WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(kind, threadId, userId);
+  // Never learn from threads where the agent is off or suggestions are disallowed.
+  if (!settings.enabled || !settings.suggestions_allowed || settings.mode !== "suggest" || !suggestion) return null;
+  const row = { id: id("tone"), suggestion, finalText: finalText.trim(), edited: suggestion.trim() !== finalText.trim(), createdAt: now() };
+  db.prepare(`INSERT INTO agent_tone_examples(id,user_id,thread_kind,thread_id,suggestion,final_text,edited,created_at) VALUES(?,?,?,?,?,?,?,?)`)
+    .run(row.id, userId, kind, threadId, row.suggestion, row.finalText, row.edited ? 1 : 0, row.createdAt);
+  db.prepare(`DELETE FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=? AND id NOT IN (
+    SELECT id FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=? ORDER BY created_at DESC, rowid DESC LIMIT ?)`)
+    .run(userId, kind, threadId, userId, kind, threadId, TONE_EXAMPLE_CAP);
+  return row;
+}
+
+function serializeToneExample(row) {
+  return { id: row.id, threadKind: row.thread_kind, threadId: row.thread_id, suggestion: row.suggestion, finalText: row.final_text, edited: Boolean(row.edited), createdAt: row.created_at };
+}
+
+function toneExamplesForPrompt(userId, kind, threadId) {
+  // Per-thread only: examples never cross into other friends' threads.
+  if (getAgentSettings(kind, threadId, userId)?.suggestions_allowed === 0) return [];
+  const rows = db.prepare(`SELECT * FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=?
+    ORDER BY created_at DESC, rowid DESC LIMIT ?`).all(userId, kind, threadId, TONE_EXAMPLE_CAP);
+  return rows
+    .map((row, index) => ({ row, score: (row.edited ? 1 : 0) - index / 100 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, TONE_PROMPT_EXAMPLES)
+    .map(({ row }) => ({ suggestion: row.suggestion, final: row.final_text, edited: Boolean(row.edited) }));
+}
 
 function seed() {
   const demoUsers = {
@@ -409,10 +458,11 @@ function removeFriendship(userA, userB) {
 
 function serializeAgentSettings(row) {
   if (!row) {
-    return { enabled: false, mode: "suggest", autoStatus: "idle", autoReason: null, consentAt: null, draft: "", draftSource: null, draftUpdatedAt: null };
+    return { enabled: false, suggestionsAllowed: true, mode: "suggest", autoStatus: "idle", autoReason: null, consentAt: null, draft: "", draftSource: null, draftUpdatedAt: null };
   }
   return {
     enabled: Boolean(row.enabled),
+    suggestionsAllowed: row.suggestions_allowed !== 0,
     mode: row.mode,
     version: row.generation_version,
     autoStatus: row.auto_status,
@@ -1187,6 +1237,7 @@ async function api(req, res, url) {
       const message = chatMedia.serialize({ id:id("msg"), echoId:row.id, senderId:user.id, senderName:user.nickname, ...content, source, createdAt:now() });
       persistChatMessage("echo", row.id, user.id, message, content);
       if (source === "agent_suggestion") {
+        recordToneExample("echo", row.id, user.id, text);
         upsertAgentSettings("echo", row.id, user.id, { draftText: "", draftSource: "", draftUpdatedAt: now() });
       }
       emit(user.id,"message",message); emit(otherId,"message",message);
@@ -1352,6 +1403,7 @@ async function api(req, res, url) {
       const message = chatMedia.serialize({ id: id("fmsg"), friendshipId: friendship.id, senderId: user.id, senderName: user.nickname, ...content, source, createdAt: now() });
       persistChatMessage("friend", friendship.id, user.id, message, content);
       if (source === "agent_suggestion") {
+        recordToneExample("friend", friendship.id, user.id, text);
         upsertAgentSettings("friend", friendship.id, user.id, { draftText: "", draftSource: "", draftUpdatedAt: now() });
       }
       emit(user.id, "friend_message", message);
@@ -1382,7 +1434,25 @@ async function api(req, res, url) {
     return res.end(bytes);
   }
 
-  const agentThreadMatch = path.match(/^\/api\/agent\/threads\/(echo|friend)\/([^/]+)(?:\/(enable|disable|suggest|draft))?$/);
+  if (path === "/api/agent/tone-examples") {
+    if (method === "GET") {
+      const rows = db.prepare(`SELECT * FROM agent_tone_examples WHERE user_id=? ORDER BY created_at DESC, rowid DESC`).all(user.id).map(serializeToneExample);
+      return json(res, 200, { examples: rows, cap: TONE_EXAMPLE_CAP, promptExamples: TONE_PROMPT_EXAMPLES }, { "cache-control": "no-store" });
+    }
+    if (method === "DELETE") {
+      const result = db.prepare(`DELETE FROM agent_tone_examples WHERE user_id=?`).run(user.id);
+      track(user.id, "agent_tone_cleared", { count: Number(result.changes) });
+      return json(res, 200, { deleted: Number(result.changes) });
+    }
+  }
+  const toneExampleMatch = path.match(/^\/api\/agent\/tone-examples\/([^/]+)$/);
+  if (toneExampleMatch && method === "DELETE") {
+    const result = db.prepare(`DELETE FROM agent_tone_examples WHERE id=? AND user_id=?`).run(toneExampleMatch[1], user.id);
+    if (!result.changes) return fail(res, 404, "TONE_EXAMPLE_NOT_FOUND", "没有找到这条语气样例");
+    return json(res, 200, { deleted: 1 });
+  }
+
+  const agentThreadMatch = path.match(/^\/api\/agent\/threads\/(echo|friend)\/([^/]+)(?:\/(enable|disable|suggest|draft|suggestions|tone-examples))?$/);
   if (agentThreadMatch) {
     const kind = agentThreadMatch[1];
     const threadId = agentThreadMatch[2];
@@ -1396,6 +1466,36 @@ async function api(req, res, url) {
         settings: serializeAgentSettings(getAgentSettings(kind, access.threadId, user.id)),
         limits: { messageLimit: REPLY_MESSAGE_LIMIT, autoSend: autoReplyAllowed() }
       }, { "cache-control": "no-store" });
+    }
+
+    if (method === "POST" && action === "suggestions") {
+      const body = await readJson(req);
+      if (typeof body?.allowed !== "boolean") return fail(res, 400, "INVALID_INPUT", "allowed 必须为布尔值");
+      if (!body.allowed) changeAgentMode(kind, access.threadId, user.id, getAgentSettings(kind, access.threadId, user.id)?.mode || "suggest", false);
+      else upsertAgentSettings(kind, access.threadId, user.id, {});
+      db.prepare(`UPDATE agent_thread_settings SET suggestions_allowed=?,suggested_text='' WHERE thread_kind=? AND thread_id=? AND user_id=?`)
+        .run(body.allowed ? 1 : 0, kind, access.threadId, user.id);
+      let deleted = 0;
+      if (!body.allowed) deleted = Number(db.prepare(`DELETE FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=?`).run(user.id, kind, access.threadId).changes);
+      agentState(kind, access.threadId, user.id);
+      track(user.id, "agent_suggestions_toggled", { kind, threadId: access.threadId, allowed: body.allowed });
+      return json(res, 200, { settings: serializeAgentSettings(getAgentSettings(kind, access.threadId, user.id)), deletedToneExamples: deleted });
+    }
+
+    if (action === "tone-examples" && (method === "GET" || method === "DELETE")) {
+      const args = [user.id, kind, access.threadId];
+      if (method === "DELETE") {
+        const deleted = Number(db.prepare(`DELETE FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=?`).run(...args).changes);
+        track(user.id, "agent_tone_cleared", { kind, threadId: access.threadId, count: deleted });
+        return json(res, 200, { deleted });
+      }
+      const examples = db.prepare(`SELECT * FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=? ORDER BY created_at DESC, rowid DESC`).all(...args).map(serializeToneExample);
+      return json(res, 200, { examples, cap: TONE_EXAMPLE_CAP, promptExamples: TONE_PROMPT_EXAMPLES }, { "cache-control": "no-store" });
+    }
+
+    const blockedByToggle = getAgentSettings(kind, access.threadId, user.id)?.suggestions_allowed === 0;
+    if (blockedByToggle && method === "POST" && (action === "enable" || action === "suggest")) {
+      return fail(res, 403, "AGENT_SUGGESTIONS_OFF", "已为此对话关闭 Agent，请先在此对话中重新允许");
     }
 
     if (method === "POST" && action === "enable") {
@@ -1431,7 +1531,7 @@ async function api(req, res, url) {
       const result = await replyDraftHarness.suggest({
         actorId: user.id,
         threadKey: `${kind}:${access.threadId}`,
-        context: fresh.context
+        context: { ...fresh.context, styleExamples: toneExamplesForPrompt(user.id, kind, access.threadId) }
       });
       const current = getAgentSettings(kind, access.threadId, user.id);
       const recheck = assertAgentThreadAccess(kind, threadId, user);
@@ -1442,6 +1542,7 @@ async function api(req, res, url) {
         draftSource: result.source,
         draftUpdatedAt: now()
       });
+      db.prepare(`UPDATE agent_thread_settings SET suggested_text=? WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(result.draft, kind, access.threadId, user.id);
       track(user.id, "agent_draft_suggested", { kind, threadId: access.threadId, source: result.source, reason: result.reason || null });
       return json(res, 200, {
         draft: result.draft,
