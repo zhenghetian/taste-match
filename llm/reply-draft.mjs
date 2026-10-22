@@ -1,8 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { DatabaseSync } from "node:sqlite";
+import { createRuntime, instructionFor, promptFingerprint, systemWithInstruction } from "./runtime.mjs";
 import { anthropicOptions, inspectAIConfig, resolveModel, thinkingOptions, useServerFallbacks } from "./config.mjs";
 
 export const REPLY_PROMPT_VERSION = "reply-draft-v1";
@@ -15,12 +11,6 @@ const FALLBACK_DRAFTS = [
   "你提到的这个瞬间，我也很有感触。你平时会怎么处理？",
   "如果方便的话，可以说说让你停下来的是哪一句？"
 ];
-
-const digest = (value) => createHash("sha256").update(String(value)).digest("hex");
-const positive = (value, fallback, max) => {
-  const n = Number(value);
-  return Number.isInteger(n) && n > 0 && n <= max ? n : fallback;
-};
 
 export function validateDraft(value) {
   if (!value || typeof value.draft !== "string") throw new Error("invalid_output");
@@ -59,7 +49,7 @@ export function createAnthropicReplyProvider(env = process.env) {
       client = new Anthropic(anthropicOptions(env));
     }
     const options = {
-      model, max_tokens: maxTokens, system: autoSend ? AUTO_SYSTEM : SYSTEM,
+      model, max_tokens: maxTokens, system: systemWithInstruction(autoSend ? AUTO_SYSTEM : SYSTEM, instructionFor(env, autoSend ? "ANHAO_LLM_AUTO_INSTRUCTION" : "ANHAO_LLM_REPLY_INSTRUCTION")),
       ...thinkingOptions(env),
       messages: [{ role: "user", content: JSON.stringify(context) }]
     };
@@ -76,40 +66,17 @@ export function createAnthropicReplyProvider(env = process.env) {
   };
 }
 
-export function createReplyDraftHarness({ env = process.env, provider, now = () => Date.now(), record } = {}) {
+export function createReplyDraftHarness({ env = process.env, provider, now = () => Date.now(), record, sharedConcurrency } = {}) {
   const enabled = env.ANHAO_LLM_ENABLED === "true";
-  const model = resolveModel(env);
-  const timeoutMs = positive(env.ANHAO_LLM_TIMEOUT_MS, 20000, 120000);
-  const maxTokens = positive(env.ANHAO_LLM_MAX_TOKENS, 4096, 16000);
-  const dailyLimit = positive(env.ANHAO_LLM_DAILY_LIMIT, 100, 10000);
-  const userLimit = positive(env.ANHAO_LLM_USER_DAILY_LIMIT, 10, 1000);
-  const concurrency = positive(env.ANHAO_LLM_CONCURRENCY, 2, 10);
+  const autoReplyEnabled = env.ANHAO_LLM_AUTO_REPLY_ENABLED !== "false";
+  const promptVersion = promptFingerprint(REPLY_PROMPT_VERSION, instructionFor(env, "ANHAO_LLM_REPLY_INSTRUCTION"));
+  const autoPromptVersion = promptFingerprint(`${REPLY_PROMPT_VERSION}-auto`, instructionFor(env, "ANHAO_LLM_AUTO_INSTRUCTION"));
   const call = provider || createAnthropicReplyProvider(env);
-  let active = 0;
-  let ledger;
-
-  function database() {
-    if (!ledger) {
-      const dir = env.DATA_DIR || fileURLToPath(new URL("../data/", import.meta.url));
-      mkdirSync(dir, { recursive: true });
-      ledger = new DatabaseSync(join(dir, "ai-harness.db"));
-      ledger.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=1000;
-        CREATE TABLE IF NOT EXISTS runs (
-          id TEXT PRIMARY KEY, day TEXT NOT NULL, actor TEXT NOT NULL,
-          prompt_version TEXT NOT NULL, started_at INTEGER NOT NULL,
-          status TEXT NOT NULL, reason TEXT, model TEXT,
-          latency_ms INTEGER, input_tokens INTEGER, output_tokens INTEGER
-        );
-        CREATE INDEX IF NOT EXISTS runs_day_actor ON runs(day, actor);`);
-    }
-    return ledger;
-  }
-
+  const runtime = createRuntime({ env, now, record, sharedConcurrency });
   function fallback(reason, runId = null) {
     const draft = FALLBACK_DRAFTS[Math.abs(String(reason || "x").split("").reduce((sum, c) => sum + c.charCodeAt(0), 0)) % FALLBACK_DRAFTS.length];
     return { draft, source: "fallback", reason, runId };
   }
-
   return {
     status() {
       const config = inspectAIConfig(env);
@@ -120,77 +87,30 @@ export function createReplyDraftHarness({ env = process.env, provider, now = () 
         configurationIssues: config.issues,
         connectionVerified: false,
         feature: "reply_drafts",
-        promptVersion: REPLY_PROMPT_VERSION,
+        promptVersion,
+        autoPromptVersion,
         consentRequired: true,
         messageLimit: REPLY_MESSAGE_LIMIT,
-        autoSend: false
+        autoSend: false,
+        autoReplyEnabled,
+        active: runtime.getActiveCount()
       };
     },
-    close() { ledger?.close(); ledger = undefined; },
+    close: runtime.close,
+    retire: runtime.retire,
+    getActiveCount: runtime.getActiveCount,
     async suggest({ actorId, threadKey, context, autoSend = false }) {
-      if (!enabled) return fallback("disabled");
+      if (runtime.isRetired()) return fallback("retired");
+      if (!enabled || (autoSend && !autoReplyEnabled)) return fallback("disabled");
       let input;
       try {
         if (!actorId || !threadKey) throw new Error("invalid_context");
         input = contextForReplyModel(context);
       } catch { return fallback("invalid_context"); }
-      if (active >= concurrency) return fallback("busy");
-      const started = now();
-      const day = new Date(started).toISOString().slice(0, 10);
-      const runId = randomUUID();
-      let db;
-      try {
-        db = database();
-        db.exec("BEGIN IMMEDIATE");
-        const total = db.prepare("SELECT COUNT(*) AS n FROM runs WHERE day=?").get(day).n;
-        const user = db.prepare("SELECT COUNT(*) AS n FROM runs WHERE day=? AND actor=?").get(day, digest(actorId)).n;
-        if (total >= dailyLimit || user >= userLimit) {
-          db.exec("ROLLBACK");
-          return fallback("daily_limit");
-        }
-        db.prepare("INSERT INTO runs(id,day,actor,prompt_version,started_at,status) VALUES(?,?,?,?,?,?)")
-          .run(runId, day, digest(actorId), REPLY_PROMPT_VERSION, started, "reserved");
-        db.exec("COMMIT");
-      } catch {
-        try { db?.exec("ROLLBACK"); } catch {}
-        return fallback("ledger_unavailable");
-      }
-      active += 1;
-      const controller = new AbortController();
-      let timer;
-      let usage;
-      let resultModel = model;
-      let result;
-      try {
-        const resultPromise = call({ context: input, signal: controller.signal, maxTokens, autoSend });
-        const response = await Promise.race([resultPromise, new Promise((_, reject) => {
-          timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, timeoutMs);
-        })]);
-        usage = response.usage;
-        resultModel = response.model || model;
-        result = { draft: validateDraft(response.output), source: "model", runId };
-      } catch (error) {
-        let reason = "provider_error";
-        if (["timeout", "refusal", "invalid_output", "incomplete_output", "invalid_configuration"].includes(error?.message)) reason = error.message;
-        else if (error?.status === 401 || error?.status === 403) reason = "authentication";
-        else if (error?.status === 429) reason = "provider_rate_limit";
-        result = fallback(reason, runId);
-      } finally {
-        clearTimeout(timer);
-        active -= 1;
-      }
-      const metadata = {
-        runId, promptVersion: REPLY_PROMPT_VERSION, source: result.source, reason: result.reason || null,
-        model: resultModel, latencyMs: Math.max(0, now() - started),
-        inputTokens: Number.isSafeInteger(usage?.input_tokens) ? usage.input_tokens : 0,
-        outputTokens: Number.isSafeInteger(usage?.output_tokens) ? usage.output_tokens : 0
-      };
-      try {
-        db.prepare("UPDATE runs SET status=?,reason=?,model=?,latency_ms=?,input_tokens=?,output_tokens=? WHERE id=?")
-          .run(metadata.source, metadata.reason, metadata.model, metadata.latencyMs, metadata.inputTokens, metadata.outputTokens, runId);
-        record?.(metadata);
-      } catch { /* keep usable draft if metadata write fails */ }
-      return result;
+      return runtime.run({ actorId, promptVersion: autoSend ? autoPromptVersion : promptVersion, fallback,
+        call: (options) => call({ context: input, ...options, autoSend }),
+        validate: (output) => ({ draft: validateDraft(output) })
+      });
     }
   };
 }

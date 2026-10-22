@@ -9,7 +9,7 @@ import { DatabaseSync } from "node:sqlite";
 import { validateImage, MAX_MEDIA_BYTES } from "../chat-media.mjs";
 
 const dataDir = mkdtempSync(join(tmpdir(), "anhao-chat-media-"));
-Object.assign(process.env, { DATA_DIR: dataDir, ANHAO_LLM_ENABLED: "false", MODERATION_WEBHOOK_URL: "", NODE_ENV: "production", SMS_WEBHOOK_URL: "" });
+Object.assign(process.env, { DATA_DIR: dataDir, ANHAO_LLM_ENABLED: "true", ANHAO_LLM_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "synthetic-media-key", ANHAO_LLM_MODEL: "deepseek-flash", ANHAO_LLM_AUTO_REPLY_ENABLED: "true", MODERATION_WEBHOOK_URL: "", NODE_ENV: "production", SMS_WEBHOOK_URL: "" });
 let server, base, db, serial = 0;
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN1sAAAAASUVORK5CYII=", "base64");
 const gif = Buffer.from("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", "base64");

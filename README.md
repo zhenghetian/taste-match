@@ -15,6 +15,7 @@
 - `npm run ai:doctor -- --cloud`：检查云端 AI 配置；`npm run ai:smoke -- --all --cloud`：3 次合成真实请求验证开场白、建议回复和自动代回。云端需独立 HTTPS 模型服务，不能使用电脑上的代理，详见 [公网部署](docs/DEPLOYMENT.md)。
 - DeepSeek 接入：设置 `ANHAO_LLM_PROVIDER=deepseek`、`DEEPSEEK_API_KEY` 和 `ANHAO_LLM_ENABLED=true`，默认使用 `deepseek-flash`，直接连接官方云端接口，无需电脑代理。凭证只由环境注入。
 - `npm run harness -- new "本轮目标"`：记录任务，按计划、实现、验证推进；详见根目录 `AGENTS.md`。
+- [Agent 与 Harness 管理](docs/AGENT-ADMIN.md)：`/agent-admin.html` 调整模型、提示词补充、额度、超时、并发与代回总开关，支持配置版本及恢复；首次启动后持久化后台版本优先于同名环境参数，凭证仍由环境注入。
 
 ## 交互原型
 

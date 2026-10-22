@@ -9,8 +9,17 @@ import { createChatMediaStore, safeLink, MEDIA_JSON_LIMIT } from "./chat-media.m
 import { createIcebreakerHarness } from "./llm/icebreaker.mjs";
 import { createReplyDraftHarness, REPLY_MESSAGE_LIMIT } from "./llm/reply-draft.mjs";
 
-const icebreakerHarness = createIcebreakerHarness({ env: process.env });
-let replyDraftHarness = createReplyDraftHarness({ env: process.env });
+import { createAgentConfigStore, settingsEnvironment } from "./agent-config.mjs";
+import { resolveModel } from "./llm/config.mjs";
+
+const sharedConcurrency = { active: 0 };
+let harnessFactory = ({ env, sharedConcurrency }) => ({
+  icebreakerHarness: createIcebreakerHarness({ env, sharedConcurrency }),
+  replyDraftHarness: createReplyDraftHarness({ env, sharedConcurrency })
+});
+let icebreakerHarness;
+let replyDraftHarness;
+let configEpoch = 0;
 const autoJobs = new Map();
 let autoClosing = false;
 
@@ -36,6 +45,8 @@ if (BETA_TEST_CODE && !/^\d{6}$/.test(BETA_TEST_CODE)) {
 mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, "anhao.db"));
 db.exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
+const agentConfigStore = createAgentConfigStore({ db });
+({ icebreakerHarness, replyDraftHarness } = harnessFactory({ env: agentConfigStore.runtimeEnv(), sharedConcurrency }));
 
 function now() { return new Date().toISOString(); }
 function addMinutes(minutes) { return new Date(Date.now() + minutes * 60_000).toISOString(); }
@@ -531,7 +542,7 @@ function persistChatMessage(threadKind, threadId, userId, message, content) {
 }
 
 function agentState(kind, threadId, userId) {
-  emit(userId, "agent_state", { kind, threadId, settings: serializeAgentSettings(getAgentSettings(kind, threadId, userId)) });
+  emit(userId, "agent_state", { kind, threadId, settings: serializeAgentSettings(getAgentSettings(kind, threadId, userId)), limits: { autoSend: autoReplyAllowed() } });
 }
 
 function changeAgentMode(kind, threadId, userId, mode, enabled) {
@@ -553,15 +564,42 @@ function lastThreadMessage(kind, threadId) {
   return db.prepare(`SELECT * FROM ${table} WHERE ${column}=? ORDER BY rowid DESC LIMIT 1`).get(threadId);
 }
 
+function autoReplyAllowed() {
+  const { enabled, allowAutoReply } = agentConfigStore.snapshot().settings;
+  return enabled && allowAutoReply;
+}
+
+function retireHarness(harness) {
+  Promise.resolve(harness.retire ? harness.retire() : harness.close?.()).catch(error => console.error("harness retirement failed", error));
+}
+
+function applyAgentConfig(next) {
+  configEpoch += 1;
+  const previous = [icebreakerHarness, replyDraftHarness];
+  ({ icebreakerHarness, replyDraftHarness } = next);
+  for (const harness of previous) retireHarness(harness);
+  const rows = db.prepare("SELECT * FROM agent_thread_settings WHERE enabled=1").all();
+  const allowAuto = autoReplyAllowed();
+  db.prepare(`UPDATE agent_thread_settings SET generation_version=generation_version+1,
+    enabled=CASE WHEN mode='auto' AND ?=0 THEN 0 ELSE enabled END,
+    auto_status='idle',auto_reason=CASE WHEN mode='auto' AND ?=0 THEN 'admin_disabled' ELSE '' END,
+    updated_at=? WHERE enabled=1`)
+    .run(allowAuto ? 1 : 0, allowAuto ? 1 : 0, now());
+  for (const row of rows) {
+    agentState(row.thread_kind, row.thread_id, row.user_id);
+    if (allowAuto && row.mode === "auto") queueAutoReply(row.thread_kind, row.thread_id, row.user_id);
+  }
+}
+
 function assertAutoSendable(kind, threadId, userId, version, incomingId) {
   const fresh = getAgentSettings(kind, threadId, userId);
-  if (autoClosing || !fresh?.enabled || fresh.mode !== "auto" || fresh.generation_version !== version) return false;
+  if (autoClosing || !autoReplyAllowed() || !fresh?.enabled || fresh.mode !== "auto" || fresh.generation_version !== version) return false;
   return lastThreadMessage(kind, threadId)?.id === incomingId;
 }
 
 function queueAutoReply(kind, threadId, userId) {
   const key = `${kind}:${threadId}:${userId}`;
-  if (autoClosing || autoJobs.has(key)) return;
+  if (autoClosing || !autoReplyAllowed() || autoJobs.has(key)) return;
   const settings = getAgentSettings(kind, threadId, userId);
   if (!settings?.enabled || settings.mode !== "auto") return;
   const incoming = lastThreadMessage(kind, threadId);
@@ -570,11 +608,14 @@ function queueAutoReply(kind, threadId, userId) {
   const access = user && assertAgentThreadAccess(kind, threadId, user);
   if (!access || access.error) return;
   const version = settings.generation_version;
-  const stillCurrent = () => assertAutoSendable(kind, threadId, userId, version, incoming.id);
+  const epoch = configEpoch;
+  const harness = replyDraftHarness;
+  const stillCurrent = () => epoch === configEpoch && assertAutoSendable(kind, threadId, userId, version, incoming.id);
   db.prepare(`UPDATE agent_thread_settings SET auto_status='generating',auto_reason='' WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(kind, threadId, userId);
   agentState(kind, threadId, userId);
   const job = Promise.resolve().then(async () => {
-    const result = await replyDraftHarness.suggest({ actorId: userId, threadKey: `${kind}:${threadId}`, context: access.context, autoSend: true });
+    if (!stillCurrent()) return;
+    const result = await harness.suggest({ actorId: userId, threadKey: `${kind}:${threadId}`, context: access.context, autoSend: true });
     if (!stillCurrent()) return;
     const fresh = assertAgentThreadAccess(kind, threadId, user);
     if (fresh.error) return;
@@ -589,7 +630,7 @@ function queueAutoReply(kind, threadId, userId) {
     db.exec("BEGIN IMMEDIATE");
     let inserted = false;
     try {
-      if (!assertAutoSendable(kind, threadId, userId, version, incoming.id)) { db.exec("ROLLBACK"); return; }
+      if (!stillCurrent()) { db.exec("ROLLBACK"); return; }
       if (assertAgentThreadAccess(kind, threadId, user).error) { db.exec("ROLLBACK"); return; }
       db.prepare(`INSERT INTO ${table}(id,${column},sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`).run(message.id, threadId, userId, message.body, message.createdAt, message.source);
       db.prepare(`UPDATE agent_thread_settings SET handled_message_id=? WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(incoming.id, kind, threadId, userId);
@@ -610,8 +651,10 @@ function queueAutoReply(kind, threadId, userId) {
     db.prepare(`UPDATE agent_thread_settings SET enabled=0,auto_status='failed',auto_reason=?,generation_version=generation_version+1,updated_at=? WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(reason, now(), kind, threadId, userId);
   }).finally(() => {
     autoJobs.delete(key);
-    db.prepare(`UPDATE agent_thread_settings SET auto_status='idle' WHERE thread_kind=? AND thread_id=? AND user_id=? AND auto_status='generating'`).run(kind, threadId, userId);
-    agentState(kind, threadId, userId);
+    if (epoch === configEpoch) {
+      db.prepare(`UPDATE agent_thread_settings SET auto_status='idle' WHERE thread_kind=? AND thread_id=? AND user_id=? AND auto_status='generating'`).run(kind, threadId, userId);
+      agentState(kind, threadId, userId);
+    }
     queueAutoReply(kind, threadId, userId);
   });
   autoJobs.set(key, job);
@@ -777,6 +820,74 @@ async function api(req, res, url) {
   const method = req.method || "GET";
   const path = url.pathname;
 
+  if (path === "/api/admin/agent" || path.startsWith("/api/admin/agent/")) {
+    res.setHeader("cache-control", "no-store");
+    if (!requireAdmin(req, res)) return;
+    const methods = {
+      "/api/admin/agent/config": ["GET", "PUT"],
+      "/api/admin/agent/validate": ["POST"],
+      "/api/admin/agent/history": ["GET"],
+      "/api/admin/agent/rollback": ["POST"],
+      "/api/admin/agent/status": ["GET"]
+    };
+    const allowed = methods[path];
+    if (!allowed) return fail(res, 404, "NOT_FOUND", "接口不存在");
+    if (!allowed.includes(method)) {
+      res.setHeader("allow", allowed.join(", "));
+      return fail(res, 405, "METHOD_NOT_ALLOWED", "请求方法不支持");
+    }
+    if (IS_PRODUCTION && method !== "GET" && req.headers.origin !== undefined) {
+      let sameOrigin = false;
+      try {
+        const origin = new URL(req.headers.origin);
+        const expected = new URL(publicBaseUrl(req));
+        sameOrigin = origin.origin !== "null" && origin.href === `${origin.origin}/` && origin.origin === expected.origin;
+      } catch {}
+      if (!sameOrigin) return fail(res, 403, "INVALID_ORIGIN", "管理请求必须来自同一站点");
+    }
+    if (path === "/api/admin/agent/config" && method === "GET") return json(res, 200, agentConfigStore.snapshot());
+    if (path.endsWith("/history")) return json(res, 200, { history: agentConfigStore.history() });
+    if (path === "/api/admin/agent/status") {
+      const { revision, settings } = agentConfigStore.snapshot();
+      const date = now().slice(0, 10);
+      const usage = { date, globalCount: 0 };
+      const ledgerPath = join(DATA_DIR, "ai-harness.db");
+      if (existsSync(ledgerPath)) {
+        const ledger = new DatabaseSync(ledgerPath, { readOnly: true });
+        try {
+          const hasRuns = ledger.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='runs'").get();
+          if (hasRuns) usage.globalCount = ledger.prepare("SELECT COUNT(*) AS count FROM runs WHERE day=?").get(date).count;
+        } finally { ledger.close(); }
+      }
+      return json(res, 200, {
+        revision, activeJobs: autoJobs.size, usage,
+        runtime: { enabled: settings.enabled, allowAutoReply: settings.allowAutoReply, provider: settings.provider, model: resolveModel(agentConfigStore.runtimeEnv()), concurrency: settings.concurrency }
+      });
+    }
+    const input = await readJson(req);
+    if (path.endsWith("/validate")) return json(res, 200, agentConfigStore.validate(input?.settings));
+    let settings = input?.settings;
+    if (path.endsWith("/rollback")) {
+      if (!Number.isInteger(input?.revision)) return fail(res, 400, "INVALID_AGENT_CONFIG", "请选择有效的历史版本");
+      const row = db.prepare("SELECT settings FROM agent_config_revisions WHERE revision=?").get(input.revision);
+      if (!row) return fail(res, 404, "CONFIG_REVISION_NOT_FOUND", "历史版本不存在");
+      settings = JSON.parse(row.settings);
+    }
+    const validation = agentConfigStore.validate(settings);
+    if (!validation.valid) return fail(res, 400, "INVALID_AGENT_CONFIG", validation.issues.join("；"));
+    const next = harnessFactory({ env: settingsEnvironment(settings, agentConfigStore.runtimeEnv()), sharedConcurrency });
+    let snapshot;
+    try {
+      snapshot = path.endsWith("/rollback") ? agentConfigStore.rollback(input) : agentConfigStore.save(input);
+    } catch (error) {
+      retireHarness(next.icebreakerHarness);
+      retireHarness(next.replyDraftHarness);
+      throw error;
+    }
+    applyAgentConfig(next);
+    return json(res, 200, snapshot);
+  }
+
   if (method === "GET" && path === "/api/health") return json(res, 200, { ok: true, time: now() });
   if (method === "GET" && path === "/api/auth/providers") return json(res, 200, {
     phone: true,
@@ -915,7 +1026,7 @@ async function api(req, res, url) {
   if (method === "GET" && path === "/api/ai/status") {
     return json(res,200,{
       icebreakers: icebreakerHarness.status(),
-      replyDrafts: { ...replyDraftHarness.status(), autoSend: true },
+      replyDrafts: { ...replyDraftHarness.status(), autoSend: autoReplyAllowed() },
       // backward-compatible top-level fields for older clients
       ...icebreakerHarness.status()
     },{"cache-control":"no-store"});
@@ -1043,11 +1154,13 @@ async function api(req, res, url) {
     if (body?.consent !== true) return fail(res,400,"AI_CONSENT_REQUIRED","请明确同意将内容标题、你自己的感受和共同问题发送给模型");
     const ownSignal = db.prepare(`SELECT title,reaction FROM signals WHERE id=? AND user_id=?`).get(row.user_a===user.id ? row.signal_a : row.signal_b,user.id);
     if (!ownSignal) return fail(res,404,"SIGNAL_NOT_FOUND","没有找到你留下的暗号");
+    const epoch = configEpoch;
     const result = await icebreakerHarness.suggest({
       actorId:user.id, echoId:row.id,
       context:{ title:ownSignal.title, reaction:ownSignal.reaction, question:row.question }
     });
     if (blockedBetween(user.id,otherId)) return fail(res,403,"USER_BLOCKED","这段关系已被拉黑");
+    if (epoch !== configEpoch) return fail(res,409,"AGENT_CANCELLED","配置已更新，请重新生成");
     return json(res,200,result,{"cache-control":"no-store"});
   }
 
@@ -1281,7 +1394,7 @@ async function api(req, res, url) {
       return json(res, 200, {
         thread: { kind, id: access.threadId },
         settings: serializeAgentSettings(getAgentSettings(kind, access.threadId, user.id)),
-        limits: { messageLimit: REPLY_MESSAGE_LIMIT, autoSend: true }
+        limits: { messageLimit: REPLY_MESSAGE_LIMIT, autoSend: autoReplyAllowed() }
       }, { "cache-control": "no-store" });
     }
 
@@ -1289,6 +1402,7 @@ async function api(req, res, url) {
       const body = await readJson(req);
       if (body?.consent !== true) return fail(res, 400, "AI_CONSENT_REQUIRED", "请明确同意将内容标题、你自己的感受和最近聊天发送给模型以生成草稿");
       const mode = body.mode === "auto" ? "auto" : "suggest";
+      if (mode === "auto" && !autoReplyAllowed()) return fail(res, 409, "AUTO_REPLY_DISABLED", "自动代回已关闭，请本人接管回复");
       const row = changeAgentMode(kind, access.threadId, user.id, mode, true);
       if (mode === "auto") queueAutoReply(kind, access.threadId, user.id);
       track(user.id, "agent_enabled", { kind, threadId: access.threadId, mode });
@@ -1310,6 +1424,7 @@ async function api(req, res, url) {
       }
       if (settings.mode === "auto") return fail(res, 409, "AUTO_REPLY_ACTIVE", "请先接管自动代回，再生成建议草稿");
       const version = settings.generation_version;
+      const epoch = configEpoch;
       // Rebuild context after possible new messages
       const fresh = assertAgentThreadAccess(kind, threadId, user);
       if (fresh.error) return fail(res, fresh.error[2], fresh.error[0], fresh.error[1]);
@@ -1321,7 +1436,7 @@ async function api(req, res, url) {
       const current = getAgentSettings(kind, access.threadId, user.id);
       const recheck = assertAgentThreadAccess(kind, threadId, user);
       if (recheck.error) return fail(res, recheck.error[2], recheck.error[0], recheck.error[1]);
-      if (!current?.enabled || current.mode !== "suggest" || current.generation_version !== version) return fail(res,409,"AGENT_CANCELLED","已取消这次生成");
+      if (epoch !== configEpoch || !current?.enabled || current.mode !== "suggest" || current.generation_version !== version) return fail(res,409,"AGENT_CANCELLED","已取消这次生成");
       const saved = upsertAgentSettings(kind, access.threadId, user.id, {
         draftText: result.draft,
         draftSource: result.source,
@@ -1366,7 +1481,8 @@ async function api(req, res, url) {
 const MIME = { ".html":"text/html; charset=utf-8", ".css":"text/css; charset=utf-8", ".js":"text/javascript; charset=utf-8", ".mjs":"text/javascript; charset=utf-8", ".json":"application/json; charset=utf-8", ".jpg":"image/jpeg", ".jpeg":"image/jpeg", ".png":"image/png", ".svg":"image/svg+xml", ".mp4":"video/mp4", ".webmanifest":"application/manifest+json" };
 const PUBLIC_FILES = new Set([
   "/signal-mvp.html", "/index.html", "/admin.html", "/echo-prototype.html", "/ia-prototype.html",
-  "/app.js", "/content-library.mjs", "/chat-sharing.mjs", "/styles.css", "/sw.js", "/manifest.webmanifest"
+  "/app.js", "/content-library.mjs", "/chat-sharing.mjs", "/styles.css", "/sw.js", "/manifest.webmanifest",
+  "/agent-admin.html", "/agent-admin.mjs", "/agent-admin.css"
 ]);
 const ASSET_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".svg", ".mp4"]);
 function staticFile(req,res,url) {
@@ -1389,9 +1505,21 @@ function staticFile(req,res,url) {
   res.writeHead(200,headers); res.end(content);
 }
 
-export function createServer({ replyHarness } = {}) {
-  if (replyHarness) replyDraftHarness = replyHarness;
+export function createServer({ replyHarness, harnessFactory: factory } = {}) {
+  if (factory) {
+    const previous = [icebreakerHarness, replyDraftHarness];
+    const next = factory({ env: agentConfigStore.runtimeEnv(), sharedConcurrency });
+    harnessFactory = factory;
+    ({ icebreakerHarness, replyDraftHarness } = next);
+    for (const harness of previous) retireHarness(harness);
+  }
+  if (replyHarness) {
+    retireHarness(replyDraftHarness);
+    replyDraftHarness = replyHarness;
+  }
   autoClosing = false;
+  // A disabled global configuration must survive restart without restoring auto consent.
+  if (!autoReplyAllowed()) db.prepare(`UPDATE agent_thread_settings SET enabled=0,generation_version=generation_version+1,auto_status='idle',auto_reason='admin_disabled',updated_at=? WHERE enabled=1 AND mode='auto'`).run(now());
   // Resume unanswered human messages after a process restart; sent replies remain in the thread.
   db.prepare(`UPDATE agent_thread_settings SET auto_status='idle' WHERE auto_status='generating'`).run();
   for (const row of db.prepare(`SELECT * FROM agent_thread_settings WHERE enabled=1 AND mode='auto'`).all()) {
@@ -1410,7 +1538,9 @@ export function createServer({ replyHarness } = {}) {
   });
   server.on("close", () => {
     autoClosing = true;
-    Promise.allSettled([...autoJobs.values()]).then(() => { icebreakerHarness.close(); replyDraftHarness.close(); });
+    configEpoch += 1;
+    retireHarness(icebreakerHarness);
+    retireHarness(replyDraftHarness);
   });
   return server;
 }
