@@ -50,3 +50,15 @@ test("reply draft falls back on unsafe model output", async (t) => {
   assert.equal(result.source, "fallback");
   assert.equal(result.reason, "invalid_output");
 });
+
+test("reply draft passes few-shot style examples and summary to provider", async (t) => {
+  let seen;
+  const { harness } = fixture(t, { provider: async ({ context }) => { seen = context; return { output, usage: {}, model: "test" }; } });
+  const styleExamples = Array.from({ length: 12 }, (_, i) => ({ suggestion: "你平时散步的时候，一般都会想些什么事情呢？", final: `哈哈你散步想啥呀${i}？`, edited: true }));
+  await harness.suggest({ ...input, context: { ...input.context, styleExamples } });
+  assert.equal(seen.styleExamples.length, 8);
+  assert.match(seen.styleSummary, /更短/);
+  assert.match(seen.styleSummary, /语气词/);
+  const plain = contextForReplyModel(input.context);
+  assert.equal(plain.styleExamples, undefined);
+});
