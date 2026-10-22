@@ -380,11 +380,11 @@
             <div id="agentAssistPanel" class="icebreaker-panel" hidden>
               <label class="agent-toggle"><input id="agentThreadAllowed" type="checkbox" checked> 在此对话中允许 Agent 建议<small>关闭后不会生成建议，也不会从此对话学习语气（已学样例会删除）</small></label>
               <div class="agent-tone">
-                <button id="openToneExamples" class="text-action" type="button" aria-expanded="false">Agent 学到的语气样例</button>
+                <button id="openToneExamples" class="text-action" type="button" aria-expanded="false">此对话中 Agent 学到的语气样例</button>
                 <div id="toneExamplesPanel" hidden>
-                  <p class="tone-hint">采用或修改 Agent 建议后发送，会被记作语气样例（最多保留最近 50 条），生成建议时参考最近约 8 条。</p>
+                  <p class="tone-hint">采用或修改 Agent 建议后发送，会被记作语气样例（仅用于此对话，最多保留最近 50 条），生成建议时参考其中最近约 8 条。</p>
                   <ul id="toneExamplesList"></ul>
-                  <button id="clearToneExamples" class="ghost" type="button">清空全部样例</button>
+                  <button id="clearToneExamples" class="ghost" type="button">清空此对话的样例</button>
                   <p id="toneExamplesStatus" role="status" aria-live="polite"></p>
                 </div>
               </div>
@@ -785,6 +785,10 @@
 
       function resetAgentAssistPanel() {
         $("#agentAssistPanel").hidden = true;
+        $("#toneExamplesPanel").hidden = true;
+        $("#toneExamplesList").innerHTML = "";
+        $("#toneExamplesStatus").textContent = "";
+        $("#openToneExamples").setAttribute("aria-expanded", "false");
         $("#openAgentAssist").setAttribute("aria-expanded", "false");
         $("#agentAssistStatus").textContent = "";
         $("#draftBanner").hidden = true;
@@ -1288,10 +1292,13 @@
       });
       async function loadToneExamples() {
         const list = $("#toneExamplesList");
+        const thread = agentThreadRef();
+        if (!thread) return;
         try {
-          const { examples } = await apiFetch("/api/agent/tone-examples");
+          const { examples } = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/tone-examples`);
+          if (!sameAgentThread(thread)) return;
           list.innerHTML = "";
-          if (!examples.length) list.innerHTML = "<li>还没有学到语气样例。</li>";
+          if (!examples.length) list.innerHTML = "<li>此对话还没有学到语气样例。</li>";
           for (const item of examples) {
             const li = document.createElement("li");
             const del = document.createElement("button");
@@ -1315,8 +1322,9 @@
         if (!panel.hidden) loadToneExamples();
       });
       $("#clearToneExamples").addEventListener("click", async () => {
-        if (!confirm("清空所有已学的语气样例？")) return;
-        try { const r = await apiFetch("/api/agent/tone-examples", { method: "DELETE" }); $("#toneExamplesStatus").textContent = `已清空 ${r.deleted} 条。`; loadToneExamples(); }
+        const thread = agentThreadRef();
+        if (!thread || !confirm("清空此对话已学的语气样例？")) return;
+        try { const r = await apiFetch(`/api/agent/threads/${thread.kind}/${thread.id}/tone-examples`, { method: "DELETE" }); $("#toneExamplesStatus").textContent = `已清空 ${r.deleted} 条。`; loadToneExamples(); }
         catch (error) { $("#toneExamplesStatus").textContent = error.message; }
       });
       $("#manageBlocks").addEventListener("click", async () => {

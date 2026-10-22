@@ -271,8 +271,9 @@ function recordToneExample(kind, threadId, userId, finalText) {
   const row = { id: id("tone"), suggestion, finalText: finalText.trim(), edited: suggestion.trim() !== finalText.trim(), createdAt: now() };
   db.prepare(`INSERT INTO agent_tone_examples(id,user_id,thread_kind,thread_id,suggestion,final_text,edited,created_at) VALUES(?,?,?,?,?,?,?,?)`)
     .run(row.id, userId, kind, threadId, row.suggestion, row.finalText, row.edited ? 1 : 0, row.createdAt);
-  db.prepare(`DELETE FROM agent_tone_examples WHERE user_id=? AND id NOT IN (
-    SELECT id FROM agent_tone_examples WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT ?)`).run(userId, userId, TONE_EXAMPLE_CAP);
+  db.prepare(`DELETE FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=? AND id NOT IN (
+    SELECT id FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=? ORDER BY created_at DESC, rowid DESC LIMIT ?)`)
+    .run(userId, kind, threadId, userId, kind, threadId, TONE_EXAMPLE_CAP);
   return row;
 }
 
@@ -281,11 +282,12 @@ function serializeToneExample(row) {
 }
 
 function toneExamplesForPrompt(userId, kind, threadId) {
-  const rows = db.prepare(`SELECT t.*, t.rowid AS rid FROM agent_tone_examples t
-    LEFT JOIN agent_thread_settings s ON s.thread_kind=t.thread_kind AND s.thread_id=t.thread_id AND s.user_id=t.user_id
-    WHERE t.user_id=? AND COALESCE(s.suggestions_allowed,1)=1 ORDER BY t.created_at DESC, t.rowid DESC LIMIT ?`).all(userId, TONE_EXAMPLE_CAP);
+  // Per-thread only: examples never cross into other friends' threads.
+  if (getAgentSettings(kind, threadId, userId)?.suggestions_allowed === 0) return [];
+  const rows = db.prepare(`SELECT * FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=?
+    ORDER BY created_at DESC, rowid DESC LIMIT ?`).all(userId, kind, threadId, TONE_EXAMPLE_CAP);
   return rows
-    .map((row, index) => ({ row, score: (row.thread_kind === kind && row.thread_id === threadId ? 2 : 0) + (row.edited ? 1 : 0) - index / 100 }))
+    .map((row, index) => ({ row, score: (row.edited ? 1 : 0) - index / 100 }))
     .sort((a, b) => b.score - a.score)
     .slice(0, TONE_PROMPT_EXAMPLES)
     .map(({ row }) => ({ suggestion: row.suggestion, final: row.final_text, edited: Boolean(row.edited) }));
@@ -1337,7 +1339,7 @@ async function api(req, res, url) {
     return json(res, 200, { deleted: 1 });
   }
 
-  const agentThreadMatch = path.match(/^\/api\/agent\/threads\/(echo|friend)\/([^/]+)(?:\/(enable|disable|suggest|draft|suggestions))?$/);
+  const agentThreadMatch = path.match(/^\/api\/agent\/threads\/(echo|friend)\/([^/]+)(?:\/(enable|disable|suggest|draft|suggestions|tone-examples))?$/);
   if (agentThreadMatch) {
     const kind = agentThreadMatch[1];
     const threadId = agentThreadMatch[2];
@@ -1365,6 +1367,17 @@ async function api(req, res, url) {
       agentState(kind, access.threadId, user.id);
       track(user.id, "agent_suggestions_toggled", { kind, threadId: access.threadId, allowed: body.allowed });
       return json(res, 200, { settings: serializeAgentSettings(getAgentSettings(kind, access.threadId, user.id)), deletedToneExamples: deleted });
+    }
+
+    if (action === "tone-examples" && (method === "GET" || method === "DELETE")) {
+      const args = [user.id, kind, access.threadId];
+      if (method === "DELETE") {
+        const deleted = Number(db.prepare(`DELETE FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=?`).run(...args).changes);
+        track(user.id, "agent_tone_cleared", { kind, threadId: access.threadId, count: deleted });
+        return json(res, 200, { deleted });
+      }
+      const examples = db.prepare(`SELECT * FROM agent_tone_examples WHERE user_id=? AND thread_kind=? AND thread_id=? ORDER BY created_at DESC, rowid DESC`).all(...args).map(serializeToneExample);
+      return json(res, 200, { examples, cap: TONE_EXAMPLE_CAP, promptExamples: TONE_PROMPT_EXAMPLES }, { "cache-control": "no-store" });
     }
 
     const blockedByToggle = getAgentSettings(kind, access.threadId, user.id)?.suggestions_allowed === 0;
