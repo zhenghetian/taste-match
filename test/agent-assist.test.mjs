@@ -41,7 +41,7 @@ async function expectFailure(path, status, code, { token, method = "POST", body 
 
 async function register(phone, nickname) {
   await request("/api/auth/send-code", { method: "POST", body: { phone } });
-  const login = await request("/api/auth/verify", { method: "POST", body: { phone, code: "123456", inviteCode: "2026" } });
+  const login = await request("/api/auth/verify", { method: "POST", body: { phone, code: "123456" } });
   await request("/api/me", { token: login.token, method: "PATCH", body: { nickname, city: "上海", birthYear: 1998, gender: "不公开", bio: "愿意慢慢聊" } });
   return login;
 }

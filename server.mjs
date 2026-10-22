@@ -9,7 +9,9 @@ import { createIcebreakerHarness } from "./llm/icebreaker.mjs";
 import { createReplyDraftHarness, REPLY_MESSAGE_LIMIT } from "./llm/reply-draft.mjs";
 
 const icebreakerHarness = createIcebreakerHarness({ env: process.env });
-const replyDraftHarness = createReplyDraftHarness({ env: process.env });
+let replyDraftHarness = createReplyDraftHarness({ env: process.env });
+const autoJobs = new Map();
+let autoClosing = false;
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || join(ROOT, "data");
@@ -18,7 +20,6 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const HOST = process.env.HOST || (IS_PRODUCTION ? "0.0.0.0" : "127.0.0.1");
 const DEV_OTP = process.env.DEV_OTP_CODE || "123456";
 const BETA_TEST_CODE = String(process.env.BETA_TEST_CODE || "").trim();
-const MASTER_INVITE = process.env.MASTER_INVITE_CODE || "2026";
 const ADMIN_KEY = process.env.ADMIN_KEY || (IS_PRODUCTION ? "" : "anhao-admin");
 const DEMO_MATCHING_ENABLED = process.env.DEMO_MATCHING_ENABLED === "true" || !IS_PRODUCTION;
 const SESSION_DAYS = 30;
@@ -41,7 +42,6 @@ function addDays(days) { return new Date(Date.now() + days * 86_400_000).toISOSt
 function hash(value) { return createHash("sha256").update(value).digest("hex"); }
 function token(bytes = 24) { return randomBytes(bytes).toString("base64url"); }
 function id(prefix) { return `${prefix}_${token(10)}`; }
-function inviteCode() { return `AH${randomBytes(4).toString("hex").toUpperCase()}`; }
 function friendInviteCode() { return `FH${randomBytes(4).toString("hex").toUpperCase()}`; }
 
 db.exec(`
@@ -231,8 +231,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_agent_thread_user ON agent_thread_settings(user_id, enabled);
 `);
 
+ensureColumn("agent_thread_settings", "mode", "TEXT NOT NULL DEFAULT 'suggest'");
+ensureColumn("agent_thread_settings", "generation_version", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("agent_thread_settings", "auto_status", "TEXT NOT NULL DEFAULT 'idle'");
+ensureColumn("agent_thread_settings", "auto_reason", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("agent_thread_settings", "handled_message_id", "TEXT NOT NULL DEFAULT ''");
+
 function seed() {
-  db.prepare(`INSERT OR IGNORE INTO invites(code, max_uses, used_count, active, created_at) VALUES(?, 100, 0, 1, ?)`).run(MASTER_INVITE, now());
   const demoUsers = {
     momo:["usr_demo_momo","13900000000","默默","上海","喜欢慢慢走路，也愿意认真回答没有标准答案的问题。",2001,"女","默"],
     mina:["usr_demo_mina","13900000001","Mina","杭州","关系访谈、书和认真吃晚饭。比起秒回，更在意有没有认真回。",2000,"女","M"],
@@ -294,11 +299,6 @@ function issueSession(userId) {
   db.prepare(`INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)`).run(hash(raw), userId, addDays(SESSION_DAYS), now());
   return raw;
 }
-function validInvite(code) {
-  if (!code) return null;
-  return db.prepare(`SELECT * FROM invites WHERE code=? AND active=1 AND used_count<max_uses`).get(code.trim().toUpperCase()) || null;
-}
-
 function track(userId, eventName, properties = {}, sessionId = null) {
   const safeName = String(eventName || "").trim().slice(0,50);
   if (!safeName) return;
@@ -391,10 +391,14 @@ function removeFriendship(userA, userB) {
 
 function serializeAgentSettings(row) {
   if (!row) {
-    return { enabled: false, consentAt: null, draft: "", draftSource: null, draftUpdatedAt: null };
+    return { enabled: false, mode: "suggest", autoStatus: "idle", autoReason: null, consentAt: null, draft: "", draftSource: null, draftUpdatedAt: null };
   }
   return {
     enabled: Boolean(row.enabled),
+    mode: row.mode,
+    version: row.generation_version,
+    autoStatus: row.auto_status,
+    autoReason: row.auto_reason || null,
     consentAt: row.consent_at || null,
     draft: row.draft_text || "",
     draftSource: row.draft_source || null,
@@ -484,9 +488,92 @@ function assertAgentThreadAccess(kind, threadId, user) {
   return { error: ["INVALID_THREAD", "不支持的对话类型", 400] };
 }
 
+function agentState(kind, threadId, userId) {
+  emit(userId, "agent_state", { kind, threadId, settings: serializeAgentSettings(getAgentSettings(kind, threadId, userId)) });
+}
 
+function changeAgentMode(kind, threadId, userId, mode, enabled) {
+  upsertAgentSettings(kind, threadId, userId, { enabled, consentAt: enabled ? now() : undefined, draftText: "", draftSource: "", draftUpdatedAt: now() });
+  db.prepare(`UPDATE agent_thread_settings SET mode=?,generation_version=generation_version+1,auto_status='idle',auto_reason='' WHERE thread_kind=? AND thread_id=? AND user_id=?`)
+    .run(mode, kind, threadId, userId);
+  agentState(kind, threadId, userId);
+  return getAgentSettings(kind, threadId, userId);
+}
 
+function takeOverAuto(kind, threadId, userId) {
+  const settings = getAgentSettings(kind, threadId, userId);
+  if (settings?.enabled && settings.mode === "auto") changeAgentMode(kind, threadId, userId, "auto", false);
+}
 
+function lastThreadMessage(kind, threadId) {
+  const table = kind === "echo" ? "messages" : "friend_messages";
+  const column = kind === "echo" ? "echo_id" : "friendship_id";
+  return db.prepare(`SELECT * FROM ${table} WHERE ${column}=? ORDER BY rowid DESC LIMIT 1`).get(threadId);
+}
+
+function assertAutoSendable(kind, threadId, userId, version, incomingId) {
+  const fresh = getAgentSettings(kind, threadId, userId);
+  if (autoClosing || !fresh?.enabled || fresh.mode !== "auto" || fresh.generation_version !== version) return false;
+  return lastThreadMessage(kind, threadId)?.id === incomingId;
+}
+
+function queueAutoReply(kind, threadId, userId) {
+  const key = `${kind}:${threadId}:${userId}`;
+  if (autoClosing || autoJobs.has(key)) return;
+  const settings = getAgentSettings(kind, threadId, userId);
+  if (!settings?.enabled || settings.mode !== "auto") return;
+  const incoming = lastThreadMessage(kind, threadId);
+  if (!incoming || incoming.sender_id === userId || incoming.source === "agent_auto" || incoming.id === settings.handled_message_id) return;
+  const user = db.prepare(`SELECT * FROM users WHERE id=?`).get(userId);
+  const access = user && assertAgentThreadAccess(kind, threadId, user);
+  if (!access || access.error) return;
+  const version = settings.generation_version;
+  const stillCurrent = () => assertAutoSendable(kind, threadId, userId, version, incoming.id);
+  db.prepare(`UPDATE agent_thread_settings SET auto_status='generating',auto_reason='' WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(kind, threadId, userId);
+  agentState(kind, threadId, userId);
+  const job = Promise.resolve().then(async () => {
+    const result = await replyDraftHarness.suggest({ actorId: userId, threadKey: `${kind}:${threadId}`, context: access.context, autoSend: true });
+    if (!stillCurrent()) return;
+    const fresh = assertAgentThreadAccess(kind, threadId, user);
+    if (fresh.error) return;
+    // A failed model request must never send a canned fallback as this person.
+    if (result.source !== "model") throw new Error(result.reason || "model_unavailable");
+    await moderateText({ userId, surface: kind === "echo" ? "message" : "friend_message", referenceId: threadId, text: result.draft });
+    if (!stillCurrent() || assertAgentThreadAccess(kind, threadId, user).error) return;
+    const message = { id: id(kind === "echo" ? "msg" : "fmsg"), senderId: userId, senderName: user.nickname, body: result.draft, source: "agent_auto", createdAt: now(), ...(kind === "echo" ? { echoId: threadId } : { friendshipId: threadId }) };
+    const table = kind === "echo" ? "messages" : "friend_messages";
+    const column = kind === "echo" ? "echo_id" : "friendship_id";
+    if (!stillCurrent()) return;
+    db.exec("BEGIN IMMEDIATE");
+    let inserted = false;
+    try {
+      if (!assertAutoSendable(kind, threadId, userId, version, incoming.id)) { db.exec("ROLLBACK"); return; }
+      if (assertAgentThreadAccess(kind, threadId, user).error) { db.exec("ROLLBACK"); return; }
+      db.prepare(`INSERT INTO ${table}(id,${column},sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`).run(message.id, threadId, userId, message.body, message.createdAt, message.source);
+      db.prepare(`UPDATE agent_thread_settings SET handled_message_id=? WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(incoming.id, kind, threadId, userId);
+      db.exec("COMMIT");
+      inserted = true;
+    } catch (error) {
+      try { db.exec("ROLLBACK"); } catch {}
+      throw error;
+    }
+    if (!inserted) return;
+    const event = kind === "echo" ? "message" : "friend_message";
+    emit(userId, event, message); emit(fresh.otherId, event, message);
+    notify(fresh.otherId, event, `${user.nickname} 的 Agent 发来一条回复`, message.body, kind === "echo" ? { echoId: threadId } : { friendshipId: threadId, userId });
+    track(userId, "agent_auto_sent", { kind, threadId });
+  }).catch(error => {
+    if (!stillCurrent()) return;
+    const reason = ["disabled", "daily_limit", "busy", "timeout", "authentication", "provider_rate_limit", "invalid_output", "refusal", "CONTENT_BLOCKED", "CONTENT_UNDER_REVIEW"].includes(error.code || error.message) ? (error.code || error.message) : "generation_failed";
+    db.prepare(`UPDATE agent_thread_settings SET enabled=0,auto_status='failed',auto_reason=?,generation_version=generation_version+1,updated_at=? WHERE thread_kind=? AND thread_id=? AND user_id=?`).run(reason, now(), kind, threadId, userId);
+  }).finally(() => {
+    autoJobs.delete(key);
+    db.prepare(`UPDATE agent_thread_settings SET auto_status='idle' WHERE thread_kind=? AND thread_id=? AND user_id=? AND auto_status='generating'`).run(kind, threadId, userId);
+    agentState(kind, threadId, userId);
+    queueAutoReply(kind, threadId, userId);
+  });
+  autoJobs.set(key, job);
+}
 
 const BLOCKED_CONTENT = [
   { pattern:/未成年.{0,8}(约炮|性交易|裸照)|儿童色情/i, reason:"未成年人性内容" },
@@ -712,7 +799,7 @@ async function api(req, res, url) {
   }
 
   if (method === "POST" && path === "/api/auth/verify") {
-    const { phone, code, inviteCode: suppliedInvite } = await readJson(req);
+    const { phone, code } = await readJson(req);
     const otp = db.prepare(`SELECT * FROM otp_codes WHERE phone=?`).get(phone);
     if (!otp || otp.expires_at <= now()) return fail(res, 400, "INVALID_CODE", "验证码错误或已过期");
     if (otp.attempts >= 5) return fail(res, 429, "TOO_MANY_ATTEMPTS", "尝试次数过多，请重新获取验证码");
@@ -723,14 +810,10 @@ async function api(req, res, url) {
     let user = db.prepare(`SELECT * FROM users WHERE phone=?`).get(phone);
     const isNewUser = !user;
     if (!user) {
-      const invite = validInvite(suppliedInvite);
-      if (!invite) return fail(res, 400, "INVALID_INVITE", "邀请码无效或已达到使用上限");
       const userId = id("usr");
       const timestamp = now();
       db.prepare(`INSERT INTO users(id,phone,nickname,city,avatar,invited_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)`)
-        .run(userId, phone, "新朋友", "上海", "我", invite.owner_user_id || null, timestamp, timestamp);
-      db.prepare(`UPDATE invites SET used_count=used_count+1 WHERE code=?`).run(invite.code);
-      db.prepare(`INSERT INTO invites(code,owner_user_id,max_uses,used_count,active,created_at) VALUES(?,?,5,0,1,?)`).run(inviteCode(), userId, timestamp);
+        .run(userId, phone, "新朋友", "上海", "我", null, timestamp, timestamp);
       user = db.prepare(`SELECT * FROM users WHERE id=?`).get(userId);
     }
     db.prepare(`DELETE FROM otp_codes WHERE phone=?`).run(phone);
@@ -760,17 +843,13 @@ async function api(req, res, url) {
     if (!access.openid) return fail(res, 502, "WECHAT_AUTH_FAILED", "微信授权失败");
     let user = db.prepare(`SELECT * FROM users WHERE wechat_openid=?`).get(access.openid);
     if (!user) {
-      const invite = validInvite(stateRow.invite_code);
-      if (!invite) return fail(res, 400, "INVALID_INVITE", "首次微信登录需要有效邀请码");
       const infoUrl = new URL("https://api.weixin.qq.com/sns/userinfo");
       infoUrl.search = new URLSearchParams({ access_token:access.access_token, openid:access.openid, lang:"zh_CN" });
       const info = await fetch(infoUrl).then((r) => r.json());
       const userId = id("usr");
       await moderateText({userId:null,surface:"wechat_profile",referenceId:userId,text:info.nickname || "微信用户"});
       db.prepare(`INSERT INTO users(id,wechat_openid,nickname,city,avatar,invited_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)`)
-        .run(userId, access.openid, info.nickname || "微信用户", info.city || "上海", (info.nickname || "我").slice(0,1), invite.owner_user_id || null, now(), now());
-      db.prepare(`UPDATE invites SET used_count=used_count+1 WHERE code=?`).run(invite.code);
-      db.prepare(`INSERT INTO invites(code,owner_user_id,max_uses,created_at) VALUES(?,?,5,?)`).run(inviteCode(), userId, now());
+        .run(userId, access.openid, info.nickname || "微信用户", info.city || "上海", (info.nickname || "我").slice(0,1), null, now(), now());
       user = db.prepare(`SELECT * FROM users WHERE id=?`).get(userId);
     }
     db.prepare(`DELETE FROM oauth_states WHERE state=?`).run(stateRow.state);
@@ -794,7 +873,7 @@ async function api(req, res, url) {
   if (method === "GET" && path === "/api/ai/status") {
     return json(res,200,{
       icebreakers: icebreakerHarness.status(),
-      replyDrafts: replyDraftHarness.status(),
+      replyDrafts: { ...replyDraftHarness.status(), autoSend: true },
       // backward-compatible top-level fields for older clients
       ...icebreakerHarness.status()
     },{"cache-control":"no-store"});
@@ -813,8 +892,7 @@ async function api(req, res, url) {
     return json(res,202,{accepted:true});
   }
   if (method === "GET" && path === "/api/me") {
-    const invite = db.prepare(`SELECT code,max_uses,used_count FROM invites WHERE owner_user_id=? AND active=1 ORDER BY created_at DESC LIMIT 1`).get(user.id);
-    return json(res, 200, { user:publicUser(user), invite });
+    return json(res, 200, { user:publicUser(user), invite: serializeFriendInvite(ensureFriendInvite(user.id), req) });
   }
   if (method === "PATCH" && path === "/api/me") {
     const body = await readJson(req);
@@ -948,7 +1026,9 @@ async function api(req, res, url) {
       const text = String(payload.body || "").trim().slice(0,500);
       if (!text) return fail(res,400,"MESSAGE_REQUIRED","消息不能为空");
       const source = payload.source === "agent_suggestion" ? "agent_suggestion" : "user";
+      takeOverAuto("echo", row.id, user.id);
       await moderateText({userId:user.id,surface:"message",referenceId:row.id,text});
+      if (assertAgentThreadAccess("echo", row.id, user).error) return fail(res,403,"USER_BLOCKED","这段关系已不可用");
       const message = { id:id("msg"), echoId:row.id, senderId:user.id, senderName:user.nickname, body:text, source, createdAt:now() };
       db.prepare(`INSERT INTO messages(id,echo_id,sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`).run(message.id,row.id,user.id,text,message.createdAt,source);
       if (source === "agent_suggestion") {
@@ -957,6 +1037,7 @@ async function api(req, res, url) {
       emit(user.id,"message",message); emit(otherId,"message",message);
       notify(otherId,"message",`${user.nickname} 发来一条消息`,text,{ echoId:row.id });
       track(user.id,"message_sent",{echoId:row.id,source});
+      queueAutoReply("echo", row.id, otherId);
       return json(res,201,{ message });
     }
   }
@@ -1110,7 +1191,9 @@ async function api(req, res, url) {
       const text = String(body.body || "").trim().slice(0, 500);
       if (!text) return fail(res, 400, "MESSAGE_REQUIRED", "消息不能为空");
       const source = body.source === "agent_suggestion" ? "agent_suggestion" : "user";
+      takeOverAuto("friend", friendship.id, user.id);
       await moderateText({ userId: user.id, surface: "friend_message", referenceId: friendship.id, text });
+      if (assertAgentThreadAccess("friend", friendship.id, user).error) return fail(res,403,"FRIENDSHIP_NOT_FOUND","这段好友关系已不可用");
       const message = { id: id("fmsg"), friendshipId: friendship.id, senderId: user.id, senderName: user.nickname, body: text, source, createdAt: now() };
       db.prepare(`INSERT INTO friend_messages(id,friendship_id,sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`)
         .run(message.id, friendship.id, user.id, text, message.createdAt, source);
@@ -1121,6 +1204,7 @@ async function api(req, res, url) {
       emit(friendId, "friend_message", message);
       notify(friendId, "friend_message", `${user.nickname} 发来一条消息`, text, { friendshipId: friendship.id, userId: user.id });
       track(user.id, "friend_message_sent", { friendshipId: friendship.id, source });
+      queueAutoReply("friend", friendship.id, friendId);
       return json(res, 201, { message });
     }
   }
@@ -1139,28 +1223,22 @@ async function api(req, res, url) {
       return json(res, 200, {
         thread: { kind, id: access.threadId },
         settings: serializeAgentSettings(getAgentSettings(kind, access.threadId, user.id)),
-        limits: { messageLimit: REPLY_MESSAGE_LIMIT, autoSend: false }
+        limits: { messageLimit: REPLY_MESSAGE_LIMIT, autoSend: true }
       }, { "cache-control": "no-store" });
     }
 
     if (method === "POST" && action === "enable") {
       const body = await readJson(req);
       if (body?.consent !== true) return fail(res, 400, "AI_CONSENT_REQUIRED", "请明确同意将内容标题、你自己的感受和最近聊天发送给模型以生成草稿");
-      const row = upsertAgentSettings(kind, access.threadId, user.id, {
-        enabled: true,
-        consentAt: now()
-      });
-      track(user.id, "agent_enabled", { kind, threadId: access.threadId });
+      const mode = body.mode === "auto" ? "auto" : "suggest";
+      const row = changeAgentMode(kind, access.threadId, user.id, mode, true);
+      if (mode === "auto") queueAutoReply(kind, access.threadId, user.id);
+      track(user.id, "agent_enabled", { kind, threadId: access.threadId, mode });
       return json(res, 200, { settings: serializeAgentSettings(row) });
     }
 
     if (method === "POST" && action === "disable") {
-      const row = upsertAgentSettings(kind, access.threadId, user.id, {
-        enabled: false,
-        draftText: "",
-        draftSource: "",
-        draftUpdatedAt: now()
-      });
+      const row = changeAgentMode(kind, access.threadId, user.id, getAgentSettings(kind, access.threadId, user.id)?.mode || "suggest", false);
       track(user.id, "agent_disabled", { kind, threadId: access.threadId });
       return json(res, 200, { settings: serializeAgentSettings(row) });
     }
@@ -1170,8 +1248,10 @@ async function api(req, res, url) {
       let settings = getAgentSettings(kind, access.threadId, user.id);
       if (!settings?.enabled) {
         if (body?.consent !== true) return fail(res, 400, "AI_CONSENT_REQUIRED", "请先同意并开启 Agent 建议");
-        settings = upsertAgentSettings(kind, access.threadId, user.id, { enabled: true, consentAt: now() });
+        settings = changeAgentMode(kind, access.threadId, user.id, "suggest", true);
       }
+      if (settings.mode === "auto") return fail(res, 409, "AUTO_REPLY_ACTIVE", "请先接管自动代回，再生成建议草稿");
+      const version = settings.generation_version;
       // Rebuild context after possible new messages
       const fresh = assertAgentThreadAccess(kind, threadId, user);
       if (fresh.error) return fail(res, fresh.error[2], fresh.error[0], fresh.error[1]);
@@ -1180,8 +1260,11 @@ async function api(req, res, url) {
         threadKey: `${kind}:${access.threadId}`,
         context: fresh.context
       });
+      const current = getAgentSettings(kind, access.threadId, user.id);
+      const recheck = assertAgentThreadAccess(kind, threadId, user);
+      if (recheck.error) return fail(res, recheck.error[2], recheck.error[0], recheck.error[1]);
+      if (!current?.enabled || current.mode !== "suggest" || current.generation_version !== version) return fail(res,409,"AGENT_CANCELLED","已取消这次生成");
       const saved = upsertAgentSettings(kind, access.threadId, user.id, {
-        enabled: true,
         draftText: result.draft,
         draftSource: result.source,
         draftUpdatedAt: now()
@@ -1248,7 +1331,14 @@ function staticFile(req,res,url) {
   res.writeHead(200,headers); res.end(content);
 }
 
-export function createServer() {
+export function createServer({ replyHarness } = {}) {
+  if (replyHarness) replyDraftHarness = replyHarness;
+  autoClosing = false;
+  // Resume unanswered human messages after a process restart; sent replies remain in the thread.
+  db.prepare(`UPDATE agent_thread_settings SET auto_status='idle' WHERE auto_status='generating'`).run();
+  for (const row of db.prepare(`SELECT * FROM agent_thread_settings WHERE enabled=1 AND mode='auto'`).all()) {
+    queueAutoReply(row.thread_kind, row.thread_id, row.user_id);
+  }
   const server = http.createServer(async (req,res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     try {
@@ -1260,7 +1350,10 @@ export function createServer() {
       else res.end();
     }
   });
-  server.on("close", () => { icebreakerHarness.close(); replyDraftHarness.close(); });
+  server.on("close", () => {
+    autoClosing = true;
+    Promise.allSettled([...autoJobs.values()]).then(() => { icebreakerHarness.close(); replyDraftHarness.close(); });
+  });
   return server;
 }
 

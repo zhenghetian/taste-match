@@ -82,10 +82,10 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   const lockedPhone = "13600136000";
   await request("/api/auth/send-code",{method:"POST",body:{phone:lockedPhone}});
   for (let attempt=0; attempt<5; attempt+=1) {
-    const response = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"2026"})});
+    const response = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"unused"})});
     assert.equal(response.status,400);
   }
-  const locked = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"2026"})});
+  const locked = await fetch(`${BASE}/api/auth/verify`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({phone:lockedPhone,code:"000000",inviteCode:"unused"})});
   assert.equal(locked.status,429);
 
   const phone = "13800138000";
@@ -93,7 +93,7 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   assert.equal(code.delivery,"beta");
   assert.equal("devCode" in code,false);
 
-  const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"123456",inviteCode:"2026"}});
+  const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"123456",inviteCode:"unused"}});
   assert.ok(login.token);
   assert.equal(login.user.profileCompleted,false);
 
@@ -103,7 +103,7 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   assert.equal(aiStatus.consentRequired,true);
   assert.equal(aiStatus.feature,"icebreakers");
   assert.equal(aiStatus.replyDrafts.feature,"reply_drafts");
-  assert.equal(aiStatus.replyDrafts.autoSend,false);
+  assert.equal(aiStatus.replyDrafts.autoSend,true);
   assert.equal(aiStatus.replyDrafts.consentRequired,true);
 
   const profile = await request("/api/me",{token:login.token,method:"PATCH",body:{nickname:"小河",city:"杭州",birthYear:1998,gender:"不公开",bio:"喜欢散步和没有安排的周末"}});
@@ -111,7 +111,7 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
   assert.equal(profile.user.city,"杭州");
 
   const me = await request("/api/me",{token:login.token});
-  assert.match(me.invite.code,/^AH[A-F0-9]{8}$/);
+  assert.match(me.invite.code,/^FH[A-F0-9]{8}$/);
 
   const updatedProfile = await request("/api/me",{token:login.token,method:"PATCH",body:{nickname:"小河",city:"苏州",birthYear:1998,gender:"不公开",bio:"喜欢散步和没有安排的周末"}});
   assert.equal(updatedProfile.user.city,"苏州");
@@ -199,7 +199,7 @@ test("closed beta flow persists identity, signals, echoes, answers and chat", as
 test("two people can bring the same external content and form a real echo", async () => {
   async function register(phone, nickname) {
     await request("/api/auth/send-code",{method:"POST",body:{phone}});
-    const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"123456",inviteCode:"2026"}});
+    const login = await request("/api/auth/verify",{method:"POST",body:{phone,code:"123456",inviteCode:"unused"}});
     await request("/api/me",{token:login.token,method:"PATCH",body:{nickname,city:"上海",birthYear:1999,gender:"不公开",bio:"愿意从一句具体的话开始认识人"}});
     return login.token;
   }
