@@ -5,6 +5,7 @@ import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { CONTENT_LIBRARY, CONTENT_BY_ID, QUESTION_BANK } from "./content-library.mjs";
+import { createChatMediaStore, safeLink, MEDIA_JSON_LIMIT } from "./chat-media.mjs";
 import { createIcebreakerHarness } from "./llm/icebreaker.mjs";
 import { createReplyDraftHarness, REPLY_MESSAGE_LIMIT } from "./llm/reply-draft.mjs";
 
@@ -214,6 +215,12 @@ ensureColumn("signals", "source_url", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("signals", "source_type", "TEXT NOT NULL DEFAULT 'curated'");
 ensureColumn("messages", "source", "TEXT NOT NULL DEFAULT 'user'");
 ensureColumn("friend_messages", "source", "TEXT NOT NULL DEFAULT 'user'");
+for (const table of ["messages", "friend_messages"]) {
+  ensureColumn(table, "kind", "TEXT NOT NULL DEFAULT 'text'");
+  ensureColumn(table, "payload", "TEXT NOT NULL DEFAULT '{}'");
+}
+const chatMedia = createChatMediaStore({ db, dataDir: DATA_DIR, assertAccess: assertAgentThreadAccess });
+chatMedia.cleanup();
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS agent_thread_settings (
@@ -261,12 +268,12 @@ function json(res, status, payload, headers = {}) {
   res.end(body);
 }
 function fail(res, status, code, message) { json(res, status, { error: { code, message } }); }
-async function readJson(req) {
+async function readJson(req, limit = 64 * 1024) {
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 64 * 1024) throw Object.assign(new Error("请求内容过大"), { status: 413 });
+    if (size > limit) throw Object.assign(new Error("请求内容过大"), { status: 413 });
     chunks.push(chunk);
   }
   if (!chunks.length) return {};
@@ -455,9 +462,9 @@ function assertAgentThreadAccess(kind, threadId, user) {
     if (!state.revealed) return { error: ["ECHO_LOCKED", "双方回答后才能使用 Agent 建议", 403] };
     const ownSignal = db.prepare(`SELECT title,reaction FROM signals WHERE id=? AND user_id=?`)
       .get(row.user_a === user.id ? row.signal_a : row.signal_b, user.id);
-    const recent = db.prepare(`SELECT sender_id AS senderId, body FROM messages WHERE echo_id=? ORDER BY created_at DESC LIMIT ?`)
+    const recent = db.prepare(`SELECT sender_id AS senderId, body, kind FROM messages WHERE echo_id=? ORDER BY created_at DESC LIMIT ?`)
       .all(row.id, REPLY_MESSAGE_LIMIT).reverse()
-      .map((item) => ({ role: item.senderId === user.id ? "me" : "other", text: item.body }));
+      .map((item) => ({ role: item.senderId === user.id ? "me" : "other", text: item.kind === "image" ? "[图片；无法查看图片内容，请勿推测]" : item.kind === "sticker" ? "[表情包；无法查看图片内容，请勿推测]" : item.body }));
     return {
       kind, threadId: row.id, otherId,
       context: {
@@ -473,9 +480,9 @@ function assertAgentThreadAccess(kind, threadId, user) {
     const otherId = friendship.user_a === user.id ? friendship.user_b : friendship.user_a;
     if (blockedBetween(user.id, otherId)) return { error: ["USER_BLOCKED", "这段关系已被拉黑", 403] };
     const other = db.prepare(`SELECT nickname FROM users WHERE id=?`).get(otherId);
-    const recent = db.prepare(`SELECT sender_id AS senderId, body FROM friend_messages WHERE friendship_id=? ORDER BY created_at DESC LIMIT ?`)
+    const recent = db.prepare(`SELECT sender_id AS senderId, body, kind FROM friend_messages WHERE friendship_id=? ORDER BY created_at DESC LIMIT ?`)
       .all(friendship.id, REPLY_MESSAGE_LIMIT).reverse()
-      .map((item) => ({ role: item.senderId === user.id ? "me" : "other", text: item.body }));
+      .map((item) => ({ role: item.senderId === user.id ? "me" : "other", text: item.kind === "image" ? "[图片；无法查看图片内容，请勿推测]" : item.kind === "sticker" ? "[表情包；无法查看图片内容，请勿推测]" : item.body }));
     return {
       kind, threadId: friendship.id, otherId,
       context: {
@@ -486,6 +493,41 @@ function assertAgentThreadAccess(kind, threadId, user) {
     };
   }
   return { error: ["INVALID_THREAD", "不支持的对话类型", 400] };
+}
+
+function messageContent(input, threadKind, threadId, user) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw Object.assign(new Error("消息格式不正确"), { status: 400, code: "INVALID_MESSAGE" });
+  const kind = input.kind || "text";
+  if (kind === "text") {
+    const body = String(input.body || "").trim().slice(0, 500);
+    if (!body) throw Object.assign(new Error("消息不能为空"), { status: 400, code: "MESSAGE_REQUIRED" });
+    return { body, kind, payload: {} };
+  }
+  if (kind === "link") {
+    const link = safeLink(input.link);
+    return { body: `[链接] ${link.title}`, kind, payload: { link } };
+  }
+  if (kind === "image" || kind === "sticker") {
+    chatMedia.forMessage(input.attachmentId, threadKind, threadId, user.id);
+    return { body: kind === "image" ? "[图片]" : "[表情包]", kind, payload: { attachmentId: input.attachmentId } };
+  }
+  throw Object.assign(new Error("不支持的消息类型"), { status: 400, code: "INVALID_MESSAGE_KIND" });
+}
+
+function persistChatMessage(threadKind, threadId, userId, message, content) {
+  const table = threadKind === "echo" ? "messages" : "friend_messages";
+  const column = threadKind === "echo" ? "echo_id" : "friendship_id";
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    if (content.payload.attachmentId) chatMedia.forMessage(content.payload.attachmentId, threadKind, threadId, userId);
+    db.prepare(`INSERT INTO ${table}(id,${column},sender_id,body,created_at,source,kind,payload) VALUES(?,?,?,?,?,?,?,?)`)
+      .run(message.id, threadId, userId, content.body, message.createdAt, message.source, content.kind, JSON.stringify(content.payload));
+    if (content.payload.attachmentId) chatMedia.associate(content.payload.attachmentId, message.id);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 function agentState(kind, threadId, userId) {
@@ -540,7 +582,7 @@ function queueAutoReply(kind, threadId, userId) {
     if (result.source !== "model") throw new Error(result.reason || "model_unavailable");
     await moderateText({ userId, surface: kind === "echo" ? "message" : "friend_message", referenceId: threadId, text: result.draft });
     if (!stillCurrent() || assertAgentThreadAccess(kind, threadId, user).error) return;
-    const message = { id: id(kind === "echo" ? "msg" : "fmsg"), senderId: userId, senderName: user.nickname, body: result.draft, source: "agent_auto", createdAt: now(), ...(kind === "echo" ? { echoId: threadId } : { friendshipId: threadId }) };
+    const message = { id: id(kind === "echo" ? "msg" : "fmsg"), kind: "text", senderId: userId, senderName: user.nickname, body: result.draft, source: "agent_auto", createdAt: now(), ...(kind === "echo" ? { echoId: threadId } : { friendshipId: threadId }) };
     const table = kind === "echo" ? "messages" : "friend_messages";
     const column = kind === "echo" ? "echo_id" : "friendship_id";
     if (!stillCurrent()) return;
@@ -1018,19 +1060,19 @@ async function api(req, res, url) {
     const state = echoRow(row,user.id);
     if (!state.revealed) return fail(res,403,"ECHO_LOCKED","双方回答后才能开始对话");
     if (method === "GET") {
-      const rows = db.prepare(`SELECT m.id,m.body,m.created_at AS createdAt,m.sender_id AS senderId,u.nickname AS senderName,m.source FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.echo_id=? ORDER BY m.created_at`).all(row.id);
+      const rows = db.prepare(`SELECT m.id,m.body,m.kind,m.payload,m.created_at AS createdAt,m.sender_id AS senderId,u.nickname AS senderName,m.source FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.echo_id=? ORDER BY m.created_at`).all(row.id).map(chatMedia.serialize);
       return json(res,200,{ messages:rows });
     }
     if (method === "POST") {
       const payload = await readJson(req);
-      const text = String(payload.body || "").trim().slice(0,500);
-      if (!text) return fail(res,400,"MESSAGE_REQUIRED","消息不能为空");
-      const source = payload.source === "agent_suggestion" ? "agent_suggestion" : "user";
+      const content = messageContent(payload, "echo", row.id, user);
+      const text = content.body;
+      const source = content.kind === "text" && payload.source === "agent_suggestion" ? "agent_suggestion" : "user";
       takeOverAuto("echo", row.id, user.id);
       await moderateText({userId:user.id,surface:"message",referenceId:row.id,text});
       if (assertAgentThreadAccess("echo", row.id, user).error) return fail(res,403,"USER_BLOCKED","这段关系已不可用");
-      const message = { id:id("msg"), echoId:row.id, senderId:user.id, senderName:user.nickname, body:text, source, createdAt:now() };
-      db.prepare(`INSERT INTO messages(id,echo_id,sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`).run(message.id,row.id,user.id,text,message.createdAt,source);
+      const message = chatMedia.serialize({ id:id("msg"), echoId:row.id, senderId:user.id, senderName:user.nickname, ...content, source, createdAt:now() });
+      persistChatMessage("echo", row.id, user.id, message, content);
       if (source === "agent_suggestion") {
         upsertAgentSettings("echo", row.id, user.id, { draftText: "", draftSource: "", draftUpdatedAt: now() });
       }
@@ -1180,23 +1222,22 @@ async function api(req, res, url) {
     if (!friendship) return fail(res, 404, "FRIENDSHIP_NOT_FOUND", "你们还不是好友");
     if (method === "GET") {
       const rows = db.prepare(`
-        SELECT m.id, m.body, m.created_at AS createdAt, m.sender_id AS senderId, u.nickname AS senderName, m.source
+        SELECT m.id, m.body, m.kind, m.payload, m.created_at AS createdAt, m.sender_id AS senderId, u.nickname AS senderName, m.source
         FROM friend_messages m JOIN users u ON u.id=m.sender_id
         WHERE m.friendship_id=? ORDER BY m.created_at
-      `).all(friendship.id);
+      `).all(friendship.id).map(chatMedia.serialize);
       return json(res, 200, { friendshipId: friendship.id, messages: rows });
     }
     if (method === "POST") {
       const body = await readJson(req);
-      const text = String(body.body || "").trim().slice(0, 500);
-      if (!text) return fail(res, 400, "MESSAGE_REQUIRED", "消息不能为空");
-      const source = body.source === "agent_suggestion" ? "agent_suggestion" : "user";
+      const content = messageContent(body, "friend", friendship.id, user);
+      const text = content.body;
+      const source = content.kind === "text" && body.source === "agent_suggestion" ? "agent_suggestion" : "user";
       takeOverAuto("friend", friendship.id, user.id);
       await moderateText({ userId: user.id, surface: "friend_message", referenceId: friendship.id, text });
       if (assertAgentThreadAccess("friend", friendship.id, user).error) return fail(res,403,"FRIENDSHIP_NOT_FOUND","这段好友关系已不可用");
-      const message = { id: id("fmsg"), friendshipId: friendship.id, senderId: user.id, senderName: user.nickname, body: text, source, createdAt: now() };
-      db.prepare(`INSERT INTO friend_messages(id,friendship_id,sender_id,body,created_at,source) VALUES(?,?,?,?,?,?)`)
-        .run(message.id, friendship.id, user.id, text, message.createdAt, source);
+      const message = chatMedia.serialize({ id: id("fmsg"), friendshipId: friendship.id, senderId: user.id, senderName: user.nickname, ...content, source, createdAt: now() });
+      persistChatMessage("friend", friendship.id, user.id, message, content);
       if (source === "agent_suggestion") {
         upsertAgentSettings("friend", friendship.id, user.id, { draftText: "", draftSource: "", draftUpdatedAt: now() });
       }
@@ -1210,6 +1251,23 @@ async function api(req, res, url) {
   }
 
 
+
+  const attachmentUpload = path.match(/^\/api\/agent\/threads\/(echo|friend)\/([^/]+)\/attachments$/);
+  if (method === "POST" && attachmentUpload) {
+    const [, kind, threadId] = attachmentUpload;
+    const access = assertAgentThreadAccess(kind, threadId, user);
+    if (access.error) return fail(res, access.error[2], access.error[0], access.error[1]);
+    const input = await readJson(req, MEDIA_JSON_LIMIT);
+    const fresh = assertAgentThreadAccess(kind, threadId, user);
+    if (fresh.error) return fail(res, fresh.error[2], fresh.error[0], fresh.error[1]);
+    return json(res, 201, { attachment: chatMedia.upload(kind, threadId, user, input) }, { "cache-control": "no-store" });
+  }
+  const attachmentDownload = path.match(/^\/api\/chat-attachments\/([^/]+)$/);
+  if (method === "GET" && attachmentDownload) {
+    const { bytes, attachment } = chatMedia.download(attachmentDownload[1], user);
+    res.writeHead(200, { "content-type": attachment.mimeType, "content-length": bytes.length, "cache-control": "private, no-store", "x-content-type-options": "nosniff", "content-disposition": "inline", "referrer-policy": "no-referrer" });
+    return res.end(bytes);
+  }
 
   const agentThreadMatch = path.match(/^\/api\/agent\/threads\/(echo|friend)\/([^/]+)(?:\/(enable|disable|suggest|draft))?$/);
   if (agentThreadMatch) {
@@ -1308,7 +1366,7 @@ async function api(req, res, url) {
 const MIME = { ".html":"text/html; charset=utf-8", ".css":"text/css; charset=utf-8", ".js":"text/javascript; charset=utf-8", ".mjs":"text/javascript; charset=utf-8", ".json":"application/json; charset=utf-8", ".jpg":"image/jpeg", ".jpeg":"image/jpeg", ".png":"image/png", ".svg":"image/svg+xml", ".mp4":"video/mp4", ".webmanifest":"application/manifest+json" };
 const PUBLIC_FILES = new Set([
   "/signal-mvp.html", "/index.html", "/admin.html", "/echo-prototype.html", "/ia-prototype.html",
-  "/app.js", "/content-library.mjs", "/styles.css", "/sw.js", "/manifest.webmanifest"
+  "/app.js", "/content-library.mjs", "/chat-sharing.mjs", "/styles.css", "/sw.js", "/manifest.webmanifest"
 ]);
 const ASSET_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".svg", ".mp4"]);
 function staticFile(req,res,url) {
