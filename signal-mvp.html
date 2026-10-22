@@ -194,7 +194,32 @@
       .icebreaker-panel .primary { min-height: 44px; padding: 0 14px; }
       .icebreaker-candidates { display: grid; gap: 7px; }
       .icebreaker-candidates button { padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 12px; line-height: 1.5; text-align: left; }
-      .composer { display: grid; grid-template-columns: 1fr 44px; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom)); border-top: 1px solid var(--line); background: white; }
+      .chat-sharing { flex-shrink: 0; max-height: 38dvh; overflow-y: auto; padding: 12px 14px; border-top: 1px solid var(--line); background: white; }
+      .share-actions { display: flex; gap: 10px; align-items: center; }
+      .share-actions button { min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--accent); }
+      .share-actions button:last-child { margin-left: auto; }
+      .sticker-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 6px; margin: 12px 0; }
+      .sticker-grid button { min-width: 0; padding: 8px 0; border-radius: 8px; color: var(--ink); }
+      .sticker-grid span { display: block; font-size: 25px; }
+      .sticker-grid small { font-size: 9px; }
+      .share-fields { display: grid; gap: 8px; margin: 10px 0; }
+      .share-fields input { width: 100%; min-height: 40px; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 16px; }
+      .share-preview img { display: block; max-width: 100%; max-height: 120px; margin: 8px auto; border-radius: 8px; }
+      .share-link-preview { padding: 10px; margin: 10px 0; border-radius: 7px; background: var(--band); overflow-wrap: anywhere; }
+      .share-link-preview strong, .share-link-preview small { display: block; }
+      .share-link-preview small { margin-top: 4px; color: var(--muted); }
+      .chat-sharing .primary { width: 100%; min-height: 40px; }
+      .chat-sharing p { font-size: 11px; margin: 7px 0; color: var(--muted); }
+      .chat-link { display: grid; gap: 6px; min-width: 150px; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+      .chat-link small, .chat-link span { font-size: 10px; opacity: .8; }
+      .chat-link strong { font-size: 13px; }
+      .chat-image { display: block; padding: 0; background: transparent; }
+      .chat-image img { display: block; max-width: 100%; width: 210px; max-height: 260px; object-fit: contain; border-radius: 7px; }
+      .chat-image.is-sticker img { width: 145px; max-height: 160px; }
+      .image-viewer { position: absolute; z-index: 110; inset: 0; display: grid; place-items: center; background: rgba(12,18,15,.96); }
+      .image-viewer img { max-width: 100%; max-height: 85%; object-fit: contain; }
+      .image-viewer button { position: absolute; top: max(15px,env(safe-area-inset-top)); right: 15px; min-height: 44px; padding: 0 15px; border-radius: 22px; background: white; color: var(--ink); }
+      .composer { display: grid; grid-template-columns: 40px 1fr 44px; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom)); border-top: 1px solid var(--line); background: white; }
       .composer input { min-width: 0; height: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: #f3f5f3; color: var(--ink); font-size: 16px; }
       .composer button { display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: white; }
 
@@ -361,7 +386,14 @@
               <div id="draftBanner" class="draft-banner" hidden>当前输入框内容来自 Agent 建议，发送前可自由修改。</div>
             </div>
           </section>
-          <form id="messageForm" class="composer"><input id="messageInput" autocomplete="off" aria-label="消息" placeholder="接着说点具体的" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
+          <section id="chatSharePanel" class="chat-sharing" aria-label="分享内容与表情包" hidden>
+            <div id="chatShareActions"><div class="share-actions"><button id="shareChatLink" type="button">分享链接</button><button id="shareChatImage" type="button">图片 / GIF</button><button id="cancelChatShare" type="button">收起</button></div><div id="chatStickerGrid" class="sticker-grid" aria-label="常用表情包"></div></div>
+            <input id="chatShareFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+            <div id="chatShareFields" class="share-fields" hidden><label for="chatShareUrl">内容链接</label><input id="chatShareUrl" type="url" maxlength="2000" placeholder="粘贴 https:// 链接" /><label for="chatShareTitle">标题（可选）</label><input id="chatShareTitle" maxlength="160" placeholder="这条内容想分享给你" /></div>
+            <div id="chatSharePreview" class="share-preview"></div><p id="chatShareStatus" role="status" aria-live="polite"></p><button id="confirmChatShare" class="primary" type="button" hidden>确认发送</button>
+          </section>
+          <form id="messageForm" class="composer"><button id="openChatShare" type="button" aria-label="分享内容与表情包" aria-expanded="false" aria-controls="chatSharePanel">＋</button><input id="messageInput" autocomplete="off" aria-label="消息" placeholder="接着说点具体的" /><button type="submit" aria-label="发送"><i data-lucide="arrow-up"></i></button></form>
+          <div id="chatImageViewer" class="image-viewer" role="dialog" aria-label="查看图片" aria-modal="true" hidden><button id="closeChatImage" type="button">关闭</button><img id="chatImageLarge" alt="聊天图片大图" /></div>
         </section>
 
         <div id="safetySheet" class="layer" aria-hidden="true"><button class="backdrop" data-close type="button" aria-label="关闭"></button><section class="sheet"><div class="handle"></div><span class="sheet-kicker">保护这次相遇</span><h2>与 Ta 的对话</h2><p>举报会交给审核处理；拉黑后你们将不能继续匹配或聊天。</p><div class="sheet-options"><button id="reportUser" type="button"><span>举报这个人</span><i data-lucide="flag"></i></button><button id="blockUser" type="button"><span>拉黑这个人</span><i data-lucide="ban"></i></button></div></section></div>
@@ -393,6 +425,7 @@
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script type="module">
       import { CONTENT_LIBRARY, QUESTION_BANK } from "./content-library.mjs";
+      import { initChatSharing } from "./chat-sharing.mjs";
 
       window.__appErrors = [];
       window.addEventListener("error", (event) => window.__appErrors.push(event.message));
@@ -450,6 +483,20 @@
         if (!response.ok) { const error = new Error(payload.error?.message || "请求失败，请稍后再试"); error.code = payload.error?.code; throw error; }
         return payload;
       }
+      const chatSharing = initChatSharing({
+        getContext() {
+          const thread = agentThreadRef();
+          return thread ? { ...thread, key: state.currentChatId, version: chatVersion, messagesPath: state.chatKind === "friend" ? `/api/friends/${state.currentFriendUserId}/messages` : `/api/echoes/${state.currentChatId}/messages` } : null;
+        }, apiFetch, toast, escapeHtml,
+        async afterSend(context) {
+          if (context.key !== state.currentChatId || context.version !== chatVersion) return;
+          if (state.agentSettings?.mode === "auto") {
+            state.agentSettings = { ...state.agentSettings, enabled: false, autoStatus: "idle", autoReason: null };
+            renderAgentAssist();
+          }
+          await refreshChatMessages();
+        }
+      });
       function track(eventName, properties = {}) {
         if (!state.token) return;
         fetch("/api/analytics/track", { method:"POST", headers:{"content-type":"application/json",authorization:`Bearer ${state.token}`}, body:JSON.stringify({eventName,properties,sessionId}) }).catch(() => {});
@@ -587,6 +634,7 @@
           else chatDrafts.set(state.currentChatId, $("#messageInput").value);
         }
         chatVersion += 1;
+        chatSharing.reset();
         resetIcebreakers();
         state.currentChatId = null;
         state.currentSafetyUserId = null;
@@ -633,7 +681,7 @@
             const agentSource = item.source === "agent_suggestion" || item.source === "agent_auto";
             const agent = agentSource ? "agent-suggestion" : "";
             const tag = item.source === "agent_suggestion" ? `<small class="agent-tag">Agent 建议</small>` : item.source === "agent_auto" ? `<small class="agent-tag">Agent 代回</small>` : "";
-            return `<div class="bubble ${mine} ${agent}">${tag}${escapeHtml(item.body)}</div>`;
+            return `<div class="bubble ${mine} ${agent}">${tag}${chatSharing.render(item, state.token)}</div>`;
           }).join("");
           $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
         } catch (error) { if (version === chatVersion && chatId === state.currentChatId && requestVersion === messageVersion) handleChatError(error); }
