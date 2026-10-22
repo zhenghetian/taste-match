@@ -12,6 +12,8 @@
 - [工程工作流拆分](docs/WORKFLOWS.md)：各条工作流的输入、输出、验收和下一步。
 - `npm run dev:ai`：沿用当前进程模型配置，启动带 AI 开场白的本地服务；产品内同意后才调用模型。
 - `npm run verify`：语法和离线回归；`npm run ai:doctor`：不暴露密钥的配置检查。
+- `npm run ai:doctor -- --cloud`：检查云端 AI 配置；`npm run ai:smoke -- --all --cloud`：3 次合成真实请求验证开场白、建议回复和自动代回。云端需独立 HTTPS 模型服务，不能使用电脑上的代理，详见 [公网部署](docs/DEPLOYMENT.md)。
+- DeepSeek 接入：设置 `ANHAO_LLM_PROVIDER=deepseek`、`DEEPSEEK_API_KEY` 和 `ANHAO_LLM_ENABLED=true`，默认使用 `deepseek-flash`，直接连接官方云端接口，无需电脑代理。凭证只由环境注入。
 - `npm run harness -- new "本轮目标"`：记录任务，按计划、实现、验证推进；详见根目录 `AGENTS.md`。
 
 ## 交互原型
@@ -99,4 +101,4 @@ npm test
 
 这个版本需要 Node 服务和持久化磁盘，不能再只使用 GitHub Pages。正式部署还需要 HTTPS、短信服务、微信回调域名、数据库备份、接口限流和隐私协议。当前设备通知依赖页面保持打开；App 关闭后的系统推送需要继续接入 APNs、FCM 或微信服务通知。
 
-Railway 部署时将持久化磁盘挂载到 `/data`，并设置 `DATA_DIR=/data`、`NODE_ENV=production`、`MASTER_INVITE_CODE`、`BETA_TEST_CODE` 和 `ADMIN_KEY`。生产环境默认监听 `0.0.0.0`，端口由部署平台的 `PORT` 环境变量提供。
+部署步骤与持久化要求见 [公网部署](docs/DEPLOYMENT.md)。Railway 将持久化磁盘挂载到 `/data`，并设置 `DATA_DIR=/data`、`NODE_ENV=production` 和 `ADMIN_KEY`。生产环境默认监听 `0.0.0.0`，端口由部署平台的 `PORT` 环境变量提供。必须配置 `SMS_WEBHOOK_URL`，或仅在受控内测时配置 `BETA_TEST_CODE`；服务只部署一个副本，实时连接不能跨实例共享。
