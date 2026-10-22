@@ -11,7 +11,11 @@ import { setImmediate as nextTurn, setTimeout as delay } from "node:timers/promi
 const dataDir = mkdtempSync(join(tmpdir(), "anhao-agent-auto-"));
 Object.assign(process.env, {
   DATA_DIR: dataDir,
-  ANHAO_LLM_ENABLED: "false",
+  ANHAO_LLM_ENABLED: "true",
+  ANHAO_LLM_PROVIDER: "deepseek",
+  DEEPSEEK_API_KEY: "synthetic-auto-key",
+  ANHAO_LLM_MODEL: "deepseek-flash",
+  ANHAO_LLM_AUTO_REPLY_ENABLED: "true",
   MODERATION_WEBHOOK_URL: "",
   NODE_ENV: "production",
   BETA_TEST_CODE: "123456",

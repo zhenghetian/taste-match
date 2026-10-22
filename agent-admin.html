@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Agent 与 Harness · 暗号管理</title>
+  <link rel="stylesheet" href="agent-admin.css" />
+</head>
+<body>
+  <main id="workspace" class="shell" hidden>
+    <header class="topbar">
+      <div class="brand"><strong>暗号 · Agent 与 Harness</strong><span>模型配置、执行约束与版本管理</span></div>
+      <nav class="tools" aria-label="管理导航"><a href="admin.html">内测数据</a><button id="reload" type="button">重新加载</button><button id="logout" type="button">退出管理</button></nav>
+    </header>
+    <div id="feedback" class="notice" role="status" aria-live="polite" hidden><span id="feedbackText"></span><button id="retry" type="button" hidden>重试</button></div>
+    <div class="section-head"><div><h1>运行配置</h1><p id="version">尚未加载</p></div><span id="draftState">草稿未改动</span></div>
+    <div id="configuration" class="notice muted"></div>
+    <form id="configForm" novalidate>
+      <fieldset id="fields">
+        <section class="panel" aria-labelledby="modelHeading">
+          <div class="panel-head"><h2 id="modelHeading">模型与自动代回</h2><p>供应商凭证由服务端管理，仅展示配置状态。</p></div>
+          <div class="panel-body">
+            <label class="check"><input id="enabled" name="enabled" type="checkbox" /><span>启用模型能力<small>关闭后停止使用模型；凭证缺失时仍可关闭并保存。</small></span></label>
+            <div class="grid two">
+              <label>模型供应商<select id="provider" name="provider"><option value="anthropic">Anthropic</option><option value="deepseek">DeepSeek</option></select><small id="credentialState"></small></label>
+              <label>模型名称<input id="model" name="model" type="text" autocomplete="off" placeholder="留空使用服务端默认模型" /><small id="modelDefault">留空使用所选供应商的默认模型；切换供应商将清空模型名称。</small></label>
+            </div>
+            <p id="credentials" class="hint"></p>
+            <label class="check"><input id="allowAutoReply" name="allowAutoReply" type="checkbox" /><span>允许自动代回<small>仅为后台总开关。仍须用户对当前会话明确授权；双方可见代回标识，用户可随时接管。</small></span></label>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="limitsHeading">
+          <div class="panel-head"><h2 id="limitsHeading">执行限制</h2><p>每日额度按协调世界时（UTC）日期计算，失败请求也计入额度。设为 0 表示禁用，不代表无限。</p></div>
+          <div class="panel-body grid three">
+            <label>请求超时（毫秒）<input id="timeoutMs" name="timeoutMs" type="number" min="1000" max="60000" step="1" required /><small>1,000–60,000 毫秒</small></label>
+            <label>最大输出令牌数<input id="maxTokens" name="maxTokens" type="number" min="256" max="8192" step="1" required /><small>256–8,192</small></label>
+            <label>并发任务上限<input id="concurrency" name="concurrency" type="number" min="1" max="8" step="1" required /><small>1–8；开场白、回复建议与自动代回共享并发上限</small></label>
+            <label>全局每日额度<input id="globalDailyLimit" name="globalDailyLimit" type="number" min="0" max="10000" step="1" required /><small>0–10,000 次；0 为禁用</small></label>
+            <label>单用户每日额度<input id="userDailyLimit" name="userDailyLimit" type="number" min="0" max="1000" step="1" required /><small>0–1,000 次；0 为禁用</small></label>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="instructionsHeading">
+          <div class="panel-head"><h2 id="instructionsHeading">提示词补充</h2><p>固定规则与安全边界始终保留，这里仅追加业务要求，不会覆盖原有规则。每项最多 2,000 字，可留空。</p></div>
+          <div class="panel-body instruction-list">
+            <label>开场白补充要求<textarea id="icebreakerInstruction" name="icebreakerInstruction" rows="3" aria-describedby="icebreakerCount"></textarea><small id="icebreakerCount"></small></label>
+            <label>回复建议补充要求<textarea id="replyInstruction" name="replyInstruction" rows="3" aria-describedby="replyCount"></textarea><small id="replyCount"></small></label>
+            <label>自动代回补充要求<textarea id="autoInstruction" name="autoInstruction" rows="3" aria-describedby="autoCount"></textarea><small id="autoCount"></small></label>
+          </div>
+        </section>
+      </fieldset>
+      <div id="validation" class="notice error" role="alert" hidden></div>
+      <div class="actionbar"><span id="validationNote" class="hint">配置校验不会调用模型，也不验证连接。</span><div class="tools"><button id="reset" type="button">重置草稿</button><button id="validate" type="button">校验配置</button><button id="preview" class="primary" type="submit">预览变更</button></div></div>
+    </form>
+    <section aria-labelledby="historyHeading">
+      <div class="section-head"><div><h2 id="historyHeading">版本历史</h2><p>恢复旧版本会创建新版本，保留原历史记录。</p></div><button id="loadHistory" type="button">加载历史</button></div>
+      <div id="history" class="panel"><p class="empty">尚未加载版本历史。</p></div>
+    </section>
+    <details class="runtime"><summary>运行状态（可选）</summary><p class="hint">状态接口不可用不影响配置管理；以下为服务端返回的只读摘要。</p><button id="loadStatus" type="button">刷新运行状态</button><pre id="status">尚未读取。</pre></details>
+  </main>
+  <div id="gate" class="gate">
+    <div class="login"><small>仅限内测管理者</small><h1>管理 Agent 配置</h1><p>输入部署时设置的管理密钥，仅在当前浏览器会话中保存。</p><form id="loginForm"><label class="sr-only" for="adminKey">管理密钥</label><input id="adminKey" type="password" autocomplete="current-password" placeholder="管理密钥" required /><button id="loginButton" class="primary" type="submit">进入</button></form><p id="loginMessage" role="alert"></p><button id="loginRetry" type="button" hidden>重试加载</button><button id="clearSession" type="button" hidden>清除会话密钥</button></div>
+  </div>
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <form id="confirmForm">
+      <div class="dialog-head"><h2 id="confirmTitle">确认配置变更</h2><p id="confirmDescription"></p></div>
+      <div class="dialog-body"><div class="diff-scroll"><table><thead><tr><th>配置项</th><th>当前值</th><th>变更后</th></tr></thead><tbody id="diff"></tbody></table></div><label class="reason">变更原因（必填）<textarea id="reason" rows="3" required placeholder="说明本次调整的业务原因"></textarea></label><p id="confirmError" class="error-text" role="alert"></p><button id="confirmRetry" type="button" hidden>重试</button></div>
+      <div class="dialog-actions"><button id="cancelConfirm" type="button">取消</button><button id="save" class="primary" type="submit">确认保存</button></div>
+    </form>
+  </dialog>
+  <script type="module" src="agent-admin.mjs"></script>
+</body>
+</html>

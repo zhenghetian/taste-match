@@ -790,11 +790,12 @@
         $("#agentSetup").hidden = Boolean(mode);
         $("#agentAutoSetup").hidden = automatic;
         const failureReasons = { disabled: "模型尚未开启", daily_limit: "今天的使用次数已用完", busy: "当前服务繁忙", timeout: "生成超时", authentication: "模型服务暂不可用", provider_rate_limit: "模型服务繁忙", invalid_output: "回复未通过检查", refusal: "此次回复未生成", CONTENT_BLOCKED: "回复未通过内容审核", CONTENT_UNDER_REVIEW: "回复需要审核" };
-        const failed = settings?.autoStatus === "failed";
+        const adminDisabled = settings?.autoReason === "admin_disabled";
+        const failed = settings?.autoStatus === "failed" || adminDisabled;
         $("#agentLive").hidden = !mode && !failed;
         $("#generateAgentDraft").hidden = mode !== "suggest";
         $("#agentModeTitle").textContent = failed ? "自动代回已停止" : automatic ? "自动代回进行中" : "Agent 建议已开启";
-        $("#agentAssistHint").textContent = automatic || failed
+        $("#agentAssistHint").textContent = adminDisabled ? "管理员已关闭自动代回，请手动接着聊" : automatic || failed
           ? (settings?.autoStatus === "failed" && settings?.autoReason
             ? `${failureReasons[settings.autoReason] || "回复暂未生成"}，已停止，请手动接着聊`
             : (statusText[settings?.autoStatus] || "等待真人消息"))
