@@ -30,7 +30,7 @@ export function cleanSource(value) {
 }
 
 export function createCardModule({ db, helpers }) {
-  const { now, addDays, id, token, json, fail, readJson, requireUser, requireAdmin, publicBaseUrl, ensureFriendInvite, friendshipBetween, orderedPair, blockedBetween, getHarness, builtinModeration } = helpers;
+  const { now, addDays, id, token, json, fail, readJson, requireUser, optionalUser, requireAdmin, publicBaseUrl, ensureFriendInvite, friendshipBetween, orderedPair, blockedBetween, getHarness, builtinModeration } = helpers;
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS cards (
@@ -99,7 +99,22 @@ export function createCardModule({ db, helpers }) {
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TEXT NOT NULL
     );
+    -- Recipient guesses. Visible only to the card's sender and that recipient; deleted with the card.
+    CREATE TABLE IF NOT EXISTS card_attempts (
+      id TEXT PRIMARY KEY,
+      card_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      guess TEXT NOT NULL,
+      correct INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_card_attempts_card ON card_attempts(card_id, created_at);
   `);
+  // Migration for cards created before recipient login: add recipient_id; old cards bind on first logged-in open.
+  if (!db.prepare(`PRAGMA table_info(cards)`).all().some((column) => column.name === "recipient_id")) {
+    db.exec(`ALTER TABLE cards ADD COLUMN recipient_id TEXT`);
+  }
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cards_recipient ON cards(recipient_id, created_at DESC)`);
 
   function logEvent(cardId, eventName, source, { attempt = null, correct = null } = {}) {
     if (!CARD_EVENTS.includes(eventName)) throw new Error(`unknown card event ${eventName}`);
@@ -115,10 +130,12 @@ export function createCardModule({ db, helpers }) {
     const stamp = now();
     db.prepare(`DELETE FROM cards WHERE expires_at<=?`).run(stamp);
     db.prepare(`DELETE FROM card_groups WHERE expires_at<=?`).run(stamp);
+    db.prepare(`DELETE FROM card_attempts WHERE card_id NOT IN (SELECT id FROM cards)`).run();
   }
 
   function deleteCard(cardId) {
     db.prepare(`DELETE FROM cards WHERE id=?`).run(cardId);
+    db.prepare(`DELETE FROM card_attempts WHERE card_id=?`).run(cardId);
     // Feedback detail is the recipient's own words; drop it with the card, keep report reasons.
     db.prepare(`DELETE FROM card_feedback WHERE card_id=? AND kind='feedback'`).run(cardId);
     db.prepare(`UPDATE card_feedback SET detail='' WHERE card_id=?`).run(cardId);
@@ -142,8 +159,29 @@ export function createCardModule({ db, helpers }) {
     return `${publicBaseUrl(req)}/card.html#c=${card.token}`;
   }
 
+  const maskPhone = (phone) => phone ? `${phone.slice(0, 3)}****${phone.slice(-4)}` : null;
+  function accountView(userId) {
+    const row = userId ? db.prepare(`SELECT id, nickname, phone FROM users WHERE id=?`).get(userId) : null;
+    return row ? { id: row.id, nickname: row.nickname, phone: maskPhone(row.phone) } : null;
+  }
+  function attemptsFor(cardId, userId) {
+    const rows = userId
+      ? db.prepare(`SELECT user_id, guess, correct, created_at FROM card_attempts WHERE card_id=? AND user_id=? ORDER BY created_at, rowid`).all(cardId, userId)
+      : db.prepare(`SELECT user_id, guess, correct, created_at FROM card_attempts WHERE card_id=? ORDER BY created_at, rowid`).all(cardId);
+    const people = new Map();
+    return rows.map((row) => {
+      if (!people.has(row.user_id)) people.set(row.user_id, accountView(row.user_id));
+      return { guess: row.guess, correct: Boolean(row.correct), createdAt: row.created_at, answeredBy: people.get(row.user_id) };
+    });
+  }
+  function receivedView(card, req) {
+    const view = publicView(card, { reveal: true });
+    return { token: card.token, shareUrl: shareUrl(req, card), status: card.status, createdAt: card.created_at, ...view };
+  }
+
   function ownerView(card, req) {
     return {
+      recipient: accountView(card.recipient_id), answers: attemptsFor(card.id),
       id: card.id, token: card.token, shareUrl: shareUrl(req, card), status: card.status,
       unlockType: card.unlock_type, question: card.question, answer: card.answer, hint: card.hint,
       content: card.content, inviteWhen: card.invite_when, inviteWhere: card.invite_where, penalty: card.penalty,
@@ -235,17 +273,41 @@ export function createCardModule({ db, helpers }) {
       const card = cardByToken(pub[1]);
       if (!card) { fail(res, 404, "CARD_NOT_FOUND", "这张卡已经过期、被删掉了，或者链接不对"); return true; }
       const action = pub[2];
+      const viewer = optionalUser(req, url);
+      // Binds the card to the first logged-in non-sender who opens it. Returns an error string or null.
+      const claim = () => {
+        if (!viewer) return "login";
+        if (viewer.id === card.sender_id) return "sender";
+        if (!card.recipient_id) {
+          db.prepare(`UPDATE cards SET recipient_id=? WHERE id=? AND recipient_id IS NULL`).run(viewer.id, card.id);
+          card.recipient_id = db.prepare(`SELECT recipient_id FROM cards WHERE id=?`).get(card.id).recipient_id;
+        }
+        return card.recipient_id === viewer.id ? null : "claimed";
+      };
+      const claimedFail = () => fail(res, 403, "CARD_CLAIMED", "这张卡已经被别人领走啦，暗号只属于一个人");
       if (!action && method === "GET") {
+        if (!viewer) {
+          // Teaser only: enough to know it's a card for you, nothing that helps answer it.
+          json(res, 200, { loginRequired: true, card: { teaser: true, senderName: card.sender_name || "一位朋友", isReply: Boolean(card.reply_to_card_id), group: Boolean(card.group_id), expiresAt: card.expires_at } }); return true;
+        }
+        const role = claim();
+        if (role === "claimed") { claimedFail(); return true; }
+        if (role === "sender") { json(res, 200, { role: "sender", card: publicView(card) }); return true; }
         if (!card.opened_at) {
           db.prepare(`UPDATE cards SET opened_at=?, status=CASE WHEN status='created' THEN 'opened' ELSE status END WHERE id=? AND opened_at IS NULL`).run(now(), card.id);
           logEvent(card.id, "card_opened", url.searchParams.get("source") || card.source);
         }
-        json(res, 200, { card: publicView(card, { reveal: true }) }); return true;
+        const fresh = db.prepare(`SELECT * FROM cards WHERE id=?`).get(card.id);
+        json(res, 200, { role: "recipient", card: { ...publicView(fresh, { reveal: true }), myAnswers: attemptsFor(card.id, viewer.id).map(({ answeredBy, ...rest }) => rest) } }); return true;
       }
       if (action === "answer" && method === "POST") {
         const body = await readJson(req, 4096);
         const guess = typeof body.answer === "string" ? body.answer.trim().slice(0, 60) : "";
         if (!guess) { fail(res, 400, "EMPTY_ANSWER", "先写个答案再提交嘛"); return true; }
+        const role = claim();
+        if (role === "login") { fail(res, 401, "AUTH_REQUIRED", "先登录再对暗号"); return true; }
+        if (role === "sender") { fail(res, 403, "OWN_CARD", "自己出的题就别自己答啦，留给 TA"); return true; }
+        if (role === "claimed") { claimedFail(); return true; }
         if (card.unlocked_at) { json(res, 200, { correct: true, card: publicView(card, { reveal: true }) }); return true; }
         if (card.attempts >= MAX_ATTEMPTS) { json(res, 200, { correct: false, card: publicView(card) }); return true; }
         // Reserve the attempt before any model call so concurrent submits cannot exceed 3 tries.
@@ -260,13 +322,14 @@ export function createCardModule({ db, helpers }) {
           if (verdict.source === "model") { correct = verdict.correct; judgedBy = "ai"; }
         }
         const stamp = now();
+        db.prepare(`INSERT INTO card_attempts(id,card_id,user_id,guess,correct,created_at) VALUES(?,?,?,?,?,?)`).run(id("cat"), card.id, viewer.id, guess, correct ? 1 : 0, stamp);
         if (correct) db.prepare(`UPDATE cards SET unlocked_at=?, status=CASE WHEN status IN ('created','opened','failed') THEN 'unlocked' ELSE status END WHERE id=?`).run(stamp, card.id);
         else if (attempt >= MAX_ATTEMPTS) db.prepare(`UPDATE cards SET failed_at=?, status='failed' WHERE id=?`).run(stamp, card.id);
         const source = url.searchParams.get("source") || card.source;
         logEvent(card.id, "answer_tried", source, { attempt, correct });
         if (correct) logEvent(card.id, "card_unlocked", source, { attempt });
         const fresh = db.prepare(`SELECT * FROM cards WHERE id=?`).get(card.id);
-        json(res, 200, { correct, judgedBy, attempt, card: publicView(fresh, { reveal: true }) }); return true;
+        json(res, 200, { correct, judgedBy, attempt, card: { ...publicView(fresh, { reveal: true }), myAnswers: attemptsFor(card.id, viewer.id).map(({ answeredBy, ...rest }) => rest) } }); return true;
       }
       if (action === "event" && method === "POST") {
         const body = await readJson(req, 2048);
@@ -341,6 +404,11 @@ export function createCardModule({ db, helpers }) {
       json(res, 200, { questions: result.questions, source: result.source, reason: result.reason || null, aiAssisted: result.source === "model" }); return true;
     }
 
+    if (path === "/api/cards/received" && method === "GET") {
+      const cards = db.prepare(`SELECT * FROM cards WHERE recipient_id=? ORDER BY created_at DESC LIMIT 50`).all(user.id);
+      json(res, 200, { cards: cards.map((card) => receivedView(card, req)) }); return true;
+    }
+
     if (path === "/api/cards" && method === "GET") {
       const cards = db.prepare(`SELECT * FROM cards WHERE sender_id=? ORDER BY created_at DESC LIMIT 50`).all(user.id);
       const today = new Date().toISOString().slice(0, 10);
@@ -368,7 +436,8 @@ export function createCardModule({ db, helpers }) {
       let replyTo = null;
       if (body.replyToToken) {
         replyTo = cardByToken(String(body.replyToToken));
-        if (!replyTo || !replyTo.unlocked_at) { fail(res, 400, "REPLY_NOT_ALLOWED", "先解开原卡才能回卡哦"); return true; }
+        if (!replyTo || !replyTo.unlocked_at || (replyTo.recipient_id && replyTo.recipient_id !== user.id) || replyTo.sender_id === user.id) { fail(res, 400, "REPLY_NOT_ALLOWED", "先解开原卡才能回卡哦"); return true; }
+        if (!replyTo.recipient_id) db.prepare(`UPDATE cards SET recipient_id=? WHERE id=? AND recipient_id IS NULL`).run(user.id, replyTo.id);
       }
       let groupId = null;
       if (body.groupId) {
