@@ -63,7 +63,8 @@ const MIME = { ".html":"text/html; charset=utf-8", ".css":"text/css; charset=utf
 const PUBLIC_FILES = new Set([
   "/signal-mvp.html", "/index.html", "/admin.html", "/echo-prototype.html", "/ia-prototype.html",
   "/app.js", "/content-library.mjs", "/chat-sharing.mjs", "/styles.css", "/sw.js", "/manifest.webmanifest",
-  "/agent-admin.html", "/agent-admin.mjs", "/agent-admin.css", "/card.html"
+  "/agent-admin.html", "/agent-admin.mjs", "/agent-admin.css", "/card.html",
+  "/card-play.mjs", "/card-poster.mjs", "/vendor/qrcode-generator/qrcode.mjs"
 ]);
 const ASSET_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".svg", ".mp4"]);
 function staticFile(req,res,url) {

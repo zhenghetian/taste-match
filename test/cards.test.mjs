@@ -328,15 +328,208 @@ test("legacy cards without recipient_id keep working and bind on first logged-in
   assert.equal(dbQuery(`SELECT recipient_id FROM cards WHERE id=?`, card.id)[0].recipient_id.startsWith("usr_"), true);
 });
 
-test("migration adds recipient_id to a pre-existing cards table", async () => {
+test("sender can publish a safe extra hint immediately without revealing the original hint or answers", async () => {
+  const sender = await login("13900000050");
+  const friend = await login("13900000051");
+  const outsider = await login("13900000052");
+  const { card } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard({ senderName: "出题朋友" }) });
+  const path = `/api/cards/${card.id}/hint`;
+  assert.equal(card.senderName, "出题朋友");
+  assert.equal(card.extraHint, "");
+  assert.equal((await raw(path, { method: "POST", body: { hint: "烧烤那晚" } })).status, 401);
+  for (const token of [friend, outsider]) assert.equal((await raw(path, { token, method: "POST", body: { hint: "烧烤那晚" } })).status, 404);
+  for (const hint of ["", "   ", "长".repeat(41), 123]) {
+    assert.equal((await raw(path, { token: sender, method: "POST", body: { hint } })).status, 400);
+  }
+  for (const hint of ["你这个废物", "身份证 110101199003077777"]) {
+    assert.equal((await raw(path, { token: sender, method: "POST", body: { hint } })).status, 422);
+  }
+  const extraHint = "想".repeat(40);
+  const updated = (await ok(path, { token: sender, method: "POST", body: { hint: ` ${extraHint} ` } })).card;
+  assert.equal(updated.extraHint, extraHint);
+  assert.equal(updated.hint, "姓王");
+  assert.equal(updated.attempts, 0);
+  assert.equal(dbQuery(`SELECT extra_hint FROM cards WHERE id=?`, card.id)[0].extra_hint, extraHint);
+  const teaser = (await ok(`/api/cards/public/${tokenOf(card)}`, { anon: true })).card;
+  assert.equal(teaser.extraHint, undefined);
+  const opened = (await ok(`/api/cards/public/${tokenOf(card)}`, { token: friend })).card;
+  assert.equal(opened.extraHint, extraHint);
+  assert.equal(opened.hint, "");
+  assert.equal(opened.attemptsLeft, 3);
+  for (const key of ["answer", "altAnswers", "answers", "content", "penalty", "recipient"]) assert.equal(opened[key], undefined, key);
+  const received = (await ok("/api/cards/received", { token: friend })).cards.find((c) => c.token === tokenOf(card));
+  assert.equal(received.extraHint, extraHint);
+  await ok(path, { token: sender, method: "POST", body: { hint: "想想烧烤那晚" } });
+  const missed = await ok(`/api/cards/public/${tokenOf(card)}/answer`, { token: friend, method: "POST", body: { answer: "忘了" } });
+  assert.equal(missed.card.hint, "姓王");
+  assert.equal(missed.card.extraHint, "想想烧烤那晚");
+  const events = JSON.stringify(dbQuery(`SELECT * FROM card_events WHERE card_id=?`, card.id));
+  assert.equal(events.includes("想想烧烤那晚"), false);
+});
+
+test("owner can accept a failed recipient answer, reveal content, and retry without duplicate unlock events", async () => {
+  const sender = await login("13900000053");
+  const friend = await login("13900000054");
+  const { card } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard() });
+  const t = tokenOf(card);
+  for (const answer of ["王老师", "忘记了", "真忘了"]) await ok(`/api/cards/public/${t}/answer`, { token: friend, method: "POST", body: { answer } });
+  const failed = (await ok(`/api/cards/${card.id}`, { token: sender })).card;
+  assert.equal(failed.status, "failed");
+  assert.ok(failed.failedAt);
+  assert.equal(failed.answers.length, 3);
+  assert.ok(failed.answers.every((a) => typeof a.id === "string" && a.id));
+  const attemptId = failed.answers[0].id;
+  const path = `/api/cards/${card.id}/accept-answer`;
+  const accepted = (await ok(path, { token: sender, method: "POST", body: { attemptId } })).card;
+  assert.equal(accepted.status, "unlocked");
+  assert.equal(accepted.failedAt, null);
+  assert.ok(accepted.unlockedAt);
+  assert.equal(accepted.attempts, 3);
+  assert.deepEqual(accepted.answers.map((a) => a.correct), [true, false, false]);
+  const stored = dbQuery(`SELECT correct,accepted_at FROM card_attempts WHERE id=?`, attemptId)[0];
+  assert.equal(stored.correct, 1);
+  assert.ok(stored.accepted_at);
+  const opened = (await ok(`/api/cards/public/${t}`, { token: friend })).card;
+  assert.equal(opened.unlocked, true);
+  assert.equal(opened.failed, false);
+  assert.equal(opened.content, "周末烧烤我请！");
+  assert.equal(opened.penalty, undefined);
+  assert.equal(opened.answer, undefined);
+  assert.equal(opened.myAnswers[0].correct, true);
+  const received = (await ok("/api/cards/received", { token: friend })).cards.find((c) => c.token === t);
+  assert.equal(received.content, opened.content);
+  const retry = (await ok(path, { token: sender, method: "POST", body: { attemptId } })).card;
+  assert.equal(retry.unlockedAt, accepted.unlockedAt);
+  assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_events WHERE card_id=? AND event_name='card_unlocked'`, card.id)[0].n, 1);
+  await ok("/api/cards", { token: friend, method: "POST", body: baseCard({ replyToToken: t }) });
+  const replied = (await ok(path, { token: sender, method: "POST", body: { attemptId: failed.answers[1].id } })).card;
+  assert.equal(replied.status, "replied");
+  assert.ok(replied.repliedAt);
+  assert.equal(replied.failedAt, null);
+  assert.equal(replied.unlockedAt, accepted.unlockedAt);
+  assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_events WHERE card_id=? AND event_name='card_unlocked'`, card.id)[0].n, 1);
+});
+
+test("answer acceptance is owner-only and rejects cross-card, unbound, stale-recipient, missing and already-correct attempts", async () => {
+  const sender = await login("13900000055");
+  const friend = await login("13900000056");
+  const outsider = await login("13900000057");
+  const { card } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard() });
+  await ok(`/api/cards/public/${tokenOf(card)}/answer`, { token: friend, method: "POST", body: { answer: "王老师" } });
+  const own = (await ok(`/api/cards/${card.id}`, { token: sender })).card;
+  const attemptId = own.answers[0].id;
+  const path = `/api/cards/${card.id}/accept-answer`;
+  assert.equal((await raw(path, { method: "POST", body: { attemptId } })).status, 401);
+  for (const token of [friend, outsider]) assert.equal((await raw(path, { token, method: "POST", body: { attemptId } })).status, 404);
+  for (const body of [{}, { attemptId: 1 }, { attemptId: "" }]) assert.equal((await raw(path, { token: sender, method: "POST", body })).status, 400);
+  assert.equal((await raw(path, { token: sender, method: "POST", body: { attemptId: "missing" } })).status, 404);
+  const { card: other } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard() });
+  assert.equal((await raw(`/api/cards/${other.id}/accept-answer`, { token: sender, method: "POST", body: { attemptId } })).status, 404);
+  const recipientId = dbQuery(`SELECT recipient_id FROM cards WHERE id=?`, card.id)[0].recipient_id;
+  dbRun(`UPDATE cards SET recipient_id=NULL WHERE id=?`, card.id);
+  assert.equal((await raw(path, { token: sender, method: "POST", body: { attemptId } })).status, 404);
+  await ok(`/api/cards/public/${tokenOf(card)}`, { token: outsider });
+  assert.equal((await raw(path, { token: sender, method: "POST", body: { attemptId } })).status, 404);
+  dbRun(`UPDATE cards SET recipient_id=? WHERE id=?`, recipientId, card.id);
+  assert.equal(dbQuery(`SELECT correct FROM card_attempts WHERE id=?`, attemptId)[0].correct, 0);
+  assert.equal((await ok(`/api/cards/${card.id}`, { token: sender })).card.unlockedAt, null);
+  await ok(`/api/cards/public/${tokenOf(card)}/answer`, { token: friend, method: "POST", body: { answer: "老王" } });
+  const hit = (await ok(`/api/cards/${card.id}`, { token: sender })).card.answers.find((a) => a.correct);
+  assert.equal((await raw(path, { token: sender, method: "POST", body: { attemptId: hit.id } })).status, 400);
+  const accepted = (await ok(path, { token: sender, method: "POST", body: { attemptId } })).card;
+  assert.equal(accepted.answers[0].correct, true);
+  assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_events WHERE card_id=? AND event_name='card_unlocked'`, card.id)[0].n, 1);
+});
+
+test("expired cards reject sender hint and acceptance updates and purge attempts", async () => {
+  const sender = await login("13900000058");
+  const friend = await login("13900000059");
+  for (const action of ["hint", "accept-answer"]) {
+    const { card } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard() });
+    await ok(`/api/cards/public/${tokenOf(card)}/answer`, { token: friend, method: "POST", body: { answer: "王老师" } });
+    const attemptId = (await ok(`/api/cards/${card.id}`, { token: sender })).card.answers[0].id;
+    dbRun(`UPDATE cards SET expires_at=? WHERE id=?`, new Date(Date.now() - 1000).toISOString(), card.id);
+    assert.equal((await raw(`/api/cards/${card.id}/${action}`, { token: sender, method: "POST", body: { hint: "想想烧烤", attemptId } })).status, 404);
+    assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM cards WHERE id=?`, card.id)[0].n, 0);
+    assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_attempts WHERE card_id=?`, card.id)[0].n, 0);
+    assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_events WHERE card_id=? AND event_name='card_unlocked'`, card.id)[0].n, 0);
+  }
+});
+
+test("a pending third judgment cannot overwrite manual unlock or emit another unlock event", async () => {
+  const { createCardModule } = await import("../cards.mjs");
+  for (const verdictCorrect of [false, true]) {
+    const db = new DatabaseSync(":memory:");
+    let sequence = 0;
+    let finishJudge;
+    let signalStarted;
+    const started = new Promise((resolve) => { signalStarted = resolve; });
+    const judgment = new Promise((resolve) => { finishJudge = resolve; });
+    const stamp = "2026-10-24T12:00:00.000Z";
+    db.exec(`CREATE TABLE users(id TEXT PRIMARY KEY, nickname TEXT, phone TEXT);
+      INSERT INTO users VALUES('sender','发卡人','13900000001'),('recipient','收卡人','13900000002');`);
+    const module = createCardModule({ db, helpers: {
+      now: () => stamp,
+      id: (prefix) => `${prefix}_${++sequence}`,
+      readJson: async (req) => req.body,
+      optionalUser: (req) => ({ id: req.userId }),
+      requireUser: (req) => ({ id: req.userId }),
+      publicBaseUrl: () => "https://anhao.example",
+      json: (res, status, body) => Object.assign(res, { status, body }),
+      fail: (res, status, code) => Object.assign(res, { status, body: { error: { code } } }),
+      getHarness: () => ({ judge: () => { signalStarted(); return judgment; } })
+    } });
+    db.prepare(`INSERT INTO cards(id,token,sender_id,recipient_id,unlock_type,question,answer,content,attempts,status,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run("card_race", "recipient_race_token", "sender", "recipient", "message", "谁？", "老王", "隐藏内容", 2, "opened", "2999-01-01", stamp);
+    db.prepare(`INSERT INTO card_attempts(id,card_id,user_id,guess,correct,created_at) VALUES(?,?,?,?,?,?)`).run("wrong_attempt", "card_race", "recipient", "王老师", 0, stamp);
+    const pending = {};
+    const request = module.handle({ method: "POST", userId: "recipient", body: { answer: "第三次猜测" } }, pending, new URL("https://anhao.example/api/cards/public/recipient_race_token/answer"));
+    try {
+      await started;
+      assert.equal(db.prepare(`SELECT attempts FROM cards WHERE id='card_race'`).get().attempts, 3);
+      const accepted = {};
+      await module.handle({ method: "POST", userId: "sender", body: { attemptId: "wrong_attempt" } }, accepted, new URL("https://anhao.example/api/cards/card_race/accept-answer"));
+      assert.equal(accepted.status, 200);
+      assert.equal(accepted.body.card.status, "unlocked");
+      finishJudge({ correct: verdictCorrect, source: "model" });
+      await request;
+      assert.equal(pending.status, 200);
+      assert.equal(pending.body.card.unlocked, true);
+      assert.equal(pending.body.card.failed, false);
+      assert.equal(pending.body.card.content, "隐藏内容");
+      const stored = db.prepare(`SELECT status,failed_at,unlocked_at FROM cards WHERE id='card_race'`).get();
+      assert.equal(stored.status, "unlocked");
+      assert.equal(stored.failed_at, null);
+      assert.equal(stored.unlocked_at, accepted.body.card.unlockedAt);
+      assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM card_events WHERE event_name='card_unlocked'`).get().n, 1);
+    } finally {
+      finishJudge({ correct: false, source: "model" });
+      await request;
+      db.close();
+    }
+  }
+});
+
+test("migration adds recipient and sender-intervention fields to pre-existing tables without losing data", async () => {
   const { createCardModule } = await import("../cards.mjs");
   const db = new DatabaseSync(":memory:");
   db.exec(`CREATE TABLE users(id TEXT PRIMARY KEY, nickname TEXT, phone TEXT);
     CREATE TABLE cards(id TEXT PRIMARY KEY, token TEXT NOT NULL UNIQUE, sender_id TEXT NOT NULL, reply_to_card_id TEXT, group_id TEXT, unlock_type TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, alt_answers TEXT NOT NULL DEFAULT '[]', hint TEXT NOT NULL DEFAULT '', content TEXT NOT NULL, invite_when TEXT NOT NULL DEFAULT '', invite_where TEXT NOT NULL DEFAULT '', penalty TEXT NOT NULL DEFAULT '', sender_name TEXT NOT NULL DEFAULT '', ai_assisted INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'direct', attempts INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'created', opened_at TEXT, unlocked_at TEXT, failed_at TEXT, replied_at TEXT, expires_at TEXT NOT NULL, created_at TEXT NOT NULL);
-    INSERT INTO cards(id,token,sender_id,unlock_type,question,answer,content,expires_at,created_at) VALUES('card_old','tok','u','message','q','a','c','2999-01-01','2026-01-01');`);
+    CREATE TABLE card_attempts(id TEXT PRIMARY KEY,card_id TEXT NOT NULL,user_id TEXT NOT NULL,guess TEXT NOT NULL,correct INTEGER NOT NULL,created_at TEXT NOT NULL);
+    INSERT INTO card_attempts VALUES('attempt_old','card_old','recipient','旧答案',0,'2026-01-01');
+    INSERT INTO cards(id,token,sender_id,unlock_type,question,answer,hint,content,expires_at,created_at) VALUES('card_old','tok','u','message','q','a','原提示','c','2999-01-01','2026-01-01');`);
   createCardModule({ db, helpers: {} });
   createCardModule({ db, helpers: {} });
   assert.ok(db.prepare(`PRAGMA table_info(cards)`).all().some((c) => c.name === "recipient_id"));
-  assert.equal(db.prepare(`SELECT question FROM cards WHERE id='card_old'`).get().question, "q");
+  assert.ok(db.prepare(`PRAGMA table_info(cards)`).all().some((c) => c.name === "extra_hint"));
+  assert.ok(db.prepare(`PRAGMA table_info(card_attempts)`).all().some((c) => c.name === "accepted_at"));
+  const old = db.prepare(`SELECT * FROM cards WHERE id='card_old'`).get();
+  assert.equal(old.question, "q");
+  assert.equal(old.hint, "原提示");
+  assert.equal(old.extra_hint, "");
+  const attempt = db.prepare(`SELECT * FROM card_attempts WHERE id='attempt_old'`).get();
+  assert.equal(attempt.guess, "旧答案");
+  assert.equal(attempt.correct, 0);
+  assert.equal(attempt.accepted_at, null);
   db.close();
 });
