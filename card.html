@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="robots" content="noindex,nofollow" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%94%90%3C/text%3E%3C/svg%3E" />
 <title>暗号卡 · 只有自己人才解得开</title>
 <style>
   :root{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#231b2e;background:#fff4e6;--hot:#ff5a5f;--ink:#231b2e;--muted:#7a6f80;--card:#fff;--line:#f0d9c4;--pop:#ffd23f;--mint:#3ddc97}
@@ -34,6 +35,8 @@
   .shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
   .big{font-size:20px;font-weight:800;line-height:1.5}
   .foot{display:flex;gap:12px;justify-content:center;margin-top:24px}.foot a{color:var(--muted);font-size:12px}
+  .tabs{display:flex;gap:8px;margin:18px 0 6px}.tabs button{flex:1}.tabs button.on{background:var(--ink)}
+  .ans{font-size:13px;border-top:1px dashed var(--line);padding:6px 0;display:flex;justify-content:space-between;gap:8px}
   dialog{border:2px solid var(--ink);border-radius:16px;max-width:420px;width:calc(100% - 32px)}
 </style>
 </head>
@@ -43,8 +46,13 @@
 
   <!-- Sender: login -->
   <section id="login" hidden>
+    <div class="card reveal" id="teaser" hidden>
+      <p class="big" id="teaserTitle"></p>
+      <p>只有 TA 想考的那个人才答得出。登录一下，马上对暗号 👇</p>
+      <p class="muted">登录后这张卡就归你啦（别人再点开也答不了）。你输入的每个答案，发卡人都能看到哦 👀</p>
+    </div>
     <div class="card">
-      <p class="big">拉上几个损友，给 TA 出一道“只有真朋友才答得出”的题 😈</p>
+      <p class="big" id="loginPitch">拉上几个损友，给 TA 出一道“只有真朋友才答得出”的题 😈</p>
       <p class="muted">答对才看得到你想说的话；答错？嘿嘿，按约定接受“惩罚”。整蛊归整蛊，不伤人、不揭短、不泄露隐私。</p>
       <label for="phone">手机号</label><input id="phone" inputmode="numeric" maxlength="11" placeholder="11 位手机号" />
       <label for="code">内测码</label><input id="code" inputmode="numeric" maxlength="6" placeholder="6 位内测码" />
@@ -58,8 +66,9 @@
   <section id="home" hidden>
     <div class="row"><button id="newCard">做一张暗号卡</button><button class="ghost" id="newGroup">拉群一起起哄</button><span class="muted" id="quota"></span></div>
     <div id="groupBox"></div>
-    <h2>我发出的卡</h2>
+    <div class="tabs"><button class="ghost on" id="tabSent">我发出的</button><button class="ghost" id="tabRecv">我收到的</button></div>
     <div id="myCards"><p class="muted">还没发过卡，快去整蛊第一个人吧。</p></div>
+    <div id="recvCards" hidden><p class="muted">还没收到卡。让损友们放马过来！</p></div>
   </section>
 
   <!-- Sender: composer -->
@@ -147,7 +156,8 @@
       </div>
       <div id="revealBox" hidden class="reveal"></div>
       <div id="failBox" hidden class="reveal"></div>
-      <p class="ai-label">题目由 AI 协助生成，内容由你的朋友亲自确认。暗号卡仅限 18 岁以上用户使用。</p>
+      <div id="myAnswers"></div>
+      <p class="ai-label">👀 注意：你输入的每个答案（对的、错的、离谱的）发卡人都能看到，别输入不想让 TA 看到的话。<br />题目由 AI 协助生成，内容由你的朋友亲自确认。暗号卡仅限 18 岁以上用户使用。</p>
     </div>
     <div id="afterUnlock" hidden>
       <div class="card">
@@ -163,7 +173,7 @@
 
   <section id="missing" hidden><div class="card"><p class="big">这张卡不见了 👻</p><p class="muted">可能已过期（30 天）、被发卡人删除，或链接不完整。</p></div></section>
 
-  <div class="foot"><a href="/signal-mvp.html" id="legacy" hidden>旧版</a><a href="#" id="logout" hidden>退出登录</a></div>
+  <div class="foot"><a href="/card.html" id="myLink" hidden>我的卡</a><a href="/signal-mvp.html" id="legacy" hidden>旧版</a><a href="#" id="logout" hidden>退出登录</a></div>
 </main>
 
 <dialog id="reportDlg">
@@ -205,14 +215,34 @@ function el(tag, text, cls) { const n = document.createElement(tag); if (text !=
 
 // ---------- Recipient ----------
 async function openCard(token) {
-  show("recv");
-  try { const { card } = await api(withSource(`/api/cards/public/${token}`), { auth: false }); renderRecv(card); }
-  catch { show("missing"); }
+  let payload;
+  try { payload = await api(withSource(`/api/cards/public/${token}`)); }
+  catch (error) {
+    if (error.status === 401) { localStorage.removeItem("anhao_token"); state.token = ""; return openCard(token); }
+    show("missing");
+    if (error.code === "CARD_CLAIMED") { $("#missing .big").textContent = "这张卡已经有主人啦 🔒"; $("#missing .muted").textContent = "暗号只属于收卡的那个人。换个号登录了？退出后用收卡的手机号再进来。"; $("#logout").hidden = false; }
+    return;
+  }
+  if (payload.loginRequired) {
+    show("login"); $("#teaser").hidden = false;
+    $("#teaserTitle").textContent = payload.card.isReply ? `🔁 ${payload.card.senderName} 反整蛊回来了！这张卡是给你的` : `🔐 ${payload.card.senderName}${payload.card.group ? " 和 TA 的损友团" : ""} 给你发了一张暗号卡`;
+    $("#loginPitch").textContent = "用手机号 + 内测码登录，就能看到题目";
+    $("#title").textContent = "有一张卡在等你";
+    return;
+  }
+  show("recv"); $("#myLink").hidden = false; $("#logout").hidden = false;
+  if (payload.role === "sender") {
+    renderRecv(payload.card); $("#answerBox").hidden = true;
+    $("#recvFrom").textContent = "这是你自己发的卡（预览）。答题留给 TA，TA 的答案会出现在「我的卡」里。";
+    $("#afterUnlock").hidden = true; return;
+  }
+  renderRecv(payload.card);
   $("#tryBtn").onclick = async () => {
     const answer = $("#guess").value.trim(); if (!answer) return;
     $("#tryBtn").disabled = true; $("#recvErr").textContent = "";
     try {
-      const result = await api(withSource(`/api/cards/public/${token}/answer`), { method: "POST", body: { answer }, auth: false });
+      const result = await api(withSource(`/api/cards/public/${token}/answer`), { method: "POST", body: { answer } });
+      $("#guess").value = "";
       if (!result.correct && !result.card.failed) { $("#recvCard").classList.remove("shake"); void $("#recvCard").offsetWidth; $("#recvCard").classList.add("shake"); $("#recvErr").textContent = ["不对哦，再想想？损友们在旁边偷笑了", "又错了！最后一次机会，稳住"][Math.min(1, result.card.maxAttempts - result.card.attemptsLeft - 1)] || "不对哦"; }
       renderRecv(result.card);
     } catch (error) { $("#recvErr").textContent = error.message; }
@@ -238,6 +268,8 @@ function renderRecv(card) {
   $("#recvQuestion").textContent = card.question;
   $("#recvHint").textContent = card.hint ? `💡 提示：${card.hint}` : (card.hasPenalty ? "⚠️ 答错 3 次有“惩罚”哦，想清楚再答" : "");
   $("#tries").textContent = `还剩 ${card.attemptsLeft} 次机会`;
+  const mine = card.myAnswers || [];
+  $("#myAnswers").replaceChildren(...(mine.length ? [el("p", "你答过的（发卡人也能看到）：", "muted")] : []), ...mine.map((a) => { const row = el("div", null, "ans"); row.append(el("span", a.guess), el("span", a.correct ? "✅ 对了" : "❌ 不对")); return row; }));
   if (card.unlocked) {
     $("#answerBox").hidden = true; $("#revealBox").hidden = false; $("#afterUnlock").hidden = false;
     const box = $("#revealBox"); box.replaceChildren(el("p", card.unlockType === "invite" ? "🎟️ 暗号正确！你收到一张约见邀请" : card.unlockType === "surprise" ? "🎁 暗号正确！小惊喜来了" : "🔓 暗号正确！TA 想对你说", "muted"), el("p", card.content, "big"));
@@ -261,8 +293,31 @@ async function openGroup(token) {
 }
 
 // ---------- Sender ----------
+function setTab(which) {
+  $("#tabSent").classList.toggle("on", which === "sent"); $("#tabRecv").classList.toggle("on", which === "recv");
+  $("#myCards").hidden = which !== "sent"; $("#recvCards").hidden = which !== "recv";
+  sessionStorage.setItem("anhao_card_tab", which);
+  if (which === "recv") loadReceived();
+}
+$("#tabSent").onclick = () => setTab("sent");
+$("#tabRecv").onclick = () => setTab("recv");
+const RECV_STATUS = (c) => c.unlocked ? (c.status === "replied" ? "已解开，已回卡 🔁" : "已解开 🎉") : c.failed ? "3 次全错 😈" : `还剩 ${c.attemptsLeft} 次机会`;
+async function loadReceived() {
+  const { cards } = await api("/api/cards/received");
+  if (!cards.length) return;
+  $("#recvCards").replaceChildren(...cards.map((card) => {
+    const box = el("div", null, "card");
+    const head = el("div", null, "row"); head.style.justifyContent = "space-between";
+    head.append(el("b", `来自 ${card.senderName}`), el("span", RECV_STATUS(card), `status s-${card.unlocked ? "unlocked" : card.failed ? "failed" : "opened"}`));
+    const open = el("button", card.unlocked || card.failed ? "再看一眼" : "继续对暗号", "small");
+    open.onclick = () => { location.href = `/card.html#c=${card.token}`; };
+    box.append(head, el("p", card.question), open);
+    return box;
+  }));
+}
 async function loadHome() {
   show("home"); $("#logout").hidden = false; $("#legacy").hidden = false;
+  if (sessionStorage.getItem("anhao_card_tab") === "recv") setTab("recv");
   if (state.replyTo) return startCompose();
   const data = await api("/api/cards");
   $("#quota").textContent = `今天还能发 ${data.remainingToday}/${data.dailyLimit} 张`;
@@ -276,7 +331,13 @@ async function loadHome() {
     const copy = el("button", "复制链接", "ghost small"); copy.onclick = () => copyLink(card);
     const del = el("button", "永久删除", "ghost small"); del.onclick = async () => { if (!confirm("删掉就彻底没了，TA 也打不开了，确定？")) return; await api(`/api/cards/${card.id}`, { method: "DELETE" }); loadHome(); };
     actions.append(copy, del);
-    box.append(head, el("p", `答案：${card.answer} · 已答 ${card.attempts} 次 · ${new Date(card.expiresAt).toLocaleDateString("zh-CN")} 过期`, "muted"), actions);
+    box.append(head, el("p", `答案：${card.answer} · 已答 ${card.attempts} 次 · ${new Date(card.expiresAt).toLocaleDateString("zh-CN")} 过期`, "muted"));
+    if (card.recipient) box.append(el("p", `收卡人：${card.recipient.nickname}（${card.recipient.phone}）`, "muted"));
+    if (card.answers?.length) {
+      box.append(el("p", "TA 是这么答的 👀", "muted"));
+      for (const a of card.answers) { const row = el("div", null, "ans"); row.append(el("span", `${a.correct ? "✅" : "❌"} ${a.guess}`), el("span", `${a.answeredBy?.nickname || "?"} · ${new Date(a.createdAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`, "muted")); box.append(row); }
+    }
+    box.append(actions);
     return box;
   }));
 }
@@ -354,17 +415,19 @@ $("#loginBtn").onclick = async () => {
     const phone = $("#phone").value.trim();
     await api("/api/auth/send-code", { method: "POST", body: { phone }, auth: false });
     const r = await api("/api/auth/verify", { method: "POST", body: { phone, code: $("#code").value.trim() }, auth: false });
-    state.token = r.token; localStorage.setItem("anhao_token", r.token); await loadHome();
+    state.token = r.token; localStorage.setItem("anhao_token", r.token); $("#teaser").hidden = true; await route();
   } catch (e) { $("#loginErr").textContent = e.message; }
 };
 $("#logout").onclick = async (e) => { e.preventDefault(); try { await api("/api/auth/logout", { method: "POST" }); } catch {} localStorage.removeItem("anhao_token"); location.reload(); };
 
-(async () => {
+window.addEventListener("hashchange", () => location.reload());
+async function route() {
   if (hash.get("c")) return openCard(hash.get("c"));
   if (hash.get("g")) return openGroup(hash.get("g"));
   if (!state.token) { if (state.replyTo) $("#title").textContent = "登录后就能反整蛊回去"; return show("login"); }
   try { await loadHome(); } catch { localStorage.removeItem("anhao_token"); state.token = ""; show("login"); }
-})();
+}
+route();
 </script>
 </body>
 </html>

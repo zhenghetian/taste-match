@@ -861,6 +861,7 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
 
   const cardModule = createCardModule({ db, helpers: {
     now, addDays, id, token, json, fail, readJson, requireUser, requireAdmin, publicBaseUrl,
+    optionalUser: (req, url) => sessionUser(bearer(req) || url.searchParams.get("token")),
     ensureFriendInvite, friendshipBetween, orderedPair, blockedBetween, builtinModeration,
     getHarness: () => cardHarness
   } });

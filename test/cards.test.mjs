@@ -13,7 +13,9 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const dataDir = mkdtempSync(join(tmpdir(), "anhao-cards-"));
 let server;
 
-async function raw(path, { token, method = "GET", body, admin } = {}) {
+let RECIPIENT = null;
+async function raw(path, { token, method = "GET", body, admin, anon } = {}) {
+  if (!token && !anon && RECIPIENT && path.startsWith("/api/cards/public/")) token = RECIPIENT;
   const response = await fetch(`${BASE}${path}`, {
     method,
     headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}), ...(admin ? { "x-admin-key": "test-admin" } : {}) },
@@ -42,7 +44,7 @@ test.before(async () => {
     stdio: ["ignore", "pipe", "pipe"]
   });
   for (let i = 0; i < 50; i += 1) {
-    try { if ((await fetch(`${BASE}/api/health`)).ok) return; } catch {}
+    try { if ((await fetch(`${BASE}/api/health`)).ok) { RECIPIENT = await login("13900000099"); return; } } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error("cards test server did not start");
@@ -128,7 +130,7 @@ test("reply needs an unlocked card, marks it replied and creates a friendship", 
   const { card } = await ok("/api/cards", { token: alice, method: "POST", body: baseCard() });
   const t = tokenOf(card);
   assert.equal((await raw("/api/cards", { token: bob, method: "POST", body: baseCard({ replyToToken: t }) })).body.error.code, "REPLY_NOT_ALLOWED");
-  await ok(`/api/cards/public/${t}/answer`, { method: "POST", body: { answer: "老王" } });
+  await ok(`/api/cards/public/${t}/answer`, { token: bob, method: "POST", body: { answer: "老王" } });
   await ok(`/api/cards/public/${t}/event`, { method: "POST", body: { eventName: "reply_started" } });
   assert.equal((await raw(`/api/cards/public/${t}/event`, { method: "POST", body: { eventName: "card_created" } })).status, 400);
   const reply = await ok("/api/cards", { token: bob, method: "POST", body: baseCard({ replyToToken: t, question: "那你记得我外号吗？" }) });
@@ -244,4 +246,97 @@ test("card harness uses the model when enabled and validates output", async () =
   assert.equal(partial[1].answer, "");
   assert.throws(() => validateQuestions({ questions: [{ question: "你个废物叫啥", answer: "x", hint: "y" }] }));
   assert.throws(() => validateQuestions({ nope: 1 }));
+});
+
+test("recipient must log in: teaser only, then the card binds to the first account", async () => {
+  const sender = await login("13900000020");
+  const first = await login("13900000021");
+  const second = await login("13900000022");
+  const { card } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard({ senderName: "老李" }) });
+  const t = tokenOf(card);
+  const teaser = await ok(`/api/cards/public/${t}`, { anon: true });
+  assert.equal(teaser.loginRequired, true);
+  assert.equal(teaser.card.senderName, "老李");
+  for (const key of ["question", "hint", "content", "penalty"]) assert.equal(teaser.card[key], undefined, key);
+  assert.equal((await raw(`/api/cards/public/${t}/answer`, { anon: true, method: "POST", body: { answer: "x" } })).status, 401);
+  assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_events WHERE card_id=? AND event_name='card_opened'`, card.id)[0].n, 0);
+
+  const own = await ok(`/api/cards/public/${t}`, { token: sender });
+  assert.equal(own.role, "sender");
+  assert.equal(own.card.content, undefined);
+  assert.equal((await raw(`/api/cards/public/${t}/answer`, { token: sender, method: "POST", body: { answer: "老王" } })).body.error.code, "OWN_CARD");
+
+  const opened = await ok(`/api/cards/public/${t}`, { token: first });
+  assert.equal(opened.role, "recipient");
+  assert.equal(opened.card.question, "孜然王子是谁？");
+  assert.equal((await raw(`/api/cards/public/${t}`, { token: second })).body.error.code, "CARD_CLAIMED");
+  assert.equal((await raw(`/api/cards/public/${t}/answer`, { token: second, method: "POST", body: { answer: "老王" } })).status, 403);
+
+  const received = await ok("/api/cards/received", { token: first });
+  assert.equal(received.cards.length, 1);
+  assert.equal(received.cards[0].token, t);
+  assert.equal(received.cards[0].content, undefined);
+  assert.equal((await ok("/api/cards/received", { token: second })).cards.length, 0);
+});
+
+test("sender sees every attempt with text, time and account; nobody else does; deleted with card", async () => {
+  const sender = await login("13900000030");
+  const friend = await login("13900000031");
+  await ok("/api/me", { token: friend, method: "PATCH", body: { nickname: "答题人", city: "上海", birthYear: 1998, gender: "不公开", bio: "测试" } });
+  const { card } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard() });
+  const t = tokenOf(card);
+  await ok(`/api/cards/public/${t}/answer`, { token: friend, method: "POST", body: { answer: "隔壁老张" } });
+  const hit = await ok(`/api/cards/public/${t}/answer`, { token: friend, method: "POST", body: { answer: "老王" } });
+  assert.deepEqual(hit.card.myAnswers.map((a) => [a.guess, a.correct]), [["隔壁老张", false], ["老王", true]]);
+
+  const mine = (await ok(`/api/cards/${card.id}`, { token: sender })).card;
+  assert.equal(mine.recipient.nickname, "答题人");
+  assert.match(mine.recipient.phone, /^139\*{4}0031$/);
+  assert.deepEqual(mine.answers.map((a) => [a.guess, a.correct, a.answeredBy.nickname]), [["隔壁老张", false, "答题人"], ["老王", true, "答题人"]]);
+  assert.ok(mine.answers.every((a) => !Number.isNaN(Date.parse(a.createdAt))));
+  assert.equal((await ok("/api/cards", { token: sender })).cards[0].answers.length, 2);
+
+  // Never exposed to other accounts, the funnel or events.
+  assert.equal((await raw(`/api/cards/${card.id}`, { token: friend })).status, 404);
+  const outsider = await login("13900000032");
+  assert.equal((await raw(`/api/cards/public/${t}`, { token: outsider })).status, 403);
+  const funnel = JSON.stringify(await ok("/api/admin/cards/funnel?days=7", { admin: true }));
+  const events = JSON.stringify(dbQuery(`SELECT * FROM card_events`));
+  for (const text of [funnel, events]) assert.equal(text.includes("隔壁老张"), false);
+
+  await ok(`/api/cards/${card.id}`, { token: sender, method: "DELETE" });
+  assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_attempts WHERE card_id=?`, card.id)[0].n, 0);
+
+  const { card: old } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard() });
+  await ok(`/api/cards/public/${tokenOf(old)}/answer`, { token: friend, method: "POST", body: { answer: "过期前的答案" } });
+  dbRun(`UPDATE cards SET expires_at=? WHERE id=?`, new Date(Date.now() - 1000).toISOString(), old.id);
+  await raw("/api/cards", { token: sender });
+  assert.equal(dbQuery(`SELECT COUNT(*) AS n FROM card_attempts WHERE card_id=?`, old.id)[0].n, 0);
+});
+
+test("legacy cards without recipient_id keep working and bind on first logged-in open", async () => {
+  const sender = await login("13900000040");
+  const later = await login("13900000041");
+  const { card } = await ok("/api/cards", { token: sender, method: "POST", body: baseCard() });
+  dbRun(`UPDATE cards SET recipient_id=NULL, attempts=1, opened_at=?, status='opened' WHERE id=?`, new Date().toISOString(), card.id);
+  const opened = await ok(`/api/cards/public/${tokenOf(card)}`, { token: later });
+  assert.equal(opened.role, "recipient");
+  assert.equal(opened.card.attemptsLeft, 2);
+  assert.equal(opened.card.hint, "姓王");
+  const hit = await ok(`/api/cards/public/${tokenOf(card)}/answer`, { token: later, method: "POST", body: { answer: "老王" } });
+  assert.equal(hit.correct, true);
+  assert.equal(dbQuery(`SELECT recipient_id FROM cards WHERE id=?`, card.id)[0].recipient_id.startsWith("usr_"), true);
+});
+
+test("migration adds recipient_id to a pre-existing cards table", async () => {
+  const { createCardModule } = await import("../cards.mjs");
+  const db = new DatabaseSync(":memory:");
+  db.exec(`CREATE TABLE users(id TEXT PRIMARY KEY, nickname TEXT, phone TEXT);
+    CREATE TABLE cards(id TEXT PRIMARY KEY, token TEXT NOT NULL UNIQUE, sender_id TEXT NOT NULL, reply_to_card_id TEXT, group_id TEXT, unlock_type TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, alt_answers TEXT NOT NULL DEFAULT '[]', hint TEXT NOT NULL DEFAULT '', content TEXT NOT NULL, invite_when TEXT NOT NULL DEFAULT '', invite_where TEXT NOT NULL DEFAULT '', penalty TEXT NOT NULL DEFAULT '', sender_name TEXT NOT NULL DEFAULT '', ai_assisted INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL DEFAULT 'direct', attempts INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'created', opened_at TEXT, unlocked_at TEXT, failed_at TEXT, replied_at TEXT, expires_at TEXT NOT NULL, created_at TEXT NOT NULL);
+    INSERT INTO cards(id,token,sender_id,unlock_type,question,answer,content,expires_at,created_at) VALUES('card_old','tok','u','message','q','a','c','2999-01-01','2026-01-01');`);
+  createCardModule({ db, helpers: {} });
+  createCardModule({ db, helpers: {} });
+  assert.ok(db.prepare(`PRAGMA table_info(cards)`).all().some((c) => c.name === "recipient_id"));
+  assert.equal(db.prepare(`SELECT question FROM cards WHERE id='card_old'`).get().question, "q");
+  db.close();
 });
