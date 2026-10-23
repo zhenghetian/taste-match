@@ -54,11 +54,11 @@ export function createAnthropicProvider(env = process.env) {
   };
 }
 
-export function createIcebreakerHarness({ env = process.env, provider, now = () => Date.now(), record, sharedConcurrency } = {}) {
+export function createIcebreakerHarness({ env = process.env, provider, now = () => Date.now(), record, sharedConcurrency, ledgerFactory } = {}) {
   const enabled = env.ANHAO_LLM_ENABLED === "true";
   const promptVersion = promptFingerprint(PROMPT_VERSION, instructionFor(env, "ANHAO_LLM_ICEBREAKER_INSTRUCTION"));
   const call = provider || createAnthropicProvider(env);
-  const runtime = createRuntime({ env, now, record, sharedConcurrency });
+  const runtime = createRuntime({ env, now, record, sharedConcurrency, ledgerFactory });
   function fallback(reason, runId = null) { return { suggestions: [...FALLBACK], source: "fallback", reason, runId }; }
   return {
     status() {

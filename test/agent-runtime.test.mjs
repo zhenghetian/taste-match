@@ -8,6 +8,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { createIcebreakerHarness, createAnthropicProvider } from "../llm/icebreaker.mjs";
 import { createReplyDraftHarness, createAnthropicReplyProvider } from "../llm/reply-draft.mjs";
+import { createNodeLedger } from "../llm/node-ledger.mjs";
 
 const iceInput = { actorId: "synthetic-actor", echoId: "echo", context: { title: "公园", reaction: "想去散步", question: "你喜欢什么风景？" } };
 const replyInput = { actorId: "synthetic-actor", threadKey: "echo:test", context: { title: "公园", reaction: "想去散步", recentMessages: [{ role: "other", text: "喜欢树影" }] } };
@@ -24,7 +25,7 @@ function fixture(t) {
   return {
     dir,
     make(create, options = {}) {
-      const harness = create({ ...options, env: { ANHAO_LLM_ENABLED: "true", DATA_DIR: dir, ...options.env } });
+      const harness = create({ ledgerFactory: createNodeLedger, ...options, env: { ANHAO_LLM_ENABLED: "true", DATA_DIR: dir, ...options.env } });
       harnesses.push(harness);
       return harness;
     },

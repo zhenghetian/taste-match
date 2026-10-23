@@ -36,12 +36,12 @@ function lock(action) {
   try { mkdirSync(path); } catch { fail("另一个 harness 操作仍在运行；若进程已退出，请检查 work/harness/lock 后恢复"); }
   try { return action(); } finally { rmSync(path, { recursive: true }); }
 }
-const SKIP = new Set([".git", "node_modules", "data", "work", "coverage", ".env", ".env.local"]);
+const SKIP = new Set([".git", "node_modules", "data", "work", "coverage", ".wrangler", "dist", ".dev.vars", ".env", ".env.local"]);
 function fingerprint() {
   const hash = createHash("sha256");
   function visit(dir, prefix = "") {
     for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (SKIP.has(entry.name) || entry.name.startsWith(".env.") && entry.name !== ".env.example") continue;
+      if (SKIP.has(entry.name) || entry.name.startsWith(".dev.vars.") || entry.name.startsWith(".env.") && entry.name !== ".env.example") continue;
       const relative = `${prefix}${entry.name}`;
       if (entry.isDirectory()) visit(join(dir, entry.name), `${relative}/`);
       else if (entry.isFile()) { hash.update(relative); hash.update("\0"); hash.update(readFileSync(join(dir, entry.name))); hash.update("\0"); }

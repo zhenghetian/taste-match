@@ -1,6 +1,6 @@
 # 公网部署
 
-暗号需要一个 Node.js 22.5+ 进程、HTTPS 和一块持久化磁盘。GitHub Pages 只能托管旧静态页面，不能运行登录、好友、聊天或 Agent 代回。
+暗号支持两条部署路径：[Cloudflare Workers + SQLite Durable Objects + R2](CLOUDFLARE.md)，或 Node.js 22.5+ 进程、HTTPS 和一块持久化磁盘。下面说明 Node / Railway 路径；Cloudflare 的账号授权、私有附件、免费额度与验证步骤见专门文档。GitHub Pages 只能托管旧静态页面，不能运行登录、好友、聊天或 Agent 代回。
 
 ## 单实例与数据
 

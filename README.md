@@ -109,6 +109,6 @@ npm test
 
 ## 部署提示
 
-这个版本需要 Node 服务和持久化磁盘，不能再只使用 GitHub Pages。正式部署还需要 HTTPS、短信服务、微信回调域名、数据库备份、接口限流和隐私协议。当前设备通知依赖页面保持打开；App 关闭后的系统推送需要继续接入 APNs、FCM 或微信服务通知。
+这个版本可使用 Node 服务与持久化磁盘，或 [Cloudflare Workers + SQLite Durable Objects + R2](docs/CLOUDFLARE.md)，不能只使用 GitHub Pages。Cloudflare 本地运行用 `npm run cloudflare:dev`，打包检查用 `npm run cloudflare:check`；公网发布需要自己的账号、资源与密钥配置。正式部署还需要 HTTPS、短信服务、微信回调域名、数据库备份、接口限流和隐私协议。当前设备通知依赖页面保持打开；App 关闭后的系统推送需要继续接入 APNs、FCM 或微信服务通知。
 
 部署步骤与持久化要求见 [公网部署](docs/DEPLOYMENT.md)。Railway 将持久化磁盘挂载到 `/data`，并设置 `DATA_DIR=/data`、`NODE_ENV=production` 和 `ADMIN_KEY`。生产环境默认监听 `0.0.0.0`，端口由部署平台的 `PORT` 环境变量提供。必须配置 `SMS_WEBHOOK_URL`，或仅在受控内测时配置 `BETA_TEST_CODE`；服务只部署一个副本，实时连接不能跨实例共享。
