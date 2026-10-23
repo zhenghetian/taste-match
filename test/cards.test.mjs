@@ -223,7 +223,7 @@ test("card harness uses the model when enabled and validates output", async () =
       { question: "那晚几点散的？", answer: "三点", hint: "很晚" }
     ] }, usage: {}, model: "mock" };
   };
-  const harness = createCardHarness({ env: { ANHAO_LLM_ENABLED: "true", DEEPSEEK_API_KEY: "test" }, provider });
+  const harness = createCardHarness({ env: { ANHAO_LLM_ENABLED: "true", DEEPSEEK_API_KEY: "test" }, provider, ledgerFactory: () => new DatabaseSync(":memory:") });
   try {
     const suggested = await harness.suggest({ actorId: "u1", memories: ["烧烤"] });
     assert.equal(suggested.source, "model");
@@ -233,7 +233,7 @@ test("card harness uses the model when enabled and validates output", async () =
     assert.equal(verdict.correct, true);
     assert.deepEqual(calls, ["suggest", "judge"]);
   } finally { await harness.close?.(); }
-  const disabled = createCardHarness({ env: { ANHAO_LLM_ENABLED: "false" }, provider });
+  const disabled = createCardHarness({ env: { ANHAO_LLM_ENABLED: "false" }, provider, ledgerFactory: () => new DatabaseSync(":memory:") });
   assert.equal((await disabled.suggest({ actorId: "u1", memories: ["x"] })).questions.length, FALLBACK_QUESTIONS.length);
   assert.equal((await disabled.judge({ actorId: "u1", question: "q", answer: "a", guess: "b" })).correct, false);
   await disabled.close?.();
