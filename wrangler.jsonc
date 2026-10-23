@@ -14,7 +14,6 @@
     "bindings": [{ "name": "ANHAO", "class_name": "AnhaoApplication" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AnhaoApplication"] }],
-  "r2_buckets": [{ "binding": "CHAT_MEDIA", "bucket_name": "anhao-chat-media" }],
   "alias": { "./llm/node-ledger.mjs": "./cloudflare/unsupported-ledger.mjs" },
   "vars": {
     "NODE_ENV": "production",

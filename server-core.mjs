@@ -918,7 +918,7 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
       return json(res, 200, snapshot);
     }
 
-    if (method === "GET" && path === "/api/health") return json(res, 200, { ok: true, time: now() });
+    if (method === "GET" && path === "/api/health") return json(res, 200, { ok: true, time: now(), features: { media: chatMedia.enabled !== false } });
     if (method === "GET" && path === "/api/auth/providers") return json(res, 200, {
       phone: true,
       wechat: Boolean(env.WECHAT_APP_ID && env.WECHAT_APP_SECRET && env.PUBLIC_URL),
@@ -1612,7 +1612,7 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
       if (!url.pathname.startsWith("/api/")) return fail(res, 404, "NOT_FOUND", "接口不存在");
       await api(req, res, url);
     } catch (error) {
-      if (!error.status || error.status >= 500) console.error(error);
+      if ((!error.status || error.status >= 500) && error.code !== "MEDIA_DISABLED") console.error(error);
       if (!res.headersSent) fail(res, error.status || 500, error.code || "SERVER_ERROR", error.status ? error.message : "服务器暂时出了点问题");
       else res.end();
     }
