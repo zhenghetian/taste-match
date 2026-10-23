@@ -131,6 +131,14 @@ export function initChatSharing({ getContext, apiFetch, afterSend, toast, escape
       if (sameChat(context) && version === selectionVersion) setStatus(`${error.message}；可重试或取消`);
     } finally { if (sameChat(context) && version === selectionVersion) setBusy(false); }
   }
+  fetch("/api/health").then((r) => r.json()).then((health) => {
+    if (health?.features?.media !== false) return;
+    // Media storage not provisioned (no R2): keep link sharing, hide image/GIF and stickers.
+    $("#shareChatImage").hidden = true; $("#shareChatImage").disabled = true;
+    $("#chatStickerGrid").hidden = true;
+    const note = document.createElement("p"); note.textContent = "图片功能暂未开通，可先分享链接或发文字。";
+    $("#chatShareActions").append(note);
+  }).catch(() => {});
   $("#openChatShare").addEventListener("click", () => { if (getContext()) toggle(); });
   $("#shareChatLink").addEventListener("click", selectLink);
   $("#shareChatImage").addEventListener("click", () => $("#chatShareFile").click());

@@ -13,8 +13,32 @@ function reject(message, status = 400, code = "INVALID_ATTACHMENT") {
 }
 function storageError() { reject("附件存储暂时不可用", 503, "MEDIA_STORAGE_ERROR"); }
 
+export const MEDIA_DISABLED_MESSAGE = "图片功能暂未开通";
+function mediaDisabled() { reject(MEDIA_DISABLED_MESSAGE, 503, "MEDIA_DISABLED"); }
+
+// Used when no R2 bucket is bound: text chat keeps working, image/GIF endpoints answer 503.
+export function createDisabledMediaStore() {
+  const serialize = (message) => {
+    const { payload, ...result } = message;
+    result.kind ||= "text";
+    const data = typeof payload === "string" ? JSON.parse(payload || "{}") : payload || {};
+    if (result.kind === "link") result.link = data.link;
+    return result;
+  };
+  return {
+    enabled: false,
+    async upload() { mediaDisabled(); },
+    forMessage() { mediaDisabled(); },
+    async download() { mediaDisabled(); },
+    associate() { mediaDisabled(); },
+    serialize,
+    async cleanup() {}
+  };
+}
+
 // db uses the synchronous native SQLite prepare/get/all/run interface.
 export function createCloudMediaStore({ db, bucket, assertAccess }) {
+  if (!bucket) return createDisabledMediaStore();
   db.exec(`CREATE TABLE IF NOT EXISTS chat_attachments (
     id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     thread_kind TEXT NOT NULL, thread_id TEXT NOT NULL, mime_type TEXT NOT NULL,
@@ -157,5 +181,5 @@ export function createCloudMediaStore({ db, bucket, assertAccess }) {
       .run(messageId, id, new Date(Date.now() - DAY).toISOString());
     if (!changed.changes) reject("附件不存在或不能用于这段对话");
   }
-  return { upload, forMessage, download, serialize, cleanup, associate };
+  return { enabled: true, upload, forMessage, download, serialize, cleanup, associate };
 }

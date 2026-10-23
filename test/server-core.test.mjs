@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { createApplication } from "../server-core.mjs";
+import { createCloudMediaStore } from "../cloudflare/media.mjs";
 
 function deferred() {
   let resolve;
@@ -9,7 +10,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-function fixture(t, { env = {}, media = {}, suggest, beforeAutoReply } = {}) {
+function fixture(t, { env = {}, media = {}, mediaFactory, suggest, beforeAutoReply } = {}) {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys=ON");
   let transactions = 0;
@@ -31,7 +32,7 @@ function fixture(t, { env = {}, media = {}, suggest, beforeAutoReply } = {}) {
   const app = createApplication({
     db,
     env: { NODE_ENV: "production", BETA_TEST_CODE: "123456", ADMIN_KEY: "test-admin", ...env },
-    createMediaStore: () => ({ cleanup() {}, serialize: row => row, forMessage() {}, associate() {}, ...media }),
+    createMediaStore: mediaFactory || (() => ({ cleanup() {}, serialize: row => row, forMessage() {}, associate() {}, ...media })),
     harnessFactory: options => {
       factories.push(options);
       return { icebreakerHarness: harness, replyDraftHarness: harness };
@@ -177,4 +178,31 @@ test("repeated start/resume keeps a pending auto job registered and generating",
   const messages = f.db.prepare("SELECT * FROM friend_messages WHERE friendship_id=? AND source='agent_auto'").all(room.id);
   assert.equal(messages.length, 1);
   assert.equal(f.db.prepare("SELECT auto_status FROM agent_thread_settings WHERE user_id=?").get(room.owner.user.id).auto_status, "idle");
+});
+
+test("without an R2 bucket media is disabled with a clear 503 while text chat keeps working", async t => {
+  const f = fixture(t, { mediaFactory: options => createCloudMediaStore({ ...options, bucket: null }) });
+  const health = await request(f.app, "/api/health");
+  assert.equal(health.status, 200);
+  assert.equal(health.body.features.media, false);
+  const room = await f.room();
+  const upload = await request(f.app, `${room.agent}/attachments`, { data: "AAAA", mimeType: "image/png" }, room.owner.token);
+  assert.equal(upload.status, 503);
+  assert.equal(upload.body.error.code, "MEDIA_DISABLED");
+  assert.match(upload.body.error.message, /图片功能暂未开通/);
+  const download = await request(f.app, "/api/chat-attachments/att_" + "0".repeat(32), undefined, room.owner.token);
+  assert.equal(download.status, 503);
+  assert.equal(download.body.error.code, "MEDIA_DISABLED");
+  const image = await request(f.app, `/api/friends/${room.peer.user.id}/messages`, { kind: "image", attachmentId: "att_" + "0".repeat(32) }, room.owner.token);
+  assert.equal(image.status, 503);
+  const text = await request(f.app, `/api/friends/${room.peer.user.id}/messages`, { body: "你好" }, room.owner.token);
+  assert.equal(text.status, 201);
+  const list = await request(f.app, `/api/friends/${room.owner.user.id}/messages`, undefined, room.peer.token);
+  assert.equal(list.status, 200);
+  assert.ok(JSON.stringify(list.body).includes("你好"));
+});
+
+test("health reports media enabled when a bucket is bound", async t => {
+  const f = fixture(t, { mediaFactory: options => createCloudMediaStore({ ...options, bucket: { async put() {}, async get() { return null; }, async delete() {} } }) });
+  assert.equal((await request(f.app, "/api/health")).body.features.media, true);
 });

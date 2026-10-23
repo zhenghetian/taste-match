@@ -16,7 +16,8 @@ export class AnhaoApplication extends DurableObject {
     env.DATA_DIR = "/data";
     this.application = createApplication({
       db: this.db, env,
-      createMediaStore: options => createCloudMediaStore({ ...options, bucket: bindings.CHAT_MEDIA }),
+      // CHAT_MEDIA (R2) is optional; without it image/GIF sending is disabled (503 MEDIA_DISABLED).
+      createMediaStore: options => createCloudMediaStore({ ...options, bucket: bindings.CHAT_MEDIA || null }),
       harnessFactory: ({ env, sharedConcurrency }) => ({
         icebreakerHarness: createIcebreakerHarness({ env, sharedConcurrency, ledgerFactory: () => this.db }),
         replyDraftHarness: createReplyDraftHarness({ env, sharedConcurrency, ledgerFactory: () => this.db })

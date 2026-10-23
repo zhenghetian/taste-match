@@ -1,6 +1,6 @@
 # Cloudflare 部署
 
-本部署入口使用 Workers 提供网页与接口、一个 SQLite Durable Object 保存业务数据和 AI 用量账本、私有 R2 保存聊天附件。它与原 Node 入口共用 `server-core.mjs`，保留本地 `npm start` 和 Railway 的启动方式。
+本部署入口使用 Workers 提供网页与接口、一个 SQLite Durable Object 保存业务数据和 AI 用量账本、私有 R2 保存聊天附件（**可选，默认未启用**，见下文“图片功能（R2，可选）”）。它与原 Node 入口共用 `server-core.mjs`，保留本地 `npm start` 和 Railway 的启动方式。
 
 ## 资源与边界
 
@@ -42,10 +42,28 @@ npm run cloudflare:test -- verify /absolute/path/to/synthetic-session.json
 ```sh
 npx wrangler login
 npx wrangler whoami
-npx wrangler r2 bucket create anhao-chat-media
 ```
 
-R2 要先在 Cloudflare 控制台开通订阅并完成结账流程。如果账号要求添加支付方式，由账号持有人自行处理；不要自动启用付费套餐。确认资源属于自己的账号，必要时在本地设置 `CLOUDFLARE_ACCOUNT_ID`。多账号时必须明确选择目标账号。
+## 图片功能（R2，可选）
+
+默认 `wrangler.jsonc` **不绑定 R2**，因为开通 R2 需要在 Cloudflare 绑定支付方式。未绑定 `CHAT_MEDIA` 时：
+
+- 文字聊天、好友、邀请与 Agent 功能不受影响；
+- `POST /api/.../attachments` 上传与 `GET /api/chat-attachments/:id` 下载返回 `503`，`code` 为 `MEDIA_DISABLED`，提示“图片功能暂未开通”；
+- `GET /api/health` 返回 `features.media: false`，前端据此隐藏“图片 / GIF”按钮与表情包，仅保留分享链接。
+
+如需重新开通：
+
+1. 在 Cloudflare 控制台开通 R2（需账号持有人自行添加支付方式，不要自动启用付费套餐）。
+2. 创建 bucket：`npx wrangler r2 bucket create anhao-chat-media`
+3. 在 `wrangler.jsonc` 顶层（`migrations` 之后）加回：
+
+   ```jsonc
+   "r2_buckets": [{ "binding": "CHAT_MEDIA", "bucket_name": "anhao-chat-media" }],
+   ```
+
+4. 重新 `npm run cloudflare:check` 后发布；`/api/health` 将返回 `features.media: true`，图片功能自动恢复，无需改代码。
+确认资源属于自己的账号，必要时在本地设置 `CLOUDFLARE_ACCOUNT_ID`。多账号时必须明确选择目标账号。
 
 通过交互式 secret 输入设置管理密钥和登录方式，不将值写入命令参数、Git、截图或说明：
 
