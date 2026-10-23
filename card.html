@@ -35,7 +35,13 @@
   .shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
   .big{font-size:20px;font-weight:800;line-height:1.5}
   .foot{display:flex;gap:12px;justify-content:center;margin-top:24px}.foot a{color:var(--muted);font-size:12px}
-  .tabs{display:flex;gap:8px;margin:18px 0 6px}.tabs button{flex:1}.tabs button.on{background:var(--ink)}
+  .tabs{display:flex;gap:8px;margin:18px 0 6px}.tabs button{flex:1}.tabs button.on{background:var(--ink);color:#fff}
+  .templates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.templates button{text-align:left}
+  .text-action{background:transparent;color:var(--ink);box-shadow:none;border-color:transparent;padding:8px 0}
+  dialog{max-height:90dvh;overflow:auto}dialog::backdrop{background:#231b2e88}
+  .poster{display:block;width:100%;height:auto;border-radius:12px}.row a{color:var(--ink)}
+  button:focus-visible,a:focus-visible{outline:3px solid #1565c0;outline-offset:3px}
+  .ans{flex-wrap:wrap;overflow-wrap:anywhere}.card{overflow-wrap:anywhere}
   .ans{font-size:13px;border-top:1px dashed var(--line);padding:6px 0;display:flex;justify-content:space-between;gap:8px}
   dialog{border:2px solid var(--ink);border-radius:16px;max-width:420px;width:calc(100% - 32px)}
 </style>
@@ -73,10 +79,15 @@
 
   <!-- Sender: composer -->
   <section id="compose" hidden>
+    <button class="text-action" id="cancelCompose">← 返回我的卡</button>
     <div class="card">
       <div id="replyBanner" class="notice" hidden>你正在回一张卡 —— 以牙还牙的时候到了 🔁</div>
       <div id="groupBanner" class="notice" hidden></div>
-      <label for="memory">写一段你们的共同记忆（内部梗、无伤大雅的糗事）</label>
+      <h2 style="margin-top:0">先选一个灵感，也可以自己出题</h2>
+      <p class="muted">模板里的故事仅作示例，改成你们自己的记忆，答案由你填写。</p>
+      <div class="templates" id="templates"></div>
+      <button class="ghost" id="ownQuestion">我自己出题</button>
+      <label for="memory">或者，写一段共同记忆，让 AI 帮你想</label>
       <textarea id="memory" maxlength="600" placeholder="例如：大二那次我们仨半夜去吃烧烤，老王把孜然当成了辣椒面，从此他的外号叫“孜然王子”"></textarea>
       <p class="muted">别写身份证、住址、手机号、银行卡、病情、收入这些，AI 也不会用。</p>
       <button id="suggest">让 AI 出 3 道坏心眼的题</button>
@@ -114,7 +125,7 @@
         <select id="channel"><option value="friend">微信朋友</option><option value="xhs">小红书私信</option><option value="x">X</option><option value="mifi">MIFI</option><option value="direct">其他</option></select>
         <label class="row" style="font-weight:500"><input id="adult" type="checkbox" style="width:auto" /> 我确认双方都已年满 18 岁，题目是善意整蛊，不会让 TA 难堪</label>
         <div class="err" id="createErr"></div>
-        <div class="row"><button id="create">生成暗号卡链接</button><button class="ghost" id="cancelCompose">算了</button></div>
+        <div class="row"><button class="ghost" id="previewCard">发送前试玩</button><button id="create">生成暗号卡链接</button></div>
       </div>
     </div>
   </section>
@@ -124,7 +135,7 @@
     <div class="card reveal">
       <p class="big">卡做好啦！把链接甩给 TA 🎯</p>
       <input id="shareUrl" readonly />
-      <div class="row" style="margin-top:10px"><button id="copy">复制链接 + 口令</button><button class="ghost" id="backHome">回我的卡</button></div>
+      <div class="row" style="margin-top:10px"><button id="copy">复制链接 + 口令</button><button class="ghost" id="shareImage">生成分享图</button><button class="ghost" id="backHome">回我的卡</button></div>
       <p class="muted">链接 30 天后自动失效，你也可以随时永久删除。</p>
     </div>
   </section>
@@ -149,6 +160,8 @@
       <p class="muted" id="recvFrom"></p>
       <p class="big" id="recvQuestion"></p>
       <p class="muted" id="recvHint"></p>
+      <p class="notice" id="recvExtraHint" hidden></p>
+      <button class="ghost small" id="refreshCard">刷新提示与结果</button>
       <div id="answerBox">
         <input id="guess" maxlength="60" placeholder="输入暗号，只有自己人才知道…" />
         <div class="row" style="margin-top:10px"><button id="tryBtn">对暗号</button><span class="muted" id="tries"></span></div>
@@ -157,7 +170,7 @@
       <div id="revealBox" hidden class="reveal"></div>
       <div id="failBox" hidden class="reveal"></div>
       <div id="myAnswers"></div>
-      <p class="ai-label">👀 注意：你输入的每个答案（对的、错的、离谱的）发卡人都能看到，别输入不想让 TA 看到的话。<br />题目由 AI 协助生成，内容由你的朋友亲自确认。暗号卡仅限 18 岁以上用户使用。</p>
+      <p class="ai-label">👀 注意：你输入的每个答案（对的、错的、离谱的）发卡人都能看到，别输入不想让 TA 看到的话。<br /><span id="recvDisclosure"></span>暗号卡仅限 18 岁以上用户使用。</p>
     </div>
     <div id="afterUnlock" hidden>
       <div class="card">
@@ -192,7 +205,42 @@
   </form>
 </dialog>
 
-<script>
+<dialog id="groupDlg" aria-labelledby="groupDlgTitle">
+  <h2 id="groupDlgTitle">拉几个朋友，一起给 TA 出题</h2>
+  <p class="muted">先建一个起哄小组，把邀请链接发到你们已有的小群。朋友们可以提供共同回忆，再由你确认题目、做成暗号卡。</p>
+  <form id="groupForm">
+    <label for="groupName">小组名</label><input id="groupName" maxlength="30" placeholder="比如：整蛊老王行动组" required />
+    <p class="notice">这里只收集出题素材，不会自动创建微信群或邀请联系人。邀请链接别发给被出题的那位。</p>
+    <p id="groupErr" class="err" aria-live="polite"></p>
+    <div class="row"><button id="createGroup" type="submit">创建起哄小组</button><button id="cancelGroup" class="ghost" type="button">取消</button></div>
+  </form>
+</dialog>
+<dialog id="previewDlg" aria-labelledby="previewTitle">
+  <h2 id="previewTitle">收卡人视角试玩</h2>
+  <p class="notice">仅在当前浏览器试玩，不生成卡片、不占额度。答案按标准答案和备选说法匹配，正式答题还可能经过 AI 判断。</p>
+  <p class="muted" id="previewFrom"></p><p class="big" id="previewQuestion"></p>
+  <p class="muted" id="previewHint"></p>
+  <div id="previewAnswerBox"><label for="previewGuess">试着对暗号</label><input id="previewGuess" maxlength="60" /><button id="previewTry" style="margin-top:10px">对暗号</button></div>
+  <p id="previewResult" aria-live="polite"></p><div id="previewReveal"></div>
+  <div class="row"><button class="ghost" id="previewReset">重新试玩</button><button id="previewClose">返回编辑</button></div>
+</dialog>
+<dialog id="posterDlg" aria-labelledby="posterTitle">
+  <h2 id="posterTitle">把这张卡发给 TA</h2>
+  <p class="muted">图中仅含署名、邀请文案和卡片二维码，答案与解锁内容不会出现在图里。持有二维码的人可以打开这张卡，请私下分享给目标朋友。</p>
+  <canvas id="posterCanvas" class="poster" width="900" height="1200" role="img" aria-label="暗号卡分享图，含扫码入口"></canvas>
+  <div class="row" style="margin-top:14px"><button id="downloadPoster">保存图片</button><button class="ghost" id="nativeSharePoster">分享图片</button><button class="ghost" id="posterClose">关闭</button></div>
+  <p id="posterStatus" class="muted" aria-live="polite"></p>
+</dialog>
+<dialog id="hintDlg" aria-labelledby="hintTitle">
+  <h2 id="hintTitle">给 TA 追加一个提示</h2>
+  <p class="muted">保存后，收卡人刷新就能看到；不会增加或重置答题机会。</p>
+  <label for="extraHintInput">追加提示</label><input id="extraHintInput" maxlength="40" />
+  <p id="hintErr" class="err" aria-live="polite"></p>
+  <div class="row"><button id="saveHint">保存提示</button><button class="ghost" id="cancelHint">取消</button></div>
+</dialog>
+<script type="module">
+import { CARD_TEMPLATES, localMatch } from "/card-play.mjs";
+import { openPoster, savePoster, sharePoster } from "/card-poster.mjs";
 const $ = (s) => document.querySelector(s);
 const show = (id) => { for (const s of ["login","home","compose","share","groupJoin","recv","missing"]) $("#"+s).hidden = s !== id; };
 const params = new URLSearchParams(location.search);
@@ -230,12 +278,14 @@ async function openCard(token) {
     $("#title").textContent = "有一张卡在等你";
     return;
   }
+  $("#refreshCard").hidden = payload.role === "sender";
   show("recv"); $("#myLink").hidden = false; $("#logout").hidden = false;
   if (payload.role === "sender") {
     renderRecv(payload.card); $("#answerBox").hidden = true;
     $("#recvFrom").textContent = "这是你自己发的卡（预览）。答题留给 TA，TA 的答案会出现在「我的卡」里。";
     $("#afterUnlock").hidden = true; return;
   }
+  $("#refreshCard").onclick = () => openCard(token);
   renderRecv(payload.card);
   $("#tryBtn").onclick = async () => {
     const answer = $("#guess").value.trim(); if (!answer) return;
@@ -263,6 +313,13 @@ async function openCard(token) {
   };
 }
 function renderRecv(card) {
+  $("#recvDisclosure").textContent = card.aiAssisted ? "题目由 AI 协助生成，内容由你的朋友亲自确认。" : "题目和内容由你的朋友亲自确认。";
+  $("#answerBox").hidden = card.unlocked || card.failed;
+  $("#revealBox").hidden = !card.unlocked;
+  $("#failBox").hidden = !card.failed;
+  $("#afterUnlock").hidden = !card.unlocked;
+  $("#recvExtraHint").hidden = !card.extraHint;
+  $("#recvExtraHint").textContent = card.extraHint ? `朋友追加的提示：${card.extraHint}` : "";
   $("#title").textContent = card.isReply ? "TA 反整蛊回来了！" : (card.group ? "一群损友联手给你出了道题" : "有人给你发了一张暗号卡");
   $("#recvFrom").textContent = `来自：${card.senderName}${card.group ? "（和 TA 的损友团）" : ""}`;
   $("#recvQuestion").textContent = card.question;
@@ -304,7 +361,7 @@ $("#tabRecv").onclick = () => setTab("recv");
 const RECV_STATUS = (c) => c.unlocked ? (c.status === "replied" ? "已解开，已回卡 🔁" : "已解开 🎉") : c.failed ? "3 次全错 😈" : `还剩 ${c.attemptsLeft} 次机会`;
 async function loadReceived() {
   const { cards } = await api("/api/cards/received");
-  if (!cards.length) return;
+  if (!cards.length) { $("#recvCards").replaceChildren(el("p", "还没收到卡。让损友们放马过来！", "muted")); return; }
   $("#recvCards").replaceChildren(...cards.map((card) => {
     const box = el("div", null, "card");
     const head = el("div", null, "row"); head.style.justifyContent = "space-between";
@@ -322,7 +379,7 @@ async function loadHome() {
   const data = await api("/api/cards");
   $("#quota").textContent = `今天还能发 ${data.remainingToday}/${data.dailyLimit} 张`;
   const list = $("#myCards");
-  if (!data.cards.length) return;
+  if (!data.cards.length) { list.replaceChildren(el("p", "还没发过卡，快去整蛊第一个人吧。", "muted")); return; }
   list.replaceChildren(...data.cards.map((card) => {
     const box = el("div", null, "card");
     const head = el("div", null, "row"); head.style.justifyContent = "space-between";
@@ -330,12 +387,33 @@ async function loadHome() {
     const actions = el("div", null, "row");
     const copy = el("button", "复制链接", "ghost small"); copy.onclick = () => copyLink(card);
     const del = el("button", "永久删除", "ghost small"); del.onclick = async () => { if (!confirm("删掉就彻底没了，TA 也打不开了，确定？")) return; await api(`/api/cards/${card.id}`, { method: "DELETE" }); loadHome(); };
-    actions.append(copy, del);
+    const poster = el("button", "分享图", "ghost small"); poster.onclick = () => openPoster(card);
+    actions.append(copy, poster);
+    if (!card.unlockedAt) {
+      const hint = el("button", "追加提示", "ghost small"); hint.onclick = () => editHint(card);
+      actions.append(hint);
+    }
+    actions.append(del);
     box.append(head, el("p", `答案：${card.answer} · 已答 ${card.attempts} 次 · ${new Date(card.expiresAt).toLocaleDateString("zh-CN")} 过期`, "muted"));
     if (card.recipient) box.append(el("p", `收卡人：${card.recipient.nickname}（${card.recipient.phone}）`, "muted"));
     if (card.answers?.length) {
       box.append(el("p", "TA 是这么答的 👀", "muted"));
-      for (const a of card.answers) { const row = el("div", null, "ans"); row.append(el("span", `${a.correct ? "✅" : "❌"} ${a.guess}`), el("span", `${a.answeredBy?.nickname || "?"} · ${new Date(a.createdAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`, "muted")); box.append(row); }
+      for (const a of card.answers) {
+        const row = el("div", null, "ans");
+        row.append(el("span", `${a.correct ? "✅" : "❌"} ${a.guess}`), el("span", `${a.answeredBy?.nickname || "?"} · ${new Date(a.createdAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`, "muted"));
+        if (!a.correct && !card.unlockedAt) {
+          const accept = el("button", "这也算对", "ghost small");
+          accept.onclick = async () => {
+            if (!confirm(`认定“${a.guess}”答对，并为 TA 解锁内容？此操作不可撤回。`)) return;
+            accept.disabled = true;
+            try { await api(`/api/cards/${card.id}/accept-answer`, { method: "POST", body: { attemptId: a.id } }); await loadHome(); }
+            catch (error) { alert(error.message); }
+            finally { accept.disabled = false; }
+          };
+          row.append(accept);
+        }
+        box.append(row);
+      }
     }
     box.append(actions);
     return box;
@@ -351,25 +429,82 @@ function startCompose() {
   $("#replyBanner").hidden = !state.replyTo;
   $("#groupBanner").hidden = !state.groupId;
   $("#questions").replaceChildren(); $("#confirmBox").hidden = true; state.aiAssisted = false;
+  $("#suggestErr").textContent = $("#createErr").textContent = "";
 }
+function openEditor() {
+  $("#confirmBox").hidden = false;
+  $("#question").focus();
+}
+$("#ownQuestion").onclick = () => { state.aiAssisted = false; openEditor(); };
+for (const template of CARD_TEMPLATES) {
+  const button = el("button", template.name, "ghost small");
+  button.onclick = () => {
+    if ([$("#question").value, $("#answer").value, $("#content").value].some(Boolean) && !confirm("使用模板会替换当前题目、答案、提示和解锁内容，继续吗？")) return;
+    state.aiAssisted = false;
+    for (const key of ["question", "hint", "content", "inviteWhen", "inviteWhere"]) $("#" + key).value = template[key] || "";
+    $("#answer").value = $("#alt").value = "";
+    document.querySelector(`input[name=unlock][value=${template.unlockType}]`).checked = true;
+    updateUnlock(); openEditor();
+  };
+  $("#templates").append(button);
+}
+let hintCardId;
+function editHint(card) {
+  hintCardId = card.id; $("#extraHintInput").value = card.extraHint || "";
+  $("#hintErr").textContent = ""; $("#hintDlg").showModal();
+}
+$("#cancelHint").onclick = () => $("#hintDlg").close();
+$("#saveHint").onclick = async () => {
+  $("#saveHint").disabled = true;
+  try { await api(`/api/cards/${hintCardId}/hint`, { method: "POST", body: { hint: $("#extraHintInput").value } }); $("#hintDlg").close(); await loadHome(); }
+  catch (error) { $("#hintErr").textContent = error.message; }
+  finally { $("#saveHint").disabled = false; }
+};
+$("#posterClose").onclick = () => $("#posterDlg").close();
+$("#downloadPoster").onclick = savePoster;
+$("#nativeSharePoster").onclick = sharePoster;
 $("#newCard").onclick = () => { state.groupId = null; startCompose(); };
 $("#cancelCompose").onclick = () => { state.replyTo = ""; sessionStorage.removeItem("anhao_card_reply"); loadHome(); };
-$("#newGroup").onclick = async () => {
-  const title = prompt("给你们的起哄小组起个名（比如：整蛊老王行动组）", "整蛊 TA 行动组"); if (title === null) return;
+$("#newGroup").onclick = () => {
+  $("#groupErr").textContent = "";
+  if (!$("#groupName").value) $("#groupName").value = "整蛊 TA 行动组";
+  $("#groupDlg").showModal();
+};
+$("#cancelGroup").onclick = () => $("#groupDlg").close();
+$("#groupForm").onsubmit = async (event) => {
+  event.preventDefault();
+  const title = $("#groupName").value.trim();
+  if (!title) { $("#groupErr").textContent = "先给小组起个名字吧"; return; }
+  $("#createGroup").disabled = true; $("#createGroup").textContent = "正在创建…";
+  $("#groupErr").textContent = "";
   try {
     const { group } = await api("/api/card-groups", { method: "POST", body: { title } });
     state.groupId = group.id;
     const box = $("#groupBox"); box.replaceChildren();
     const card = el("div", null, "card");
-    card.append(el("p", `把这个链接发到你们的小群（别发给被整蛊的那位！），让损友们来爆料：`), Object.assign(el("input"), { value: group.shareUrl, readOnly: true }));
+    card.append(el("h2", group.title), el("p", "小组建好了！把链接发到你们已有的小群，让朋友来提供共同回忆（别发给被出题的那位）。"));
+    const link = Object.assign(el("input"), { value: group.shareUrl, readOnly: true });
+    link.setAttribute("aria-label", "起哄小组邀请链接"); link.onclick = () => link.select(); card.append(link);
+    const feedback = el("p", "朋友提交后，点下方按钮就能查看参与情况并开始出题。", "muted");
     const row = el("div", null, "row"); row.style.marginTop = "10px";
-    const cp = el("button", "复制爆料链接", "ghost small"); cp.onclick = () => navigator.clipboard?.writeText(group.shareUrl);
-    const go = el("button", "料够了，开始出题", "small"); go.onclick = async () => {
-      const { group: g } = await api(`/api/card-groups/${group.id}`);
-      startCompose(); $("#groupBanner").hidden = false; $("#groupBanner").textContent = `损友团已爆料 ${g.entries.length} 条，AI 会一起参考：` + g.entries.map((e) => `${e.authorName}`).join("、");
+    const cp = el("button", "复制邀请链接", "ghost small");
+    cp.onclick = async () => {
+      try { await navigator.clipboard.writeText(group.shareUrl); feedback.textContent = "邀请链接已复制，发到小群就可以啦。"; }
+      catch { link.focus(); link.select(); feedback.textContent = "请长按上方链接，或使用复制快捷键手动复制。"; }
     };
-    row.append(cp, go); card.append(row); box.append(card);
-  } catch (e) { alert(e.message); }
+    const go = el("button", "料够了，开始出题", "small"); go.onclick = async () => {
+      go.disabled = true;
+      try {
+        const { group: g } = await api(`/api/card-groups/${group.id}`);
+        state.groupId = group.id;
+        startCompose(); $("#groupBanner").hidden = false; $("#groupBanner").textContent = `损友团已爆料 ${g.entries.length} 条，AI 会一起参考：` + g.entries.map((e) => `${e.authorName}`).join("、");
+      } catch (error) { feedback.textContent = error.message; }
+      finally { go.disabled = false; }
+    };
+    row.append(cp, go); card.append(row, feedback); box.append(card);
+    $("#groupDlg").close(); card.scrollIntoView({ block: "nearest" });
+  } catch (e) { $("#groupErr").textContent = e.message; }
+  finally { $("#createGroup").disabled = false; $("#createGroup").textContent = "创建起哄小组"; }
 };
 $("#suggest").onclick = async () => {
   $("#suggest").disabled = true; $("#suggestErr").textContent = ""; $("#suggest").textContent = "AI 正在憋坏水…";
@@ -379,17 +514,20 @@ $("#suggest").onclick = async () => {
     const box = $("#questions"); box.replaceChildren(el("p", r.aiAssisted ? "挑一道最坏心眼的（可以改）：" : "AI 暂时在摸鱼，先给你几个模板，自己填答案：", "muted"));
     for (const q of r.questions) {
       const item = el("div", null, "q"); item.append(el("b", q.question), el("div", q.answer ? `答案：${q.answer} · 提示：${q.hint}` : `提示：${q.hint}`, "muted"));
-      item.onclick = () => { document.querySelectorAll(".q").forEach((n) => n.classList.remove("sel")); item.classList.add("sel"); $("#question").value = q.question; $("#answer").value = q.answer; $("#hint").value = q.hint; $("#confirmBox").hidden = false; };
+      item.onclick = () => { document.querySelectorAll(".q").forEach((n) => n.classList.remove("sel")); item.classList.add("sel"); state.aiAssisted = r.aiAssisted; $("#question").value = q.question; $("#answer").value = q.answer; $("#hint").value = q.hint; openEditor(); };
       box.append(item);
     }
     const own = el("button", "我自己出题", "ghost small"); own.onclick = () => { state.aiAssisted = false; $("#confirmBox").hidden = false; }; box.append(own);
   } catch (e) { $("#suggestErr").textContent = e.message; }
   finally { $("#suggest").disabled = false; $("#suggest").textContent = "让 AI 出 3 道坏心眼的题"; }
 };
-document.querySelectorAll("input[name=unlock]").forEach((r) => r.onchange = () => { const v = r.value; $("#contentLabel").textContent = UNLOCK_LABEL[v]; $("#inviteFields").hidden = v !== "invite"; });
+function updateUnlock() {
+  const v = document.querySelector("input[name=unlock]:checked").value;
+  $("#contentLabel").textContent = UNLOCK_LABEL[v]; $("#inviteFields").hidden = v !== "invite";
+}
+document.querySelectorAll("input[name=unlock]").forEach((r) => r.onchange = updateUnlock);
 $("#penaltyPreset").onchange = () => { $("#penaltyCustom").hidden = $("#penaltyPreset").value !== "custom"; };
-$("#create").onclick = async () => {
-  $("#createErr").textContent = "";
+function composeBody() {
   const preset = $("#penaltyPreset").value;
   const body = {
     question: $("#question").value, answer: $("#answer").value, hint: $("#hint").value,
@@ -400,12 +538,64 @@ $("#create").onclick = async () => {
     source: $("#channel").value, aiAssisted: state.aiAssisted, adult: $("#adult").checked,
     groupId: state.groupId, replyToToken: state.replyTo || undefined
   };
+  return body;
+}
+function validateDraft(body) {
+  for (const [key, label] of [["question", "暗号题"], ["answer", "标准答案"], ["content", "解锁内容"]]) {
+    if (!body[key].trim()) { $("#createErr").textContent = `请填写${label}`; $("#" + key).focus(); return false; }
+  }
+  if (body.unlockType === "invite" && !body.inviteWhen.trim()) { $("#createErr").textContent = "请填写约见时间"; $("#inviteWhen").focus(); return false; }
+  return true;
+}
+let previewDraft, previewAttempts = 0;
+function resetPreview() {
+  previewAttempts = 0;
+  $("#previewAnswerBox").hidden = false; $("#previewReveal").replaceChildren();
+  $("#previewGuess").value = ""; $("#previewHint").textContent = "";
+  $("#previewResult").textContent = "还剩 3 次机会";
+}
+$("#previewCard").onclick = () => {
+  $("#createErr").textContent = ""; previewDraft = composeBody();
+  if (!validateDraft(previewDraft)) return;
+  $("#previewFrom").textContent = `来自：${previewDraft.senderName || "一位朋友"}`;
+  $("#previewQuestion").textContent = previewDraft.question;
+  resetPreview(); $("#previewDlg").showModal();
+};
+$("#previewTry").onclick = () => {
+  const guess = $("#previewGuess").value.trim();
+  if (!guess) { $("#previewResult").textContent = "先写个答案再试试"; return; }
+  previewAttempts++;
+  const correct = localMatch(guess, [previewDraft.answer, ...previewDraft.altAnswers]);
+  $("#previewGuess").value = "";
+  $("#previewHint").textContent = previewDraft.hint ? `💡 提示：${previewDraft.hint}` : "";
+  if (correct) {
+    $("#previewAnswerBox").hidden = true; $("#previewResult").textContent = "暗号正确，解锁啦！";
+    $("#previewReveal").replaceChildren(el("p", previewDraft.content, "big"));
+    if (previewDraft.unlockType === "invite") $("#previewReveal").append(el("p", `🕖 ${previewDraft.inviteWhen}　📍 ${previewDraft.inviteWhere}`));
+  } else if (previewAttempts >= 3) {
+    $("#previewAnswerBox").hidden = true;
+    $("#previewResult").textContent = "3 次没对上，内容保持隐藏。";
+    $("#previewReveal").replaceChildren(el("p", previewDraft.penalty ? `约定的惩罚：${previewDraft.penalty}` : "这次放过你，去找朋友要个提示吧。"));
+  } else $("#previewResult").textContent = `还没对上，还剩 ${3 - previewAttempts} 次机会`;
+};
+$("#previewReset").onclick = resetPreview;
+$("#previewClose").onclick = () => $("#previewDlg").close();
+$("#create").onclick = async () => {
+  $("#createErr").textContent = "";
+  const body = composeBody();
+  if (!validateDraft(body)) return;
+  $("#create").disabled = true;
   try {
     const { card } = await api("/api/cards", { method: "POST", body });
     state.replyTo = ""; sessionStorage.removeItem("anhao_card_reply");
-    show("share"); $("#shareUrl").value = card.shareUrl + (card.source && card.source !== "direct" && card.source !== "reply" ? "" : "");
+    for (const key of ["memory", "question", "answer", "alt", "hint", "content", "inviteWhen", "inviteWhere", "penaltyCustom"]) $("#" + key).value = "";
+    $("#adult").checked = false; $("#penaltyPreset").value = ""; $("#penaltyCustom").hidden = true;
+    document.querySelector("input[name=unlock][value=message]").checked = true; updateUnlock();
+    show("share"); $("#shareUrl").value = card.shareUrl;
     $("#copy").onclick = () => copyLink(card);
+    $("#shareImage").onclick = () => openPoster(card);
   } catch (e) { $("#createErr").textContent = e.message; }
+  finally { $("#create").disabled = false; }
 };
 $("#backHome").onclick = loadHome;
 $("#loginBtn").onclick = async () => {

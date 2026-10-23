@@ -1,6 +1,8 @@
 // 暗号卡: text-only friend cards. Card text lives only in `cards`/`card_group_entries` and is
 // physically deleted on delete or expiry; `card_events` never stores card text.
 import { cardSafetyIssue } from "./card-safety.mjs";
+import { localMatch } from "./card-play.mjs";
+export { normalizeAnswer, localMatch } from "./card-play.mjs";
 
 export const CARD_EVENTS = ["card_created", "card_copied", "card_opened", "answer_tried", "card_unlocked", "reply_started", "reply_created", "feedback_sent"];
 export const CARD_SOURCES = ["x", "mifi", "friend", "xhs", "reply", "direct"];
@@ -11,18 +13,6 @@ export const MAX_ATTEMPTS = 3;
 const GROUP_ENTRY_LIMIT = 20;
 const FEEDBACK_LIMIT = 20;
 const REPORT_REASONS = ["insult", "sexual", "privacy", "politics", "spam", "other"];
-
-export function normalizeAnswer(value) {
-  return String(value || "")
-    .normalize("NFKC").toLowerCase()
-    .replace(/[\s\p{P}\p{S}]/gu, "");
-}
-
-export function localMatch(guess, answers) {
-  const g = normalizeAnswer(guess);
-  if (!g) return false;
-  return answers.map(normalizeAnswer).filter(Boolean).some((a) => a === g || (a.length >= 2 && g.includes(a)));
-}
 
 export function cleanSource(value) {
   const source = String(value || "").trim().toLowerCase();
@@ -44,6 +34,7 @@ export function createCardModule({ db, helpers }) {
       answer TEXT NOT NULL,
       alt_answers TEXT NOT NULL DEFAULT '[]',
       hint TEXT NOT NULL DEFAULT '',
+      extra_hint TEXT NOT NULL DEFAULT '',
       content TEXT NOT NULL,
       invite_when TEXT NOT NULL DEFAULT '',
       invite_where TEXT NOT NULL DEFAULT '',
@@ -106,6 +97,7 @@ export function createCardModule({ db, helpers }) {
       user_id TEXT NOT NULL,
       guess TEXT NOT NULL,
       correct INTEGER NOT NULL,
+      accepted_at TEXT,
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_card_attempts_card ON card_attempts(card_id, created_at);
@@ -113,6 +105,12 @@ export function createCardModule({ db, helpers }) {
   // Migration for cards created before recipient login: add recipient_id; old cards bind on first logged-in open.
   if (!db.prepare(`PRAGMA table_info(cards)`).all().some((column) => column.name === "recipient_id")) {
     db.exec(`ALTER TABLE cards ADD COLUMN recipient_id TEXT`);
+  }
+  if (!db.prepare(`PRAGMA table_info(cards)`).all().some((column) => column.name === "extra_hint")) {
+    db.exec(`ALTER TABLE cards ADD COLUMN extra_hint TEXT NOT NULL DEFAULT ''`);
+  }
+  if (!db.prepare(`PRAGMA table_info(card_attempts)`).all().some((column) => column.name === "accepted_at")) {
+    db.exec(`ALTER TABLE card_attempts ADD COLUMN accepted_at TEXT`);
   }
   db.exec(`CREATE INDEX IF NOT EXISTS idx_cards_recipient ON cards(recipient_id, created_at DESC)`);
 
@@ -166,12 +164,12 @@ export function createCardModule({ db, helpers }) {
   }
   function attemptsFor(cardId, userId) {
     const rows = userId
-      ? db.prepare(`SELECT user_id, guess, correct, created_at FROM card_attempts WHERE card_id=? AND user_id=? ORDER BY created_at, rowid`).all(cardId, userId)
-      : db.prepare(`SELECT user_id, guess, correct, created_at FROM card_attempts WHERE card_id=? ORDER BY created_at, rowid`).all(cardId);
+      ? db.prepare(`SELECT id, user_id, guess, correct, created_at FROM card_attempts WHERE card_id=? AND user_id=? ORDER BY created_at, rowid`).all(cardId, userId)
+      : db.prepare(`SELECT id, user_id, guess, correct, created_at FROM card_attempts WHERE card_id=? ORDER BY created_at, rowid`).all(cardId);
     const people = new Map();
     return rows.map((row) => {
       if (!people.has(row.user_id)) people.set(row.user_id, accountView(row.user_id));
-      return { guess: row.guess, correct: Boolean(row.correct), createdAt: row.created_at, answeredBy: people.get(row.user_id) };
+      return { id: row.id, guess: row.guess, correct: Boolean(row.correct), createdAt: row.created_at, answeredBy: people.get(row.user_id) };
     });
   }
   function receivedView(card, req) {
@@ -184,6 +182,7 @@ export function createCardModule({ db, helpers }) {
       recipient: accountView(card.recipient_id), answers: attemptsFor(card.id),
       id: card.id, token: card.token, shareUrl: shareUrl(req, card), status: card.status,
       unlockType: card.unlock_type, question: card.question, answer: card.answer, hint: card.hint,
+      extraHint: card.extra_hint, senderName: card.sender_name || "一位朋友",
       content: card.content, inviteWhen: card.invite_when, inviteWhere: card.invite_where, penalty: card.penalty,
       aiAssisted: Boolean(card.ai_assisted), attempts: card.attempts, source: card.source,
       replyToCardId: card.reply_to_card_id, groupId: card.group_id,
@@ -199,6 +198,7 @@ export function createCardModule({ db, helpers }) {
       question: card.question, senderName: card.sender_name || "一位朋友", unlockType: card.unlock_type,
       group: Boolean(card.group_id), aiAssisted: Boolean(card.ai_assisted), hasPenalty: Boolean(card.penalty),
       attemptsLeft, maxAttempts: MAX_ATTEMPTS, unlocked, failed: !unlocked && attemptsLeft === 0,
+      extraHint: card.extra_hint,
       hint: card.attempts > 0 || unlocked ? card.hint : "", isReply: Boolean(card.reply_to_card_id), expiresAt: card.expires_at
     };
     if (unlocked && reveal) Object.assign(view, { content: card.content, inviteWhen: card.invite_when, inviteWhere: card.invite_where });
@@ -323,11 +323,11 @@ export function createCardModule({ db, helpers }) {
         }
         const stamp = now();
         db.prepare(`INSERT INTO card_attempts(id,card_id,user_id,guess,correct,created_at) VALUES(?,?,?,?,?,?)`).run(id("cat"), card.id, viewer.id, guess, correct ? 1 : 0, stamp);
-        if (correct) db.prepare(`UPDATE cards SET unlocked_at=?, status=CASE WHEN status IN ('created','opened','failed') THEN 'unlocked' ELSE status END WHERE id=?`).run(stamp, card.id);
-        else if (attempt >= MAX_ATTEMPTS) db.prepare(`UPDATE cards SET failed_at=?, status='failed' WHERE id=?`).run(stamp, card.id);
+        const unlocked = correct && db.prepare(`UPDATE cards SET unlocked_at=?, failed_at=NULL, status=CASE WHEN status='replied' THEN status ELSE 'unlocked' END WHERE id=? AND unlocked_at IS NULL`).run(stamp, card.id).changes;
+        if (!correct) db.prepare(`UPDATE cards SET failed_at=?, status='failed' WHERE id=? AND attempts>=? AND unlocked_at IS NULL AND status!='replied'`).run(stamp, card.id, MAX_ATTEMPTS);
         const source = url.searchParams.get("source") || card.source;
         logEvent(card.id, "answer_tried", source, { attempt, correct });
-        if (correct) logEvent(card.id, "card_unlocked", source, { attempt });
+        if (unlocked) logEvent(card.id, "card_unlocked", source, { attempt });
         const fresh = db.prepare(`SELECT * FROM cards WHERE id=?`).get(card.id);
         json(res, 200, { correct, judgedBy, attempt, card: { ...publicView(fresh, { reveal: true }), myAnswers: attemptsFor(card.id, viewer.id).map(({ answeredBy, ...rest }) => rest) } }); return true;
       }
@@ -461,10 +461,28 @@ export function createCardModule({ db, helpers }) {
       json(res, 201, { card: ownerView(db.prepare(`SELECT * FROM cards WHERE id=?`).get(card.id), req) }); return true;
     }
 
-    const own = path.match(/^\/api\/cards\/([^/]+)(?:\/(copied))?$/);
+    const own = path.match(/^\/api\/cards\/([^/]+)(?:\/(copied|hint|accept-answer))?$/);
     if (own) {
       const card = db.prepare(`SELECT * FROM cards WHERE id=? AND sender_id=?`).get(own[1], user.id);
       if (!card) { fail(res, 404, "CARD_NOT_FOUND", "没有找到这张卡"); return true; }
+      if (own[2] === "hint" && method === "POST") {
+        const body = await readJson(req, 4096);
+        const hint = safeText(body.hint, 40, "补充提示");
+        db.prepare(`UPDATE cards SET extra_hint=? WHERE id=? AND sender_id=?`).run(hint, card.id, user.id);
+        json(res, 200, { card: ownerView(db.prepare(`SELECT * FROM cards WHERE id=?`).get(card.id), req) }); return true;
+      }
+      if (own[2] === "accept-answer" && method === "POST") {
+        const body = await readJson(req, 4096);
+        if (typeof body.attemptId !== "string" || !body.attemptId.trim()) { fail(res, 400, "INVALID_ATTEMPT", "请选择一条已提交的错误答案"); return true; }
+        const attempt = db.prepare(`SELECT a.* FROM card_attempts a JOIN cards c ON c.id=a.card_id WHERE a.id=? AND c.id=? AND c.sender_id=? AND a.user_id=c.recipient_id`).get(body.attemptId, card.id, user.id);
+        if (!attempt) { fail(res, 404, "ATTEMPT_NOT_FOUND", "没有找到这张卡收卡人的答案"); return true; }
+        if (!attempt.guess.trim() || (attempt.correct && !attempt.accepted_at)) { fail(res, 400, "INVALID_ATTEMPT", "只能将已提交的错误答案判对"); return true; }
+        const stamp = now();
+        db.prepare(`UPDATE card_attempts SET correct=1, accepted_at=COALESCE(accepted_at,?) WHERE id=?`).run(stamp, attempt.id);
+        const unlocked = db.prepare(`UPDATE cards SET unlocked_at=?, failed_at=NULL, status=CASE WHEN status='replied' THEN status ELSE 'unlocked' END WHERE id=? AND unlocked_at IS NULL`).run(stamp, card.id).changes;
+        if (unlocked) logEvent(card.id, "card_unlocked", card.source, { attempt: card.attempts });
+        json(res, 200, { card: ownerView(db.prepare(`SELECT * FROM cards WHERE id=?`).get(card.id), req) }); return true;
+      }
       if (own[2] === "copied" && method === "POST") { logEvent(card.id, "card_copied", card.source); json(res, 202, { accepted: true }); return true; }
       if (!own[2] && method === "GET") { json(res, 200, { card: ownerView(card, req) }); return true; }
       if (!own[2] && method === "DELETE") { deleteCard(card.id); json(res, 200, { ok: true, deleted: true }); return true; }
