@@ -29,15 +29,23 @@ export const FALLBACK_QUESTIONS = [
 const limit = (text, max) => typeof text === "string" && text.trim() && [...text.trim()].length <= max;
 
 export function validateQuestions(value) {
-  if (!value || !Array.isArray(value.questions) || value.questions.length !== 3) throw new Error("invalid_output");
-  const questions = value.questions.map((item) => {
-    if (!item || !limit(item.question, 60) || !limit(item.answer, 20) || !limit(item.hint, 40)) throw new Error("invalid_output");
-    const result = { question: item.question.trim(), answer: item.answer.trim(), hint: item.hint.trim() };
-    if (/https?:|www\.|[<>]/i.test(Object.values(result).join(" "))) throw new Error("invalid_output");
-    if (cardSafetyIssue(Object.values(result).join("\n"))) throw new Error("invalid_output");
-    return result;
-  });
-  if (new Set(questions.map((item) => item.question)).size !== 3) throw new Error("invalid_output");
+  // Keep every valid model question; pad with templates so one bad item doesn't discard the whole batch.
+  if (!value || !Array.isArray(value.questions)) throw new Error("invalid_output");
+  const seen = new Set();
+  const questions = [];
+  for (const item of value.questions.slice(0, 6)) {
+    if (!item || typeof item.hint !== "string") continue;
+    const candidate = { ...item, hint: [...item.hint.trim()].slice(0, 40).join("") };
+    if (!limit(candidate.question, 60) || !limit(candidate.answer, 20) || !limit(candidate.hint, 40)) continue;
+    const result = { question: candidate.question.trim(), answer: candidate.answer.trim(), hint: candidate.hint.trim() };
+    const joined = Object.values(result).join("\n");
+    if (/https?:|www\.|[<>]/i.test(joined) || cardSafetyIssue(joined) || seen.has(result.question)) continue;
+    seen.add(result.question);
+    questions.push(result);
+    if (questions.length === 3) break;
+  }
+  if (!questions.length) throw new Error("invalid_output");
+  for (const template of FALLBACK_QUESTIONS) if (questions.length < 3 && !seen.has(template.question)) questions.push({ ...template });
   return questions;
 }
 
