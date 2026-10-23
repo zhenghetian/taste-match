@@ -237,5 +237,11 @@ test("card harness uses the model when enabled and validates output", async () =
   assert.equal((await disabled.suggest({ actorId: "u1", memories: ["x"] })).questions.length, FALLBACK_QUESTIONS.length);
   assert.equal((await disabled.judge({ actorId: "u1", question: "q", answer: "a", guess: "b" })).correct, false);
   await disabled.close?.();
-  assert.throws(() => validateQuestions({ questions: [{ question: "你个废物叫啥", answer: "x", hint: "y" }, { question: "b", answer: "x", hint: "y" }, { question: "c", answer: "x", hint: "y" }] }));
+  const partial = validateQuestions({ questions: [{ question: "你个废物叫啥", answer: "x", hint: "y" }, { question: "b", answer: "x", hint: "长".repeat(60) }, { question: "c", answer: "答".repeat(30), hint: "y" }] });
+  assert.equal(partial.length, 3);
+  assert.equal(partial[0].question, "b");
+  assert.equal([...partial[0].hint].length, 40);
+  assert.equal(partial[1].answer, "");
+  assert.throws(() => validateQuestions({ questions: [{ question: "你个废物叫啥", answer: "x", hint: "y" }] }));
+  assert.throws(() => validateQuestions({ nope: 1 }));
 });
