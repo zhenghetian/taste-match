@@ -67,6 +67,7 @@
   <body>
     <main class="shell">
       <header class="topbar"><div class="brand"><strong>暗号 · 内测数据</strong><span>真实行为漏斗与社区安全状态</span></div><div class="tools"><a class="refresh" href="agent-admin.html" style="display:inline-flex;align-items:center;text-decoration:none">Agent 与 Harness</a><div class="range"><button data-days="7" class="active" type="button">7 天</button><button data-days="30" type="button">30 天</button></div><button id="refresh" class="refresh" type="button">刷新</button></div></header>
+      <section><div class="section-head"><div><h1>暗号卡漏斗</h1><p>创建 → 打开 → 解锁 → 回卡；事件只存事件名、卡片 id、渠道和时间，不存卡片正文</p></div><span id="cardSummary"></span></div><div id="cardFunnel" class="panel"></div><div class="panel" style="margin-top:12px;overflow:auto"><table><thead><tr id="cardSourceHead"></tr></thead><tbody id="cardSources"></tbody></table></div><div id="cardReports" class="panel reports" style="margin-top:12px"></div></section>
       <section><div class="section-head"><div><h1>核心状态</h1><p>累计数据，新增用户按所选时间范围计算</p></div><span id="updatedAt">尚未刷新</span></div><div id="metrics" class="metrics"></div></section>
       <section><div class="section-head"><div><h2>关键漏斗</h2><p>从注册到发生真实对话</p></div></div><div id="funnel" class="panel"></div></section>
       <div class="columns">
@@ -106,7 +107,21 @@
         const reports=document.querySelector("#reports");if(!pending.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="当前没有待处理举报";reports.replaceChildren(empty);}else reports.replaceChildren(...pending.map((report)=>{const item=document.createElement("div");item.className="report";const copy=document.createElement("div");const title=document.createElement("strong");title.textContent=`${report.reportedName} · ${report.reason}`;const detail=document.createElement("p");detail.textContent=report.detail||new Date(report.createdAt).toLocaleString("zh-CN");copy.append(title,detail);const actions=document.createElement("div");actions.className="report-actions";for(const [label,status] of [["已处理","resolved"],["忽略","dismissed"]]){const button=document.createElement("button");button.type="button";button.textContent=label;button.addEventListener("click",async()=>{button.disabled=true;await call(`/api/admin/reports/${report.id}/status`,{method:"POST",body:JSON.stringify({status})});await load();});actions.append(button);}item.append(copy,actions);return item;}));
         document.querySelector("#updatedAt").textContent=`更新于 ${new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}`;
       }
-      async function load(){try{render(await call(`/api/admin/analytics?days=${days}`));document.querySelector("#gate").hidden=true;document.querySelector("#message").textContent="";}catch(error){document.querySelector("#gate").hidden=false;document.querySelector("#message").textContent=error.message;}}
+      const cardLabels={card_created:"创建",card_copied:"复制链接",card_opened:"打开",answer_tried:"答题",card_unlocked:"解锁",reply_started:"点回卡",reply_created:"回卡生成",feedback_sent:"反馈"};
+      function cell(tag,text){const node=document.createElement(tag);node.textContent=text;return node;}
+      function renderCards(data){
+        const t=data.totals;const base=Math.max(1,t.card_created);
+        document.querySelector("#cardSummary").textContent=`发卡人 ${number(data.senders)} · 打开率 ${data.rates.openRate}% · 解锁率 ${data.rates.unlockRate}% · 回卡率 ${data.rates.replyRate}%`;
+        document.querySelector("#cardFunnel").replaceChildren(...data.events.map((name)=>{const row=document.createElement("div");row.className="funnel-row";const bar=document.createElement("div");bar.className="bar";const fill=document.createElement("i");fill.style.width=`${Math.min(100,Math.round((t[name]||0)/base*100))}%`;bar.append(fill);row.append(cell("span",`${cardLabels[name]} · ${name}`),bar,cell("b",number(t[name])));return row;}));
+        document.querySelector("#cardSourceHead").replaceChildren(cell("th","渠道"),...data.events.map((name)=>cell("th",cardLabels[name])));
+        document.querySelector("#cardSources").replaceChildren(...Object.entries(data.bySource).map(([source,counts])=>{const row=document.createElement("tr");row.append(cell("td",source),...data.events.map((name)=>cell("td",number(counts[name]))));return row;}));
+        const box=document.querySelector("#cardReports");const items=data.reports.filter((r)=>r.status==="pending"||r.kind==="feedback");
+        if(!items.length){box.replaceChildren(cell("div","暂无卡片反馈或举报"));return;}
+        box.replaceChildren(...items.map((r)=>{const item=document.createElement("div");item.className="report";item.style.padding="10px 16px";item.append(cell("b",r.kind==="report"?`举报 · ${r.reason}`:`反馈 · ${r.reason||"-"}`),cell("p",r.detail||""),cell("small",`${r.cardId} · ${new Date(r.createdAt).toLocaleString("zh-CN")}`));
+          if(r.kind==="report"&&r.status==="pending"){const del=cell("button","永久删除该卡");del.className="refresh";del.type="button";del.addEventListener("click",async()=>{if(!confirm("永久删除这张卡？不可恢复"))return;await call(`/api/admin/cards/${encodeURIComponent(r.cardId)}`,{method:"DELETE"});load();});item.append(del);}
+          return item;}));
+      }
+      async function load(){try{renderCards(await call(`/api/admin/cards/funnel?days=${days}`));render(await call(`/api/admin/analytics?days=${days}`));document.querySelector("#gate").hidden=true;document.querySelector("#message").textContent="";}catch(error){document.querySelector("#gate").hidden=false;document.querySelector("#message").textContent=error.message;}}
       document.querySelector("#loginForm").addEventListener("submit",async(event)=>{event.preventDefault();adminKey=document.querySelector("#adminKey").value;sessionStorage.setItem("anhao_admin_key",adminKey);await load();});
       document.querySelectorAll("[data-days]").forEach((button)=>button.addEventListener("click",()=>{days=Number(button.dataset.days);document.querySelectorAll("[data-days]").forEach((item)=>item.classList.toggle("active",item===button));load();}));
       document.querySelector("#refresh").addEventListener("click",load);

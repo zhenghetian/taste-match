@@ -7,6 +7,7 @@ import { createApplication } from "./server-core.mjs";
 import { createChatMediaStore } from "./chat-media.mjs";
 import { createIcebreakerHarness } from "./llm/icebreaker.mjs";
 import { createReplyDraftHarness } from "./llm/reply-draft.mjs";
+import { createCardHarness } from "./llm/card-quiz.mjs";
 import { createNodeLedger } from "./llm/node-ledger.mjs";
 
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
@@ -37,7 +38,8 @@ const app = createApplication({
     const ledgerFactory = createNodeLedger;
     return {
       icebreakerHarness: createIcebreakerHarness({ env, sharedConcurrency, ledgerFactory }),
-      replyDraftHarness: createReplyDraftHarness({ env, sharedConcurrency, ledgerFactory })
+      replyDraftHarness: createReplyDraftHarness({ env, sharedConcurrency, ledgerFactory }),
+      cardHarness: createCardHarness({ env, sharedConcurrency, ledgerFactory })
     };
   },
   usageReader: date => {
@@ -61,7 +63,7 @@ const MIME = { ".html":"text/html; charset=utf-8", ".css":"text/css; charset=utf
 const PUBLIC_FILES = new Set([
   "/signal-mvp.html", "/index.html", "/admin.html", "/echo-prototype.html", "/ia-prototype.html",
   "/app.js", "/content-library.mjs", "/chat-sharing.mjs", "/styles.css", "/sw.js", "/manifest.webmanifest",
-  "/agent-admin.html", "/agent-admin.mjs", "/agent-admin.css"
+  "/agent-admin.html", "/agent-admin.mjs", "/agent-admin.css", "/card.html"
 ]);
 const ASSET_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".svg", ".mp4"]);
 function staticFile(req,res,url) {
@@ -71,7 +73,8 @@ function staticFile(req,res,url) {
   if (requested.includes("\\") || requested.includes("\0") || requested.split("/").some((part) => part.startsWith("."))) {
     return fail(res,404,"NOT_FOUND","页面不存在");
   }
-  const pathname = requested === "/" ? "/signal-mvp.html" : requested;
+  // 暗号卡 is the entry while the chat UI stays reachable at /signal-mvp.html.
+  const pathname = requested === "/" ? "/card.html" : requested;
   const isAsset = pathname.startsWith("/assets/") && ASSET_EXTENSIONS.has(extname(pathname).toLowerCase());
   if (!PUBLIC_FILES.has(pathname) && !isAsset) return fail(res,404,"NOT_FOUND","页面不存在");
   const target = resolve(ROOT, `.${pathname}`);

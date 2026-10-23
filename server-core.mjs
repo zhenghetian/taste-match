@@ -5,6 +5,8 @@ import { REPLY_MESSAGE_LIMIT } from "./llm/reply-draft.mjs";
 import { createAgentConfigStore, settingsEnvironment } from "./agent-config.mjs";
 import { resolveModel } from "./llm/config.mjs";
 import { transaction } from "./sql-transaction.mjs";
+import { createCardModule } from "./cards.mjs";
+import { createCardHarness } from "./llm/card-quiz.mjs";
 
 export function createApplication({ db, env = {}, createMediaStore, harnessFactory, usageReader = () => 0, beforeAutoReply = () => {}, background = promise => { void promise.catch(() => {}); } }) {
   // Copy bindings so callers cannot change one application's configuration by mutation.
@@ -16,6 +18,9 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
   const sharedConcurrency = { active: 0 };
   let icebreakerHarness;
   let replyDraftHarness;
+  let cardHarness;
+  // Factories that predate 暗号卡 get a disabled card harness (deterministic fallbacks only).
+  const withCardHarness = (next, runtimeEnv) => ({ ...next, cardHarness: next.cardHarness || createCardHarness({ env: { ...runtimeEnv, ANHAO_LLM_ENABLED: "false" } }) });
   let configEpoch = 0;
   const autoJobs = new Map();
   let autoClosing = false;
@@ -37,7 +42,7 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
   }
 
   const agentConfigStore = createAgentConfigStore({ db, env });
-  ({ icebreakerHarness, replyDraftHarness } = harnessFactory({ env: agentConfigStore.runtimeEnv(), sharedConcurrency }));
+  ({ icebreakerHarness, replyDraftHarness, cardHarness } = withCardHarness(harnessFactory({ env: agentConfigStore.runtimeEnv(), sharedConcurrency }), agentConfigStore.runtimeEnv()));
 
   function now() { return new Date().toISOString(); }
   function addMinutes(minutes) { return new Date(Date.now() + minutes * 60_000).toISOString(); }
@@ -616,8 +621,8 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
 
   function applyAgentConfig(next) {
     configEpoch += 1;
-    const previous = [icebreakerHarness, replyDraftHarness];
-    ({ icebreakerHarness, replyDraftHarness } = next);
+    const previous = [icebreakerHarness, replyDraftHarness, cardHarness];
+    ({ icebreakerHarness, replyDraftHarness, cardHarness } = withCardHarness(next, agentConfigStore.runtimeEnv()));
     for (const harness of previous) retireHarness(harness);
     const rows = db.prepare("SELECT * FROM agent_thread_settings WHERE enabled=1").all();
     const allowAuto = autoReplyAllowed();
@@ -854,9 +859,19 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
     return `shared_${hash(sourceUrl).slice(0, 20)}`;
   }
 
+  const cardModule = createCardModule({ db, helpers: {
+    now, addDays, id, token, json, fail, readJson, requireUser, requireAdmin, publicBaseUrl,
+    ensureFriendInvite, friendshipBetween, orderedPair, blockedBetween, builtinModeration,
+    getHarness: () => cardHarness
+  } });
+
   async function api(req, res, url) {
     const method = req.method || "GET";
     const path = url.pathname;
+
+    if (path.startsWith("/api/cards") || path.startsWith("/api/card-groups") || path.startsWith("/api/admin/cards")) {
+      if (await cardModule.handle(req, res, url)) return;
+    }
 
     if (path === "/api/admin/agent" || path.startsWith("/api/admin/agent/")) {
       res.setHeader("cache-control", "no-store");
@@ -912,6 +927,7 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
       } catch (error) {
         retireHarness(next.icebreakerHarness);
         retireHarness(next.replyDraftHarness);
+        if (next.cardHarness) retireHarness(next.cardHarness);
         throw error;
       }
       applyAgentConfig(next);
@@ -1057,6 +1073,7 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
       return json(res,200,{
         icebreakers: icebreakerHarness.status(),
         replyDrafts: { ...replyDraftHarness.status(), autoSend: autoReplyAllowed() },
+        cards: cardHarness.status(),
         // backward-compatible top-level fields for older clients
         ...icebreakerHarness.status()
       },{"cache-control":"no-store"});
@@ -1562,10 +1579,10 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
 
   function configureHarnesses({ replyHarness, harnessFactory: factory } = {}) {
     if (factory) {
-      const previous = [icebreakerHarness, replyDraftHarness];
-      const next = factory({ env: agentConfigStore.runtimeEnv(), sharedConcurrency });
+      const previous = [icebreakerHarness, replyDraftHarness, cardHarness];
+      const next = withCardHarness(factory({ env: agentConfigStore.runtimeEnv(), sharedConcurrency }), agentConfigStore.runtimeEnv());
       harnessFactory = factory;
-      ({ icebreakerHarness, replyDraftHarness } = next);
+      ({ icebreakerHarness, replyDraftHarness, cardHarness } = next);
       for (const harness of previous) retireHarness(harness);
     }
     if (replyHarness) {
@@ -1606,6 +1623,7 @@ export function createApplication({ db, env = {}, createMediaStore, harnessFacto
     clients.clear();
     retireHarness(icebreakerHarness);
     retireHarness(replyDraftHarness);
+    retireHarness(cardHarness);
   }
   async function handle(req, res, url) {
     try {

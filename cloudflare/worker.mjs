@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { createApplication } from "../server-core.mjs";
 import { createIcebreakerHarness } from "../llm/icebreaker.mjs";
 import { createReplyDraftHarness } from "../llm/reply-draft.mjs";
+import { createCardHarness } from "../llm/card-quiz.mjs";
 import { createCloudMediaStore } from "./media.mjs";
 import { createSQLiteAdapter } from "./sqlite.mjs";
 import { dispatch } from "./http.mjs";
@@ -20,7 +21,8 @@ export class AnhaoApplication extends DurableObject {
       createMediaStore: options => createCloudMediaStore({ ...options, bucket: bindings.CHAT_MEDIA || null }),
       harnessFactory: ({ env, sharedConcurrency }) => ({
         icebreakerHarness: createIcebreakerHarness({ env, sharedConcurrency, ledgerFactory: () => this.db }),
-        replyDraftHarness: createReplyDraftHarness({ env, sharedConcurrency, ledgerFactory: () => this.db })
+        replyDraftHarness: createReplyDraftHarness({ env, sharedConcurrency, ledgerFactory: () => this.db }),
+        cardHarness: createCardHarness({ env, sharedConcurrency, ledgerFactory: () => this.db })
       }),
       usageReader: date => {
         if (!this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='runs'").get()) return 0;
@@ -47,7 +49,7 @@ export default {
       headers.set("x-anhao-request-origin", url.origin);
       return env.ANHAO.get(id).fetch(new Request(request, { headers }));
     }
-    if (url.pathname === "/") { url.pathname = "/signal-mvp.html"; return env.ASSETS.fetch(new Request(url, request)); }
+    if (url.pathname === "/") { url.pathname = "/card.html"; return env.ASSETS.fetch(new Request(url, request)); }
     return env.ASSETS.fetch(request);
   }
 };
