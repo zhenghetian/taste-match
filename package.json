@@ -7,6 +7,11 @@
     "dev": "node --watch server.mjs",
     "dev:ai": "node harness/dev-ai.mjs",
     "start": "node server.mjs",
+    "cloudflare:build": "node cloudflare/build.mjs",
+    "cloudflare:dev": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler dev --local",
+    "cloudflare:check": "wrangler deploy --dry-run --outdir dist/cloudflare-worker",
+    "cloudflare:deploy": "wrangler deploy",
+    "cloudflare:test": "node test/cloudflare-integration.mjs",
     "test": "node --test test/*.test.mjs",
     "verify": "node harness/verify.mjs",
     "harness": "node harness/cli.mjs",
@@ -19,5 +24,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.152.0"
   }
 }

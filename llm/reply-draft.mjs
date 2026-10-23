@@ -100,13 +100,13 @@ export function createAnthropicReplyProvider(env = process.env) {
   };
 }
 
-export function createReplyDraftHarness({ env = process.env, provider, now = () => Date.now(), record, sharedConcurrency } = {}) {
+export function createReplyDraftHarness({ env = process.env, provider, now = () => Date.now(), record, sharedConcurrency, ledgerFactory } = {}) {
   const enabled = env.ANHAO_LLM_ENABLED === "true";
   const autoReplyEnabled = env.ANHAO_LLM_AUTO_REPLY_ENABLED !== "false";
   const promptVersion = promptFingerprint(REPLY_PROMPT_VERSION, instructionFor(env, "ANHAO_LLM_REPLY_INSTRUCTION"));
   const autoPromptVersion = promptFingerprint(`${REPLY_PROMPT_VERSION}-auto`, instructionFor(env, "ANHAO_LLM_AUTO_INSTRUCTION"));
   const call = provider || createAnthropicReplyProvider(env);
-  const runtime = createRuntime({ env, now, record, sharedConcurrency });
+  const runtime = createRuntime({ env, now, record, sharedConcurrency, ledgerFactory });
   function fallback(reason, runId = null) {
     const draft = FALLBACK_DRAFTS[Math.abs(String(reason || "x").split("").reduce((sum, c) => sum + c.charCodeAt(0), 0)) % FALLBACK_DRAFTS.length];
     return { draft, source: "fallback", reason, runId };

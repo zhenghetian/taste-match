@@ -1,8 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { DatabaseSync } from "node:sqlite";
+import { transaction } from "../sql-transaction.mjs";
 import { resolveModel } from "./config.mjs";
 
 const digest = (value) => createHash("sha256").update(String(value)).digest("hex");
@@ -26,8 +23,13 @@ export function promptFingerprint(version, instruction) {
   return instruction ? `${version}:${digest(instruction)}` : version;
 }
 
+const defaultLedgerFactory = async (env) => {
+  const { createNodeLedger } = await import("./node-ledger.mjs");
+  return createNodeLedger(env);
+};
+
 // Shared state is deliberately just { active: 0 }, reusable across features and revisions.
-export function createRuntime({ env, now, record, sharedConcurrency = { active: 0 } }) {
+export function createRuntime({ env, now, record, sharedConcurrency = { active: 0 }, ledgerFactory = defaultLedgerFactory }) {
   const timeoutMs = integer(env.ANHAO_LLM_TIMEOUT_MS, 20000, 1, 60000);
   const maxTokens = integer(env.ANHAO_LLM_MAX_TOKENS, 4096, 256, 8192);
   const dailyLimit = integer(env.ANHAO_LLM_DAILY_LIMIT, 100, 0, 10000);
@@ -36,32 +38,58 @@ export function createRuntime({ env, now, record, sharedConcurrency = { active: 
   const model = resolveModel(env);
   const active = new Set();
   let ledger;
+  let initialization;
+  let initializing = false;
   let retired = false;
   let retirement;
   let resolveRetirement;
 
-  function database() {
-    if (!ledger) {
-      const dir = env.DATA_DIR || fileURLToPath(new URL("../data/", import.meta.url));
-      mkdirSync(dir, { recursive: true });
-      ledger = new DatabaseSync(join(dir, "ai-harness.db"));
-      ledger.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=1000;
-        CREATE TABLE IF NOT EXISTS runs (
-          id TEXT PRIMARY KEY, day TEXT NOT NULL, actor TEXT NOT NULL,
-          prompt_version TEXT NOT NULL, started_at INTEGER NOT NULL,
-          status TEXT NOT NULL, reason TEXT, model TEXT,
-          latency_ms INTEGER, input_tokens INTEGER, output_tokens INTEGER
-        );
-        CREATE INDEX IF NOT EXISTS runs_day_actor ON runs(day, actor);`);
+  function initialize(db) {
+    try {
+      db.exec(`CREATE TABLE IF NOT EXISTS runs (
+        id TEXT PRIMARY KEY, day TEXT NOT NULL, actor TEXT NOT NULL,
+        prompt_version TEXT NOT NULL, started_at INTEGER NOT NULL,
+        status TEXT NOT NULL, reason TEXT, model TEXT,
+        latency_ms INTEGER, input_tokens INTEGER, output_tokens INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS runs_day_actor ON runs(day, actor);`);
+      ledger = db;
+      return db;
+    } catch (error) {
+      db?.close();
+      throw error;
     }
-    return ledger;
+  }
+
+  function ensureDatabase() {
+    if (initialization) return initialization;
+    if (ledger) return ledger;
+    initializing = true;
+    try {
+      const created = ledgerFactory(env);
+      if (created && typeof created.then === "function") {
+        initialization = Promise.resolve(created).then(initialize).finally(() => {
+          initializing = false;
+          initialization = undefined;
+          closeIfIdle();
+        });
+        return initialization;
+      }
+      return initialize(created);
+    } finally {
+      if (!initialization) {
+        initializing = false;
+        closeIfIdle();
+      }
+    }
   }
 
   function closeIfIdle() {
-    if (retired && active.size === 0) {
-      ledger?.close();
+    if (retired && !initializing && active.size === 0) {
+      const db = ledger;
       ledger = undefined;
-      resolveRetirement?.();
+      try { db?.close(); }
+      finally { resolveRetirement?.(); }
     }
   }
 
@@ -83,24 +111,32 @@ export function createRuntime({ env, now, record, sharedConcurrency = { active: 
       if (retired) return fallback("retired");
       if (sharedConcurrency.active >= concurrency) return fallback("busy");
       if (dailyLimit === 0 || userLimit === 0) return fallback("daily_limit");
+      let db;
+      try {
+        const database = ensureDatabase();
+        db = database && typeof database.then === "function" ? await database : database;
+      } catch {
+        return fallback(retired ? "retired" : "ledger_unavailable");
+      }
+      // Async factories yield: retirement and shared slots may change while loading.
+      // Admission from these checks through reservation and active.add must stay synchronous.
+      if (retired) return fallback("retired");
+      if (sharedConcurrency.active >= concurrency) return fallback("busy");
+      if (dailyLimit === 0 || userLimit === 0) return fallback("daily_limit");
       const started = now();
       const day = new Date(started).toISOString().slice(0, 10);
       const runId = randomUUID();
-      let db;
       try {
-        db = database();
-        db.exec("BEGIN IMMEDIATE");
-        const total = db.prepare("SELECT COUNT(*) AS n FROM runs WHERE day=?").get(day).n;
-        const user = db.prepare("SELECT COUNT(*) AS n FROM runs WHERE day=? AND actor=?").get(day, digest(actorId)).n;
-        if (total >= dailyLimit || user >= userLimit) {
-          db.exec("ROLLBACK");
-          return fallback("daily_limit");
-        }
-        db.prepare("INSERT INTO runs(id,day,actor,prompt_version,started_at,status) VALUES(?,?,?,?,?,?)")
-          .run(runId, day, digest(actorId), promptVersion, started, "reserved");
-        db.exec("COMMIT");
+        const reserved = transaction(db, () => {
+          const total = db.prepare("SELECT COUNT(*) AS n FROM runs WHERE day=?").get(day).n;
+          const user = db.prepare("SELECT COUNT(*) AS n FROM runs WHERE day=? AND actor=?").get(day, digest(actorId)).n;
+          if (total >= dailyLimit || user >= userLimit) return false;
+          db.prepare("INSERT INTO runs(id,day,actor,prompt_version,started_at,status) VALUES(?,?,?,?,?,?)")
+            .run(runId, day, digest(actorId), promptVersion, started, "reserved");
+          return true;
+        });
+        if (!reserved) return fallback("daily_limit");
       } catch {
-        try { db?.exec("ROLLBACK"); } catch {}
         return fallback("ledger_unavailable");
       }
 

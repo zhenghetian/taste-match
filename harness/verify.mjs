@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const files = [];
 function walk(dir) {
   for (const item of readdirSync(dir, { withFileTypes: true })) {
-    if ([".git", "node_modules", "data", "work", ".claude"].includes(item.name)) continue;
+    if ([".git", "node_modules", "data", "work", ".claude", ".wrangler", "dist"].includes(item.name)) continue;
     const path = join(dir, item.name);
     if (item.isDirectory()) walk(path);
     else if (/\.(?:mjs|js)$/.test(item.name)) files.push(path);

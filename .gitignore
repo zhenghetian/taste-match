@@ -8,3 +8,7 @@ work/
 node_modules/
 .env.*
 !.env.example
+.wrangler/
+dist/
+.dev.vars
+.dev.vars.*

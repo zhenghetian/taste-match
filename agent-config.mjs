@@ -1,4 +1,5 @@
 import { inspectAIConfig, resolveModel, resolveProvider } from "./llm/config.mjs";
+import { transaction } from "./sql-transaction.mjs";
 
 const limits = {
   timeoutMs: [1000, 60000], maxTokens: [256, 8192], concurrency: [1, 8],
@@ -86,13 +87,11 @@ export function createAgentConfigStore({ db, env = process.env }) {
     if (!result.valid) throw error(result.issues.join("；"));
     if (typeof reason !== "string" || !reason.trim() || reason.trim().length > 300 || credentialPattern.test(reason) || /[\u0000-\u001f\u007f]/.test(reason)) throw error("请填写 1–300 字的修改原因，不能包含凭证或控制字符");
     if (!Number.isInteger(expectedRevision)) throw error("请提供当前配置版本");
-    db.exec("BEGIN IMMEDIATE");
-    try {
+    transaction(db, () => {
       if (latest().revision !== expectedRevision) throw error("配置已被其他窗口更新，请重新加载后再修改", 409, "CONFIG_CONFLICT");
       db.prepare("INSERT INTO agent_config_revisions(settings,reason,created_at,restored_from) VALUES(?,?,?,?)")
         .run(JSON.stringify(Object.fromEntries(keys.map(key => [key, settings[key]]))), reason.trim(), new Date().toISOString(), restoredFrom);
-      db.exec("COMMIT");
-    } catch (cause) { db.exec("ROLLBACK"); throw cause; }
+    });
     return snapshot();
   }
   return {

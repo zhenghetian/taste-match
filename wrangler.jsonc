@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anhao",
+  "main": "cloudflare/worker.mjs",
+  "compatibility_date": "2026-10-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist/cloudflare-public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ANHAO", "class_name": "AnhaoApplication" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AnhaoApplication"] }],
+  "r2_buckets": [{ "binding": "CHAT_MEDIA", "bucket_name": "anhao-chat-media" }],
+  "alias": { "./llm/node-ledger.mjs": "./cloudflare/unsupported-ledger.mjs" },
+  "vars": {
+    "NODE_ENV": "production",
+    "ANHAO_LLM_ENABLED": "false",
+    "ANHAO_LLM_PROVIDER": "deepseek",
+    "ANHAO_LLM_MODEL": "deepseek-flash",
+    "DEMO_MATCHING_ENABLED": "false"
+  },
+  "build": { "command": "node cloudflare/build.mjs" },
+  "observability": { "enabled": false }
+}
